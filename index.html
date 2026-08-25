@@ -515,7 +515,6 @@ function renderToday(){
   }).join('');
 
   document.getElementById('screen-today').innerHTML = `
-    ${renderMiniHistoryStrip(t)}
     <div class="ring-wrap">${ringSvg(consumed, t.calorieTarget)}</div>
     <div class="panel">
       ${thinBar('Ingeridas', consumed, t.calorieTarget, 'var(--accent)', 'kcal', '🔥')}
@@ -690,7 +689,7 @@ function renderAdd(){
 // dominio en Google (ver instrucciones de Claude). Así, todo el mundo que
 // visite esta web la usa automáticamente, sin configurar nada, gratis.
 // ======================================================================
-const DEFAULT_GEMINI_KEY = 'AIzaSyAikNhpp8UWHPD0j0EQ1ZPrj4QYy9PkBCc';
+const DEFAULT_GEMINI_KEY = 'AIzaSyAjJ3KL-v0lft2qtgcqBBrzsqkr4Z3AaUw';
 
 // ======================================================================
 // OPCIÓN B (más robusta, con límite de peticiones por minuto): si en vez
