@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>eatiseasy</title>
 <link rel="icon" type="image/png" href="icon.png">
-<link rel="apple-touch-icon" href="apple-iconn.png">
+<link rel="apple-touch-icon" href="eie-beta.png">
 <style>
 :root{
   --bg:#FAFAF8; --surface:#FFFFFF; --ink:#171713; --muted:#8B8878; --line:#EDEAE1;
@@ -691,7 +690,7 @@ function renderAdd(){
 // dominio en Google (ver instrucciones de Claude). Así, todo el mundo que
 // visite esta web la usa automáticamente, sin configurar nada, gratis.
 // ======================================================================
-const DEFAULT_GEMINI_KEY = 'AQ.Ab8RN6LtfbGbpQ_c3npTt9Tc7q3lU808sfA2QK8EUfi6Lbc6HQ';
+const DEFAULT_GEMINI_KEY = 'AIzaSyAikNhpp8UWHPD0j0EQ1ZPrj4QYy9PkBCc';
 
 // ======================================================================
 // OPCIÓN B (más robusta, con límite de peticiones por minuto): si en vez
@@ -709,7 +708,7 @@ async function getPhotoEndpoint(){
   const geminiKey = await safeGet('geminiKey');
   if(geminiKey && geminiKey.trim()){
     return {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent`,
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent`,
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey.trim() },
       mode: 'ownKey',
       provider: 'gemini'
@@ -720,7 +719,7 @@ async function getPhotoEndpoint(){
   }
   if(DEFAULT_GEMINI_KEY){
     return {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent`,
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent`,
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': DEFAULT_GEMINI_KEY },
       mode: 'defaultKey',
       provider: 'gemini'
@@ -805,14 +804,10 @@ async function onPhotoSelected(evt){
     const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(requestBody) });
     if(!resp.ok){
       const errBody = await resp.text();
-      console.error('Gemini API error', resp.status, errBody);
       if((resp.status === 401 || resp.status === 403) && mode === 'claude'){
         throw new Error('Esta función solo funciona dentro del chat de Claude, o configurando un proxy/clave gratis de Gemini en Perfil.');
       }
-      if(resp.status === 401 || resp.status === 403 || resp.status === 429 || resp.status >= 500){
-        throw new Error('Error de IA, intenta manual');
-      }
-      throw new Error('Error de IA, intenta manual');
+      throw new Error('HTTP ' + resp.status + ': ' + errBody.slice(0,150));
     }
     const data = await resp.json();
     if(data.error){ throw new Error(data.error.message || 'Error de la API'); }
@@ -1241,6 +1236,5 @@ async function resetAccount(){
 
 init();
 </script>
-<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"7f7b0fd8732c4326aae4b9d58d5c514a"}' crossorigin="anonymous"></script>
 </body>
 </html>
