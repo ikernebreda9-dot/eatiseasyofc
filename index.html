@@ -685,32 +685,47 @@ function renderAdd(){
 }
 
 // ======================================================================
-// Si despliegas tu propio Cloudflare Worker (ver eatiseasy-photo-proxy-worker.js),
-// pega aquí su URL. Así, TODO el mundo que use esta app (alojada donde sea)
-// tendrá el análisis de fotos funcionando automáticamente, sin configurar nada.
-// Déjalo vacío ('') si no quieres pagar el uso de otras personas.
+// OPCIÓN A (más simple, recomendada para empezar): pega aquí tu clave
+// gratuita de Gemini (aistudio.google.com), DESPUÉS de restringirla por
+// dominio en Google (ver instrucciones de Claude). Así, todo el mundo que
+// visite esta web la usa automáticamente, sin configurar nada, gratis.
+// ======================================================================
+const DEFAULT_GEMINI_KEY = '';
+
+// ======================================================================
+// OPCIÓN B (más robusta, con límite de peticiones por minuto): si en vez
+// de lo anterior despliegas el Worker de Cloudflare (ver
+// eatiseasy-photo-proxy-worker.js), pega aquí su URL en lugar de rellenar
+// la clave de arriba. Deja solo UNA de las dos rellena.
 // ======================================================================
 const DEFAULT_PHOTO_PROXY_URL = '';
 
 async function getPhotoEndpoint(){
   const proxyUrl = await safeGet('photoProxyUrl');
   if(proxyUrl && proxyUrl.trim()){
-    return { url: proxyUrl.trim(), headers: { 'Content-Type': 'application/json' }, mode: 'proxy' };
+    return { url: proxyUrl.trim(), headers: { 'Content-Type': 'application/json' }, mode: 'proxy', provider: 'gemini' };
   }
-  const key = await safeGet('apiKey');
-  if(key && key.trim()){
+  const geminiKey = await safeGet('geminiKey');
+  if(geminiKey && geminiKey.trim()){
     return {
-      url: 'https://api.anthropic.com/v1/messages',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': key.trim(),
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      mode: 'ownKey'
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey.trim() },
+      mode: 'ownKey',
+      provider: 'gemini'
     };
   }
-  return { url: 'https://api.anthropic.com/v1/messages', headers: { 'Content-Type': 'application/json' }, mode: 'claude' };
+  if(DEFAULT_PHOTO_PROXY_URL){
+    return { url: DEFAULT_PHOTO_PROXY_URL, headers: { 'Content-Type': 'application/json' }, mode: 'defaultProxy', provider: 'gemini' };
+  }
+  if(DEFAULT_GEMINI_KEY){
+    return {
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': DEFAULT_GEMINI_KEY },
+      mode: 'defaultKey',
+      provider: 'gemini'
+    };
+  }
+  return { url: 'https://api.anthropic.com/v1/messages', headers: { 'Content-Type': 'application/json' }, mode: 'claude', provider: 'anthropic' };
 }
 
 function triggerPhotoInput(evt){
@@ -762,32 +777,44 @@ async function onPhotoSelected(evt){
   renderAdd();
   try{
     const { base64, mediaType, thumbnail } = await fileToCompressedBase64(file);
-    const { url, headers, mode } = await getPhotoEndpoint();
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 500,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-            { type: 'text', text: 'Analiza esta foto de comida y estima sus valores nutricionales para la porción mostrada. Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin backticks, exactamente con este formato: {"name":"nombre breve del plato en español","calories":numero_entero,"protein_g":numero_entero,"carbs_g":numero_entero,"fat_g":numero_entero}' }
-          ]
-        }]
-      })
-    });
+    const { url, headers, mode, provider } = await getPhotoEndpoint();
+    const prompt = 'Analiza esta foto de comida y estima sus valores nutricionales para la porción mostrada. Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin backticks, exactamente con este formato: {"name":"nombre breve del plato en español","calories":numero_entero,"protein_g":numero_entero,"carbs_g":numero_entero,"fat_g":numero_entero}';
+
+    const requestBody = provider === 'gemini'
+      ? {
+          contents: [{
+            parts: [
+              { inline_data: { mime_type: mediaType, data: base64 } },
+              { text: prompt }
+            ]
+          }]
+        }
+      : {
+          model: 'claude-sonnet-4-6',
+          max_tokens: 500,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+              { type: 'text', text: prompt }
+            ]
+          }]
+        };
+
+    const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(requestBody) });
     if(!resp.ok){
       const errBody = await resp.text();
       if((resp.status === 401 || resp.status === 403) && mode === 'claude'){
-        throw new Error('Esta función solo funciona dentro del chat de Claude, o configurando un proxy/clave en Perfil.');
+        throw new Error('Esta función solo funciona dentro del chat de Claude, o configurando un proxy/clave gratis de Gemini en Perfil.');
       }
       throw new Error('HTTP ' + resp.status + ': ' + errBody.slice(0,150));
     }
     const data = await resp.json();
     if(data.error){ throw new Error(data.error.message || 'Error de la API'); }
-    const text = (data.content || []).map(b=>b.text || '').join('').trim();
+
+    const text = provider === 'gemini'
+      ? ((data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || []).map(p=>p.text||'').join('').trim())
+      : ((data.content || []).map(b=>b.text || '').join('').trim());
     if(!text) throw new Error('Respuesta vacía del modelo');
     const clean = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
@@ -1068,20 +1095,20 @@ function renderProfile(){
       <summary>📷 Análisis de fotos fuera de Claude</summary>
       <div class="inner">
         <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">
-          El análisis de fotos con IA funciona solo mientras usas la app dentro del chat de Claude. Fuera de ahí (por ejemplo alojada en GitHub) necesita una de estas dos opciones:
+          El análisis de fotos con IA funciona solo mientras usas la app dentro del chat de Claude. Si esta app está alojada fuera (ej. GitHub) y ves este mensaje, es que el desarrollador aún no ha configurado un proxy compartido. Mientras tanto, puedes usar tu propia opción aquí abajo — <b>usa Gemini de Google, que tiene nivel gratuito real, sin tarjeta</b>.
         </p>
-        <p style="font-size:12px; margin:0 0 6px 0;"><b>✅ Recomendado — tu propio proxy (seguro)</b></p>
+        <p style="font-size:12px; margin:0 0 6px 0;"><b>✅ Recomendado — tu propio proxy (seguro y gratis)</b></p>
         <p style="font-size:11px; color:var(--muted); margin:0 0 10px 0;">
-          Un pequeño servidor gratuito (Cloudflare Worker) esconde tu clave; la app nunca la ve. Pídele a Claude "dame el código del Worker y los pasos" si no lo tienes montado.
+          Un pequeño servidor gratuito (Cloudflare Worker) esconde tu clave gratuita de Gemini; la app nunca la ve. Pídele a Claude "dame el código del Worker y los pasos" si no lo tienes montado.
         </p>
         <div class="field"><label>URL de tu proxy</label><input id="proxy-url-in" type="text" placeholder="https://tu-worker.tuusuario.workers.dev"></div>
         <button class="btn accent" onclick="saveProxyUrl()">Guardar proxy</button>
 
-        <p style="font-size:12px; margin:18px 0 6px 0;"><b>⚠️ Alternativa rápida (menos segura)</b></p>
+        <p style="font-size:12px; margin:18px 0 6px 0;"><b>⚡ Alternativa rápida (también gratis)</b></p>
         <p style="font-size:11px; color:var(--muted); margin:0 0 10px 0;">
-          Pega tu clave directamente. Es más rápido de configurar, pero queda visible en tu navegador — solo recomendable para uso personal.
+          Pega directamente tu clave gratuita de Gemini (la sacas en <b>aistudio.google.com</b>, sin tarjeta). Es más rápido de configurar, pero queda visible en tu navegador — como es gratis, el único riesgo es que alguien gaste tu cuota diaria, no tu dinero.
         </p>
-        <div class="field"><label>Clave de API de Anthropic</label><input id="api-key-in" type="password" placeholder="sk-ant-..."></div>
+        <div class="field"><label>Clave de API de Gemini</label><input id="api-key-in" type="password" placeholder="AIza..."></div>
         <button class="btn ghost" onclick="saveApiKey()">Guardar clave</button>
       </div>
     </details>
@@ -1128,7 +1155,7 @@ async function saveProxyUrl(){
 async function saveApiKey(){
   const key = document.getElementById('api-key-in').value.trim();
   if(!key){ showToast('Pega una clave válida', true); return; }
-  await safeSet('apiKey', key);
+  await safeSet('geminiKey', key);
   showToast('Clave guardada');
   document.getElementById('api-key-in').value = '••••••••••••';
 }
