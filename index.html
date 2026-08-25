@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<link rel="icon" type="image/png" href="icon.png">
-<link rel="apple-touch-icon" href="apple-iconn.png">
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>eatiseasy</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="apple-iconn.png">
 <style>
 :root{
   --bg:#FAFAF8; --surface:#FFFFFF; --ink:#171713; --muted:#8B8878; --line:#EDEAE1;
@@ -28,6 +28,12 @@ body{margin:0; background:var(--bg); font-family:-apple-system,BlinkMacSystemFon
 .ring-track{fill:none; stroke:var(--line); stroke-width:12;}
 .ring-fill{fill:none; stroke-width:12; stroke-linecap:round; transition:stroke-dashoffset .5s ease;}
 .ring-num{font-size:38px; font-weight:800; text-anchor:middle;}
+.ring-num-mini{font-size:44px; font-weight:800; text-anchor:middle;}
+.mini-history-strip{display:flex; gap:16px; overflow-x:auto; padding:4px 2px 12px 2px; -webkit-overflow-scrolling:touch;}
+.mini-history-strip::-webkit-scrollbar{display:none;}
+.mini-day{display:flex; flex-direction:column; align-items:center; gap:5px; flex-shrink:0; cursor:pointer;}
+.mini-day-label{font-size:10px; font-weight:700; color:var(--muted); text-transform:capitalize;}
+.mini-day .ring-mini{width:52px; height:52px;}
 .ring-label{font-size:11px; text-anchor:middle; fill:var(--muted);}
 .section-title{font-size:12px; font-weight:700; color:var(--accent-dark); text-transform:uppercase; letter-spacing:.6px; margin:22px 0 10px 0;}
 .bar-block{margin-bottom:16px;}
@@ -78,6 +84,18 @@ details .inner{padding-top:10px;}
 .weight-row{display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-top:4px;}
 .spark{width:100%; height:auto; margin-top:18px;}
 .plist .row .rval{font-weight:500;}
+
+.avatar-header{display:flex; flex-direction:column; align-items:center; gap:8px; padding:16px 0 6px 0;}
+.avatar-circle{position:relative; width:84px; height:84px; border-radius:50%; background:var(--accent-soft); color:var(--accent-dark); display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:800; cursor:pointer; overflow:hidden; border:3px solid var(--surface); box-shadow:0 2px 10px rgba(0,0,0,.08);}
+.avatar-circle img{width:100%; height:100%; object-fit:cover;}
+.avatar-edit{position:absolute; bottom:-2px; right:-2px; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center; border:2px solid var(--surface);}
+.avatar-name{font-size:14px; font-weight:700;}
+
+.theme-row{display:flex; justify-content:center; gap:12px; padding:14px 0 4px 0;}
+.theme-dot{width:26px; height:26px; border-radius:50%; border:2px solid transparent; cursor:pointer; padding:0;}
+.theme-dot.selected{border-color:var(--ink);}
+
+.footer-credit{text-align:center; font-size:11px; color:var(--muted); padding:24px 0 8px 0;}
 .note{font-size:11px; color:var(--muted); text-align:center; padding:14px 0 0 0;}
 
 .row-thumb{width:34px; height:34px; border-radius:9px; object-fit:cover; flex-shrink:0;}
@@ -271,7 +289,7 @@ async function importBackupCode(code){
   await safeSet('logDates', dates);
 }
 
-let state = { profile:null, tab:'today', log:{foods:[],exercises:[]}, weights:[], logDates:[], supplements:[], takenToday:new Set(), analyzing:false, pendingFood:null };
+let state = { profile:null, tab:'today', log:{foods:[],exercises:[]}, weights:[], logDates:[], supplements:[], takenToday:new Set(), daySummaries:[], analyzing:false, pendingFood:null };
 
 function todayStr(){
   const d = new Date();
@@ -332,7 +350,7 @@ function calcTargets(p){
 
 async function reloadApp(){
   document.getElementById('onboard').classList.add('hide');
-  state = { profile:null, tab:'today', log:{foods:[],exercises:[]}, weights:[], logDates:[], supplements:[], takenToday:new Set(), analyzing:false, pendingFood:null };
+  state = { profile:null, tab:'today', log:{foods:[],exercises:[]}, weights:[], logDates:[], supplements:[], takenToday:new Set(), daySummaries:[], analyzing:false, pendingFood:null };
   await init();
   setTab('today');
 }
@@ -350,6 +368,7 @@ async function init(){
   const w = await safeGet('weights');
   state.weights = w || [];
   state.logDates = (await safeGet('logDates')) || [];
+  state.daySummaries = await loadDaySummaries();
   state.supplements = (await safeGet('supplements')) || [];
   const takenArr = (await safeGet('suppTaken:' + todayStr())) || [];
   state.takenToday = new Set(takenArr);
@@ -376,6 +395,7 @@ async function saveOnboarding(){
   state.weights = [{ date: todayStr(), weight: currentWeight }];
   await safeSet('weights', state.weights);
   document.getElementById('onboard').classList.add('hide');
+  if(state.profile.theme) applyTheme(state.profile.theme);
   const log = await safeGet(logKey());
   state.log = log || { foods: [], exercises: [] };
   renderAll();
@@ -419,13 +439,22 @@ function thinBar(label, value, target, color, unit, icon){
     </div>`;
 }
 
-function ringSvg(net, target){
+function ringSvg(net, target, mini){
   const R=80, C=2*Math.PI*R;
   const over = net > target;
   const pct = target>0 ? Math.min(100, (net/target)*100) : 0;
   const offset = C - (pct/100)*C;
   const color = over ? 'var(--warn)' : 'var(--accent)';
   const remain = Math.abs(Math.round(target - net));
+  if(mini){
+    return `
+      <svg class="ring ring-mini" viewBox="0 0 200 200">
+        <circle class="ring-track" cx="100" cy="100" r="${R}" stroke-width="16"></circle>
+        <circle class="ring-fill" cx="100" cy="100" r="${R}" stroke="${color}" stroke-width="16"
+          stroke-dasharray="${C}" stroke-dashoffset="${offset}" transform="rotate(-90 100 100)"></circle>
+        <text x="100" y="112" class="ring-num-mini" fill="${color}">${remain}</text>
+      </svg>`;
+  }
   const label = over ? 'kcal de exceso' : 'kcal restantes';
   return `
     <svg class="ring" viewBox="0 0 200 200">
@@ -435,6 +464,20 @@ function ringSvg(net, target){
       <text x="100" y="96" class="ring-num" fill="${color}">${remain}</text>
       <text x="100" y="120" class="ring-label">${label}</text>
     </svg>`;
+}
+
+function renderMiniHistoryStrip(t){
+  if(!state.daySummaries || !state.daySummaries.length) return '';
+  const items = state.daySummaries.map(s=>{
+    const dt = new Date(s.date + 'T00:00:00');
+    const wd = dt.toLocaleDateString('es-ES', { weekday:'short' }).replace('.', '');
+    return `
+      <div class="mini-day" onclick="openDayDetail('${s.date}')">
+        <div class="mini-day-label">${wd} ${dt.getDate()}</div>
+        ${ringSvg(s.consumed, t.calorieTarget, true)}
+      </div>`;
+  }).join('');
+  return `<div class="mini-history-strip">${items}</div>`;
 }
 
 function renderToday(){
@@ -472,6 +515,7 @@ function renderToday(){
   }).join('');
 
   document.getElementById('screen-today').innerHTML = `
+    ${renderMiniHistoryStrip(t)}
     <div class="ring-wrap">${ringSvg(consumed, t.calorieTarget)}</div>
     <div class="panel">
       ${thinBar('Ingeridas', consumed, t.calorieTarget, 'var(--accent)', 'kcal', '🔥')}
@@ -527,6 +571,55 @@ async function toggleSupplement(id){
   else state.takenToday.add(id);
   await safeSet('suppTaken:' + todayStr(), Array.from(state.takenToday));
   renderAll();
+}
+
+async function loadDaySummaries(){
+  const dates = [...(state.logDates||[])].filter(d => d !== todayStr()).sort().reverse().slice(0, 10);
+  const summaries = [];
+  for(const d of dates){
+    const log = await safeGet('log:' + d);
+    const consumed = ((log && log.foods) || []).reduce((s,f) => s + f.cal, 0);
+    summaries.push({ date: d, consumed });
+  }
+  return summaries;
+}
+
+const THEMES = [
+  { id:'green', accent:'#1FA363', accentDark:'#0E7A46', accentSoft:'#DDF3E6' },
+  { id:'blue', accent:'#3B7DF6', accentDark:'#1E56C7', accentSoft:'#E1EBFE' },
+  { id:'coral', accent:'#FF6B5B', accentDark:'#D6432F', accentSoft:'#FFE4DF' },
+  { id:'purple', accent:'#A855F7', accentDark:'#7C22D9', accentSoft:'#F1E3FE' },
+  { id:'teal', accent:'#14B8A6', accentDark:'#0C7C70', accentSoft:'#D6F5F1' }
+];
+
+function applyTheme(themeId){
+  const theme = THEMES.find(t => t.id === themeId) || THEMES[0];
+  const root = document.documentElement.style;
+  root.setProperty('--accent', theme.accent);
+  root.setProperty('--accent-dark', theme.accentDark);
+  root.setProperty('--accent-soft', theme.accentSoft);
+}
+
+async function setTheme(themeId){
+  state.profile.theme = themeId;
+  applyTheme(themeId);
+  await safeSet('profile', state.profile);
+  renderAll();
+}
+
+async function onAvatarSelected(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  try{
+    const { thumbnail } = await fileToCompressedBase64(file);
+    state.profile.avatar = thumbnail;
+    await safeSet('profile', state.profile);
+    showToast('Foto de perfil actualizada');
+    renderAll();
+  }catch(e){
+    showToast('No se pudo procesar la imagen', true);
+  }
+  evt.target.value = '';
 }
 
 async function removeFood(id){
@@ -591,20 +684,33 @@ function renderAdd(){
   `;
 }
 
-async function anthropicRequestConfig(){
+// ======================================================================
+// Si despliegas tu propio Cloudflare Worker (ver eatiseasy-photo-proxy-worker.js),
+// pega aquí su URL. Así, TODO el mundo que use esta app (alojada donde sea)
+// tendrá el análisis de fotos funcionando automáticamente, sin configurar nada.
+// Déjalo vacío ('') si no quieres pagar el uso de otras personas.
+// ======================================================================
+const DEFAULT_PHOTO_PROXY_URL = '';
+
+async function getPhotoEndpoint(){
+  const proxyUrl = await safeGet('photoProxyUrl');
+  if(proxyUrl && proxyUrl.trim()){
+    return { url: proxyUrl.trim(), headers: { 'Content-Type': 'application/json' }, mode: 'proxy' };
+  }
   const key = await safeGet('apiKey');
   if(key && key.trim()){
     return {
+      url: 'https://api.anthropic.com/v1/messages',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': key.trim(),
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true'
       },
-      usingOwnKey: true
+      mode: 'ownKey'
     };
   }
-  return { headers: { 'Content-Type': 'application/json' }, usingOwnKey: false };
+  return { url: 'https://api.anthropic.com/v1/messages', headers: { 'Content-Type': 'application/json' }, mode: 'claude' };
 }
 
 function triggerPhotoInput(evt){
@@ -656,8 +762,8 @@ async function onPhotoSelected(evt){
   renderAdd();
   try{
     const { base64, mediaType, thumbnail } = await fileToCompressedBase64(file);
-    const { headers, usingOwnKey } = await anthropicRequestConfig();
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const { url, headers, mode } = await getPhotoEndpoint();
+    const resp = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -674,8 +780,8 @@ async function onPhotoSelected(evt){
     });
     if(!resp.ok){
       const errBody = await resp.text();
-      if((resp.status === 401 || resp.status === 403) && !usingOwnKey){
-        throw new Error('Esta función solo funciona dentro del chat de Claude, o añadiendo tu propia clave de API en Perfil.');
+      if((resp.status === 401 || resp.status === 403) && mode === 'claude'){
+        throw new Error('Esta función solo funciona dentro del chat de Claude, o configurando un proxy/clave en Perfil.');
       }
       throw new Error('HTTP ' + resp.status + ': ' + errBody.slice(0,150));
     }
@@ -856,6 +962,19 @@ function renderProfile(){
   const t = calcTargets(p);
   const actLabels = { sedentary:'Sedentario', light:'Ligero', moderate:'Moderado', active:'Activo', veryActive:'Muy activo' };
   document.getElementById('screen-profile').innerHTML = `
+    <div class="avatar-header">
+      <label for="avatar-input" class="avatar-circle">
+        ${p.avatar ? `<img src="${p.avatar}">` : `<span>${(p.name||'?').trim().charAt(0).toUpperCase()}</span>`}
+        <span class="avatar-edit">✎</span>
+      </label>
+      <input id="avatar-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onAvatarSelected(event)">
+      <div class="avatar-name">${p.name}</div>
+    </div>
+
+    <div class="theme-row">
+      ${THEMES.map(th => `<button class="theme-dot ${p.theme===th.id?'selected':''}" style="background:${th.accent};" onclick="setTheme('${th.id}')" aria-label="${th.id}"></button>`).join('')}
+    </div>
+
     <div class="panel plist">
       <div class="row"><span class="rname">Nombre</span><span class="rval">${p.name}</span></div>
       <div class="row"><span class="rname">Peso actual</span><span class="rval">${p.currentWeight} kg</span></div>
@@ -949,7 +1068,18 @@ function renderProfile(){
       <summary>📷 Análisis de fotos fuera de Claude</summary>
       <div class="inner">
         <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">
-          El análisis de fotos con IA funciona solo mientras usas la app dentro del chat de Claude. Si guardas este archivo y lo abres aparte (por ejemplo en el iPhone como una app), añade aquí tu propia clave de API de Anthropic (gratis en <b>console.anthropic.com</b>) para que también funcione ahí. Se guarda solo en tu cuenta, nunca se incluye en el código de copia de seguridad.
+          El análisis de fotos con IA funciona solo mientras usas la app dentro del chat de Claude. Fuera de ahí (por ejemplo alojada en GitHub) necesita una de estas dos opciones:
+        </p>
+        <p style="font-size:12px; margin:0 0 6px 0;"><b>✅ Recomendado — tu propio proxy (seguro)</b></p>
+        <p style="font-size:11px; color:var(--muted); margin:0 0 10px 0;">
+          Un pequeño servidor gratuito (Cloudflare Worker) esconde tu clave; la app nunca la ve. Pídele a Claude "dame el código del Worker y los pasos" si no lo tienes montado.
+        </p>
+        <div class="field"><label>URL de tu proxy</label><input id="proxy-url-in" type="text" placeholder="https://tu-worker.tuusuario.workers.dev"></div>
+        <button class="btn accent" onclick="saveProxyUrl()">Guardar proxy</button>
+
+        <p style="font-size:12px; margin:18px 0 6px 0;"><b>⚠️ Alternativa rápida (menos segura)</b></p>
+        <p style="font-size:11px; color:var(--muted); margin:0 0 10px 0;">
+          Pega tu clave directamente. Es más rápido de configurar, pero queda visible en tu navegador — solo recomendable para uso personal.
         </p>
         <div class="field"><label>Clave de API de Anthropic</label><input id="api-key-in" type="password" placeholder="sk-ant-..."></div>
         <button class="btn ghost" onclick="saveApiKey()">Guardar clave</button>
@@ -982,7 +1112,17 @@ function renderProfile(){
         <button class="btn ghost" onclick="resetAccount()">Confirmar borrado y empezar de nuevo</button>
       </div>
     </details>
+
+    <div class="footer-credit">Desarrollado por Iker Nebreda</div>
   `;
+}
+
+async function saveProxyUrl(){
+  const url = document.getElementById('proxy-url-in').value.trim();
+  if(!url){ showToast('Pega la URL de tu proxy', true); return; }
+  await safeSet('photoProxyUrl', url);
+  showToast('Proxy guardado');
+  document.getElementById('proxy-url-in').value = url;
 }
 
 async function saveApiKey(){
