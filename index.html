@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>eatiseasy</title>
 <link rel="icon" type="image/png" href="icon.png">
-<link rel="apple-touch-icon" href="eie-beta.png">
+<link rel="apple-touch-icon" href="apple-iconn.png">
 <style>
 :root{
   --bg:#FAFAF8; --surface:#FFFFFF; --ink:#171713; --muted:#8B8878; --line:#EDEAE1;
@@ -707,8 +707,8 @@ async function getPhotoEndpoint(){
   const geminiKey = await safeGet('geminiKey');
   if(geminiKey && geminiKey.trim()){
     return {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent`,
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey.trim() },
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${encodeURIComponent(geminiKey.trim())}`,
+      headers: { 'Content-Type': 'application/json' },
       mode: 'ownKey',
       provider: 'gemini'
     };
@@ -718,8 +718,8 @@ async function getPhotoEndpoint(){
   }
   if(DEFAULT_GEMINI_KEY){
     return {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent`,
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': DEFAULT_GEMINI_KEY },
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${encodeURIComponent(DEFAULT_GEMINI_KEY)}`,
+      headers: { 'Content-Type': 'application/json' },
       mode: 'defaultKey',
       provider: 'gemini'
     };
