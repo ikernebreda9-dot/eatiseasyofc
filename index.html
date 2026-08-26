@@ -13,7 +13,7 @@
   --line:rgba(24,45,30,.08); --line-strong:rgba(24,45,30,.16);
   --accent:#FF4D6D; --accent-dark:#D6293F; --accent-soft:rgba(255,77,109,.12); --accent-rgb:255,77,109;
   --warn:#C8391F;
-  --protein:#1E8449; --protein-soft:rgba(30,132,73,.12);
+  --protein:#1E8449; --protein-soft:rgba(30,132,73,.12); --protein-rgb:30,132,73;
   --carbs:#F0405C; --carbs-soft:rgba(240,64,92,.12);
   --fat:#2B2B2B; --fat-soft:rgba(43,43,43,.08);
   --burn:#FF8A3D;
@@ -21,7 +21,12 @@
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
 html,body{height:100%;}
 body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--paper); -webkit-font-smoothing:antialiased;}
-.app{max-width:480px; margin:0 auto; min-height:100vh; background:var(--void); position:relative; padding-bottom:calc(74px + env(safe-area-inset-bottom));}
+.app{max-width:480px; margin:0 auto; min-height:100vh; background:
+    radial-gradient(circle at 12% 0%, rgba(var(--accent-rgb),.10), transparent 55%),
+    radial-gradient(circle at 88% 26%, rgba(var(--protein-rgb),.08), transparent 55%),
+    radial-gradient(circle at 20% 90%, rgba(var(--accent-rgb),.06), transparent 50%),
+    var(--void);
+  position:relative; padding-bottom:calc(74px + env(safe-area-inset-bottom));}
 .hide{display:none !important;}
 .serif{font-family:inherit;}
 .mono{font-family:inherit;}
@@ -33,6 +38,39 @@ body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemF
 .screen{padding:2px 20px 24px 20px;}
 
 .ring-wrap{display:flex; justify-content:center; padding:22px 0 8px 0;}
+
+.week-strip{display:flex; justify-content:space-between; padding:16px 0 4px 0; gap:4px;}
+.week-cell{display:flex; flex-direction:column; align-items:center; gap:6px; padding:8px 0; border-radius:14px; flex:1; cursor:pointer;}
+.week-cell.is-disabled{cursor:default; opacity:.4;}
+.week-letter{font-size:11px; color:var(--muted); font-weight:600;}
+.week-num{font-size:13px; font-weight:700; color:var(--paper); width:26px; height:26px; display:flex; align-items:center; justify-content:center; border-radius:50%;}
+.week-cell.is-today .week-num{background:var(--paper); color:var(--void);}
+
+.hero-card{background:var(--surface); border-radius:20px; padding:22px 22px 18px 22px; margin-top:12px; border:1px solid var(--line); box-shadow:0 2px 10px rgba(24,45,30,.06);}
+.hero-top{display:flex; align-items:center; justify-content:space-between;}
+.hero-number{font-size:40px; font-weight:800; letter-spacing:-1px; line-height:1;}
+.hero-label{font-size:13px; color:var(--muted); margin-top:4px; font-weight:600;}
+.hero-ring svg{width:104px; height:104px;}
+
+.macro-card{flex:1; background:var(--surface); border-radius:16px; padding:14px 8px 16px 8px; border:1px solid var(--line); box-shadow:0 2px 10px rgba(24,45,30,.05); text-align:center; display:flex; flex-direction:column; align-items:center;}
+.macro-card-num{font-size:17px; font-weight:800; letter-spacing:-.3px;}
+.macro-card-label{font-size:10px; color:var(--muted); font-weight:600; margin:2px 0 10px 0; line-height:1.25;}
+.macro-ring-wrap{width:64px; height:64px;}
+.macro-ring{width:100%; height:100%;}
+.hero-sub{font-size:11.5px; color:var(--muted); margin-top:14px; padding-top:14px; border-top:1px solid var(--line);}
+
+.macro-row{display:flex; gap:10px; margin-top:12px;}
+.macro-card{flex:1; background:var(--surface); border-radius:16px; padding:14px 10px; border:1px solid var(--line); box-shadow:0 2px 10px rgba(24,45,30,.05); text-align:left;}
+.macro-icon{display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; font-size:15px; margin-bottom:10px;}
+.macro-card-num{font-size:17px; font-weight:800; letter-spacing:-.3px;}
+.macro-card-label{font-size:10.5px; color:var(--muted); font-weight:600; margin-top:2px; line-height:1.25;}
+
+.log-card{display:flex; align-items:center; gap:12px; background:var(--surface); border-radius:16px; padding:10px; margin-top:10px; border:1px solid var(--line); box-shadow:0 2px 8px rgba(24,45,30,.05); cursor:pointer;}
+.log-thumb{width:52px; height:52px; border-radius:12px; object-fit:cover; flex-shrink:0;}
+.log-thumb-fallback{display:flex; align-items:center; justify-content:center; background:var(--surface-2); font-size:20px;}
+.log-info{flex:1; min-width:0;}
+.log-name{font-size:14px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.log-sub{font-size:11.5px; color:var(--muted); margin-top:2px;}
 .ring{width:210px; height:210px; filter:drop-shadow(0 4px 16px rgba(var(--accent-rgb),.28));}
 .ring-track{fill:none; stroke:var(--protein); opacity:1; stroke-width:9; stroke-opacity:.28;}
 .ring-fill{fill:none; stroke-width:9; stroke-linecap:round; transition:stroke-dashoffset .6s cubic-bezier(.4,0,.2,1);}
@@ -506,6 +544,19 @@ function ringSvg(net, target, mini){
     </svg>`;
 }
 
+function macroRingSvg(value, target, color, emoji){
+  const R=80, C=2*Math.PI*R;
+  const pct = target > 0 ? Math.min(100, (value/target)*100) : 0;
+  const offset = C - (pct/100)*C;
+  return `
+    <svg class="macro-ring" viewBox="0 0 200 200">
+      <circle cx="100" cy="100" r="${R}" fill="none" stroke="var(--line-strong)" stroke-width="16"></circle>
+      <circle cx="100" cy="100" r="${R}" fill="none" stroke="${color}" stroke-width="16" stroke-linecap="round"
+        stroke-dasharray="${C}" stroke-dashoffset="${offset}" transform="rotate(-90 100 100)"></circle>
+      <text x="100" y="128" font-size="72" text-anchor="middle">${emoji}</text>
+    </svg>`;
+}
+
 function renderMiniHistoryStrip(t){
   if(!state.daySummaries || !state.daySummaries.length) return '';
   const items = state.daySummaries.map(s=>{
@@ -520,6 +571,34 @@ function renderMiniHistoryStrip(t){
   return `<div class="mini-history-strip">${items}</div>`;
 }
 
+function weekdayLetterEs(dayIndex){
+  // dayIndex: 0=Sunday ... 6=Saturday
+  return ['D','L','M','X','J','V','S'][dayIndex];
+}
+
+function renderWeekStrip(){
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() - today.getDay());
+
+  let cells = '';
+  for(let i=0;i<7;i++){
+    const d = new Date(sunday);
+    d.setDate(sunday.getDate()+i);
+    const dStr = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const isToday = dStr === todayStr();
+    const isPast = d < today;
+    const clickable = isToday || (isPast && state.logDates.includes(dStr));
+    cells += `
+      <div class="week-cell ${isToday ? 'is-today' : ''} ${clickable ? '' : 'is-disabled'}" ${clickable ? `onclick="openDayDetail('${dStr}')"` : ''}>
+        <span class="week-letter">${weekdayLetterEs(d.getDay())}</span>
+        <span class="week-num">${d.getDate()}</span>
+      </div>`;
+  }
+  return `<div class="week-strip">${cells}</div>`;
+}
+
 function renderToday(){
   const t = calcTargets(state.profile);
   const consumed = state.log.foods.reduce((s,f)=>s+f.cal,0);
@@ -527,16 +606,21 @@ function renderToday(){
   const protein = state.log.foods.reduce((s,f)=>s+f.protein,0);
   const carbs = state.log.foods.reduce((s,f)=>s+f.carb,0);
   const fat = state.log.foods.reduce((s,f)=>s+f.fat,0);
-  const net = consumed - burned;
+
+  const remain = Math.max(0, Math.round(t.calorieTarget - consumed));
+  const proteinLeft = Math.max(0, Math.round(t.proteinG - protein));
+  const carbsLeft = Math.max(0, Math.round(t.carbG - carbs));
+  const fatLeft = Math.max(0, Math.round(t.fatG - fat));
 
   const foodRows = state.log.foods.length
     ? state.log.foods.map(f=>`
-        <div class="row food-row" onclick="openFoodDetail('${f.id}')">
-          <span class="rname">
-            ${f.photo ? `<img src="${f.photo}" class="row-thumb">` : `<span class="row-thumb row-thumb-fallback">🍽️</span>`}
-            ${f.name}
-          </span>
-          <span class="rval">${f.cal} kcal <span class="del" onclick="event.stopPropagation(); removeFood('${f.id}')">✕</span></span>
+        <div class="log-card" onclick="openFoodDetail('${f.id}')">
+          ${f.photo ? `<img src="${f.photo}" class="log-thumb">` : `<span class="log-thumb log-thumb-fallback">🍽️</span>`}
+          <div class="log-info">
+            <div class="log-name">${f.name}</div>
+            <div class="log-sub">${f.cal} kcal · P ${f.protein}g · C ${f.carb}g · G ${f.fat}g</div>
+          </div>
+          <span class="del" onclick="event.stopPropagation(); removeFood('${f.id}')">✕</span>
         </div>`).join('')
     : `<div class="empty">Nada registrado aún hoy</div>`;
 
@@ -555,19 +639,43 @@ function renderToday(){
   }).join('');
 
   document.getElementById('screen-today').innerHTML = `
-    <div class="ring-wrap">${ringSvg(consumed, t.calorieTarget)}</div>
-    <div class="panel">
-      ${thinBar('Ingeridas', consumed, t.calorieTarget, 'var(--accent)', 'kcal', '🔥')}
-      ${thinBar('Quemadas', burned, t.burnGoal, 'var(--burn)', 'kcal', '🏃')}
-      ${thinBar('Proteína', protein, t.proteinG, 'var(--protein)', 'g', '🥩')}
-      ${thinBar('Carbohidratos', carbs, t.carbG, 'var(--carbs)', 'g', '🍞')}
-      ${thinBar('Grasas', fat, t.fatG, 'var(--fat)', 'g', '🥑')}
+    ${renderWeekStrip()}
+
+    <div class="hero-card">
+      <div class="hero-top">
+        <div>
+          <div class="hero-number">${remain}</div>
+          <div class="hero-label">Calorías restantes</div>
+        </div>
+        <div class="hero-ring">${ringSvg(consumed, t.calorieTarget, true)}</div>
+      </div>
+      <div class="hero-sub">Consumidas ${Math.round(consumed)} kcal · Quemadas ${Math.round(burned)} kcal</div>
     </div>
+
+    <div class="macro-row">
+      <div class="macro-card">
+        <div class="macro-card-num">${proteinLeft}g</div>
+        <div class="macro-card-label">Proteína restante</div>
+        <div class="macro-ring-wrap">${macroRingSvg(protein, t.proteinG, 'var(--protein)', '🥩')}</div>
+      </div>
+      <div class="macro-card">
+        <div class="macro-card-num">${carbsLeft}g</div>
+        <div class="macro-card-label">Carbos restantes</div>
+        <div class="macro-ring-wrap">${macroRingSvg(carbs, t.carbG, 'var(--carbs)', '🍞')}</div>
+      </div>
+      <div class="macro-card">
+        <div class="macro-card-num">${fatLeft}g</div>
+        <div class="macro-card-label">Grasas restantes</div>
+        <div class="macro-ring-wrap">${macroRingSvg(fat, t.fatG, 'var(--fat)', '🥑')}</div>
+      </div>
+    </div>
+
     ${state.supplements.length ? `<div class="section-title">💊 Suplementos de hoy</div><div class="panel">${suppRows}</div>` : ''}
-    <div class="section-title">Comida</div>
-    <div class="panel">${foodRows}</div>
+
+    <div class="section-title">Registrado recientemente</div>
+    ${foodRows}
+
     ${exRows ? `<div class="section-title">Ejercicio</div><div class="panel">${exRows}</div>` : ''}
-    <div class="note">Tu progreso se guarda solo. No hace falta ni login ni conexión externa.</div>
   `;
 }
 
