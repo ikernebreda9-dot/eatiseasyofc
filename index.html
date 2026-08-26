@@ -359,6 +359,21 @@ async function importBackupCode(code){
 // así se puede comprobar de un vistazo si una web tiene la última versión.
 const APP_VERSION = '1.0';
 
+// ======================================================================
+// eatiseasy PRO
+// - PRO_PROMO_CODE: código de descuento del 100%, solo para ti/familia.
+//   No es una seguridad real (está en el código público), pero para este
+//   uso es más que suficiente.
+// - PRO_PAYMENT_LINK: pégalo cuando crees tu "Payment Link" en Stripe
+//   (stripe.com → Payment Links → producto "eatiseasy Pro" → 7,99€ pago
+//   único). En el redirect de éxito del Payment Link, pon la URL de tu
+//   web + "?pro=1" (ej. https://tudominio.github.io/?pro=1) — así, al
+//   volver del pago, la app se desbloquea sola.
+// ======================================================================
+const PRO_PROMO_CODE = 'SANDIA-FAM-K79X';
+const PRO_PRICE_LABEL = '7,99 €';
+const PRO_PAYMENT_LINK = '';
+
 let state = { profile:null, tab:'today', log:{foods:[],exercises:[]}, weights:[], logDates:[], supplements:[], takenToday:{}, daySummaries:[], analyzing:false, pendingFood:null };
 
 function todayStr(){
@@ -449,6 +464,12 @@ async function init(){
     document.getElementById('onboard').classList.remove('hide');
     renderOnboardStep();
     return;
+  }
+  if(new URLSearchParams(location.search).get('pro') === '1' && !state.profile.isPro){
+    state.profile.isPro = true;
+    await safeSet('profile', state.profile);
+    history.replaceState(null, '', location.pathname);
+    showToast('¡eatiseasy Pro activado! 🎉');
   }
   const log = await safeGet(logKey());
   state.log = log || { foods: [], exercises: [] };
@@ -730,7 +751,7 @@ function showOnboardReveal(){
         <div class="macro-card"><div class="macro-card-num">${fmt1(t.fatG)}g</div><div class="macro-card-label">Grasas</div></div>
       </div>
       <p class="sub" style="margin-top:16px;">Podrás ajustar todo esto cuando quieras desde Perfil.</p>
-      <button class="btn accent" onclick="enterAppFromReveal()">Empezar</button>
+      <button class="btn accent" onclick="showProPaywall(true)">Empezar</button>
     </div>
   `;
   animateCountUp('reveal-cal-num', t.calorieTarget);
@@ -757,6 +778,65 @@ async function enterAppFromReveal(){
   const log = await safeGet(logKey());
   state.log = log || { foods: [], exercises: [] };
   renderAll();
+}
+
+// ---------- eatiseasy Pro: paywall (onboarding) + pitch reutilizable ----------
+function buildProPitchHTML(){
+  return `
+    <div style="text-align:center; margin-bottom:18px;">
+      <div style="font-size:34px; font-weight:800; letter-spacing:-.5px;">${PRO_PRICE_LABEL}</div>
+      <div style="font-size:12px; color:var(--muted); margin-top:2px;">Pago único · para siempre, sin suscripción</div>
+    </div>
+    <div class="panel" style="text-align:left;">
+      <div class="row"><span class="rname">📷 Analizar comida por foto</span></div>
+      <div class="row"><span class="rname">📈 Gráfica de evolución de peso</span></div>
+      <div class="row"><span class="rname">🔔 Recordatorios (suplementos y agua)</span></div>
+    </div>
+    <button class="btn accent" style="margin-top:16px;" onclick="buyPro()">Comprar eatiseasy Pro</button>
+
+    <details style="margin-top:14px;">
+      <summary>¿Tienes un código?</summary>
+      <div class="inner">
+        <div class="field"><label>Código promocional</label><input id="promo-code-input" placeholder="CÓDIGO"></div>
+        <button class="btn ghost small" onclick="redeemPromoCode()">Canjear código</button>
+      </div>
+    </details>
+  `;
+}
+
+function showProPaywall(fromOnboarding){
+  document.getElementById('onboard-content').innerHTML = `
+    <h1 style="text-align:center;">Desbloquea eatiseasy Pro</h1>
+    <p class="sub" style="text-align:center;">Lo mejor de eatiseasy, de un pago, para siempre.</p>
+    ${buildProPitchHTML()}
+    ${fromOnboarding ? `<div style="text-align:center; margin-top:18px;"><button class="btn ghost" style="width:auto; font-size:12px; padding:8px 4px; background:none; border:none;" onclick="enterAppFromReveal()">Continuar gratis</button></div>` : ''}
+  `;
+}
+
+function buyPro(){
+  if(!PRO_PAYMENT_LINK){
+    showToast('El pago aún no está configurado — vuelve pronto', true);
+    return;
+  }
+  window.open(PRO_PAYMENT_LINK, '_blank');
+}
+
+async function redeemPromoCode(){
+  const input = document.getElementById('promo-code-input');
+  const code = (input.value || '').trim().toUpperCase();
+  if(!code){ showToast('Escribe tu código', true); return; }
+  if(code !== PRO_PROMO_CODE.toUpperCase()){
+    showToast('Ese código no es válido', true);
+    return;
+  }
+  state.profile.isPro = true;
+  await safeSet('profile', state.profile);
+  showToast('¡eatiseasy Pro activado! 🎉');
+  if(document.getElementById('onboard') && !document.getElementById('onboard').classList.contains('hide')){
+    await enterAppFromReveal();
+  } else {
+    renderAll();
+  }
 }
 
 async function restoreFromOnboarding(){
