@@ -1575,17 +1575,25 @@ function resizeToDataUrl(img, maxDim, quality){
 function fileToCompressedBase64(file){
   return new Promise((resolve, reject)=>{
     const img = new Image();
-    const reader = new FileReader();
-    reader.onload = () => { img.src = reader.result; };
-    reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
+    const objectUrl = URL.createObjectURL(file);
     img.onload = () => {
-      const analysisUrl = resizeToDataUrl(img, 1024, 0.8);
-      const thumbnail = resizeToDataUrl(img, 720, 0.78);
-      resolve({ base64: analysisUrl.split(',')[1], mediaType: 'image/jpeg', thumbnail });
+      URL.revokeObjectURL(objectUrl);
+      try{
+        const analysisUrl = resizeToDataUrl(img, 1024, 0.8);
+        const thumbnail = resizeToDataUrl(img, 720, 0.78);
+        resolve({ base64: analysisUrl.split(',')[1], mediaType: 'image/jpeg', thumbnail });
+      }catch(e){ reject(e); }
     };
-    img.onerror = () => reject(new Error('No se pudo procesar la imagen'));
-    reader.readAsDataURL(file);
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('No se pudo procesar la imagen')); };
+    img.src = objectUrl;
   });
+}
+
+function withTimeout(promise, ms, message){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message || 'Tiempo de espera agotado')), ms))
+  ]);
 }
 
 async function callGeminiWithFallback(baseUrlNoKey, apiKey, requestBody){
@@ -1683,8 +1691,12 @@ async function onPhotoSelected(evt){
   renderAdd();
   let succeeded = false;
   try{
-    const { base64, mediaType, thumbnail } = await fileToCompressedBase64(file);
-    const result = await analyzeFoodImage(base64, mediaType);
+    const { base64, mediaType, thumbnail } = await withTimeout(
+      fileToCompressedBase64(file), 12000, 'La imagen ha tardado demasiado en procesarse'
+    );
+    const result = await withTimeout(
+      analyzeFoodImage(base64, mediaType), 20000, 'El análisis ha tardado demasiado, inténtalo de nuevo'
+    );
     state.pendingFood = { ...result, photo: thumbnail };
     succeeded = true;
   }catch(e){
