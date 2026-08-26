@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>eatiseasy</title>
 <link rel="icon" type="image/png" href="icon.png">
-<link rel="apple-touch-icon" href="apple-iconn.png">
+<link rel="apple-touch-icon" href="eie-beta.png">
 <style>
 :root{
   --bg:#FAFAF8; --surface:#FFFFFF; --ink:#171713; --muted:#8B8878; --line:#EDEAE1;
@@ -689,7 +689,7 @@ function renderAdd(){
 // dominio en Google (ver instrucciones de Claude). Así, todo el mundo que
 // visite esta web la usa automáticamente, sin configurar nada, gratis.
 // ======================================================================
-const DEFAULT_GEMINI_KEY = 'AIzaSyAjJ3KL-v0lft2qtgcqBBrzsqkr4Z3AaUw';
+const DEFAULT_GEMINI_KEY = 'AQ.Ab8RN6J8cYANT2UtpY7m_iYaWSfmHz-ZY_88S4FNBFWIKGM9DQ';
 
 // ======================================================================
 // OPCIÓN B (más robusta, con límite de peticiones por minuto): si en vez
@@ -702,29 +702,31 @@ const DEFAULT_PHOTO_PROXY_URL = '';
 async function getPhotoEndpoint(){
   const proxyUrl = await safeGet('photoProxyUrl');
   if(proxyUrl && proxyUrl.trim()){
-    return { url: proxyUrl.trim(), headers: { 'Content-Type': 'application/json' }, mode: 'proxy', provider: 'gemini' };
+    return { url: proxyUrl.trim(), headers: { 'Content-Type': 'application/json' }, mode: 'proxy', provider: 'gemini', apiKey: null };
   }
   const geminiKey = await safeGet('geminiKey');
   if(geminiKey && geminiKey.trim()){
     return {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${encodeURIComponent(geminiKey.trim())}`,
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent`,
       headers: { 'Content-Type': 'application/json' },
       mode: 'ownKey',
-      provider: 'gemini'
+      provider: 'gemini',
+      apiKey: geminiKey.trim()
     };
   }
   if(DEFAULT_PHOTO_PROXY_URL){
-    return { url: DEFAULT_PHOTO_PROXY_URL, headers: { 'Content-Type': 'application/json' }, mode: 'defaultProxy', provider: 'gemini' };
+    return { url: DEFAULT_PHOTO_PROXY_URL, headers: { 'Content-Type': 'application/json' }, mode: 'defaultProxy', provider: 'gemini', apiKey: null };
   }
   if(DEFAULT_GEMINI_KEY){
     return {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${encodeURIComponent(DEFAULT_GEMINI_KEY)}`,
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent`,
       headers: { 'Content-Type': 'application/json' },
       mode: 'defaultKey',
-      provider: 'gemini'
+      provider: 'gemini',
+      apiKey: DEFAULT_GEMINI_KEY
     };
   }
-  return { url: 'https://api.anthropic.com/v1/messages', headers: { 'Content-Type': 'application/json' }, mode: 'claude', provider: 'anthropic' };
+  return { url: 'https://api.anthropic.com/v1/messages', headers: { 'Content-Type': 'application/json' }, mode: 'claude', provider: 'anthropic', apiKey: null };
 }
 
 function triggerPhotoInput(evt){
@@ -765,6 +767,26 @@ function fileToCompressedBase64(file){
   });
 }
 
+async function callGeminiWithFallback(baseUrlNoKey, apiKey, requestBody){
+  // Try method 1: key as URL query param (Google's documented browser method)
+  try{
+    const resp1 = await fetch(`${baseUrlNoKey}?key=${encodeURIComponent(apiKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
+    });
+    if(resp1.ok) return resp1;
+    if(resp1.status !== 401 && resp1.status !== 403) return resp1; // different error, don't retry
+  }catch(e){ /* network error, fall through to try method 2 */ }
+
+  // Try method 2: key as x-goog-api-key header
+  return fetch(baseUrlNoKey, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    body: JSON.stringify(requestBody)
+  });
+}
+
 async function onPhotoSelected(evt){
   const file = evt.target.files[0];
   if(!file) return;
@@ -776,7 +798,7 @@ async function onPhotoSelected(evt){
   renderAdd();
   try{
     const { base64, mediaType, thumbnail } = await fileToCompressedBase64(file);
-    const { url, headers, mode, provider } = await getPhotoEndpoint();
+    const { url, headers, mode, provider, apiKey } = await getPhotoEndpoint();
     const prompt = 'Analiza esta foto de comida y estima sus valores nutricionales para la porción mostrada. Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin backticks, exactamente con este formato: {"name":"nombre breve del plato en español","calories":numero_entero,"protein_g":numero_entero,"carbs_g":numero_entero,"fat_g":numero_entero}';
 
     const requestBody = provider === 'gemini'
@@ -800,11 +822,17 @@ async function onPhotoSelected(evt){
           }]
         };
 
-    const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(requestBody) });
+    const resp = (provider === 'gemini' && apiKey)
+      ? await callGeminiWithFallback(url, apiKey, requestBody)
+      : await fetch(url, { method: 'POST', headers, body: JSON.stringify(requestBody) });
+
     if(!resp.ok){
       const errBody = await resp.text();
       if((resp.status === 401 || resp.status === 403) && mode === 'claude'){
         throw new Error('Esta función solo funciona dentro del chat de Claude, o configurando un proxy/clave gratis de Gemini en Perfil.');
+      }
+      if((resp.status === 401 || resp.status === 403) && provider === 'gemini'){
+        throw new Error('Google rechazó la clave (código ' + resp.status + '). Revisa que la API "Generative Language API" esté activada en tu proyecto de Google Cloud, o crea una clave nueva en aistudio.google.com.');
       }
       throw new Error('HTTP ' + resp.status + ': ' + errBody.slice(0,150));
     }
