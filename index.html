@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>eatiseasy</title>
 <link rel="icon" type="image/png" href="icon.png">
-<link rel="apple-touch-icon" href="eie-beta.png">
+<link rel="apple-touch-icon" href="apple-icon.png">
 <style>
 :root{
   --bg:#FAFAF8; --surface:#FFFFFF; --ink:#171713; --muted:#8B8878; --line:#EDEAE1;
@@ -689,7 +689,7 @@ function renderAdd(){
 // dominio en Google (ver instrucciones de Claude). Así, todo el mundo que
 // visite esta web la usa automáticamente, sin configurar nada, gratis.
 // ======================================================================
-const DEFAULT_GEMINI_KEY = 'AQ.Ab8RN6LmLCtLo7skjidnPwfMZasjZsq57tdfzrrm704c-JFhQg';
+const DEFAULT_GEMINI_KEY = 'AQ.Ab8RN6Lwiy5wFkI096Lj6CNzbElrOO4_YS-f3vRk6CD-kHl37A';
 
 // ======================================================================
 // OPCIÓN B (más robusta, con límite de peticiones por minuto): si en vez
@@ -1115,28 +1115,6 @@ function renderProfile(){
             <button class="btn accent small" onclick="addSupplement()">Añadir</button>
           </div>
         </div>
-      </div>
-    </details>
-
-    <details>
-      <summary>📷 Análisis de fotos fuera de Claude</summary>
-      <div class="inner">
-        <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">
-          El análisis de fotos con IA funciona solo mientras usas la app dentro del chat de Claude. Si esta app está alojada fuera (ej. GitHub) y ves este mensaje, es que el desarrollador aún no ha configurado un proxy compartido. Mientras tanto, puedes usar tu propia opción aquí abajo — <b>usa Gemini de Google, que tiene nivel gratuito real, sin tarjeta</b>.
-        </p>
-        <p style="font-size:12px; margin:0 0 6px 0;"><b>✅ Recomendado — tu propio proxy (seguro y gratis)</b></p>
-        <p style="font-size:11px; color:var(--muted); margin:0 0 10px 0;">
-          Un pequeño servidor gratuito (Cloudflare Worker) esconde tu clave gratuita de Gemini; la app nunca la ve. Pídele a Claude "dame el código del Worker y los pasos" si no lo tienes montado.
-        </p>
-        <div class="field"><label>URL de tu proxy</label><input id="proxy-url-in" type="text" placeholder="https://tu-worker.tuusuario.workers.dev"></div>
-        <button class="btn accent" onclick="saveProxyUrl()">Guardar proxy</button>
-
-        <p style="font-size:12px; margin:18px 0 6px 0;"><b>⚡ Alternativa rápida (también gratis)</b></p>
-        <p style="font-size:11px; color:var(--muted); margin:0 0 10px 0;">
-          Pega directamente tu clave gratuita de Gemini (la sacas en <b>aistudio.google.com</b>, sin tarjeta). Es más rápido de configurar, pero queda visible en tu navegador — como es gratis, el único riesgo es que alguien gaste tu cuota diaria, no tu dinero.
-        </p>
-        <div class="field"><label>Clave de API de Gemini</label><input id="api-key-in" type="password" placeholder="AIza..."></div>
-        <button class="btn ghost" onclick="saveApiKey()">Guardar clave</button>
       </div>
     </details>
 
