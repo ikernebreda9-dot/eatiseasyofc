@@ -18,9 +18,20 @@
   --fat:#2B2B2B; --fat-soft:rgba(43,43,43,.08);
   --burn:#FF8A3D;
 }
+/* Sandía de noche — misma paleta, de noche. Las pepitas negras pasan a un
+   tono cálido claro porque el negro se hunde en un fondo oscuro. */
+body.dark-mode{
+  --void:#12201A; --surface:#1B2B22; --surface-2:#23362B; --paper:#F1EFE3; --muted:#8FA090;
+  --line:rgba(241,239,227,.08); --line-strong:rgba(241,239,227,.16);
+  --accent-dark:#FF7A93;
+  --warn:#FF7A5C;
+  --protein-soft:rgba(76,175,114,.18);
+  --carbs-soft:rgba(240,64,92,.22);
+  --fat:#D8C89A; --fat-soft:rgba(216,200,154,.16);
+}
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
 html,body{height:100%;}
-body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--paper); -webkit-font-smoothing:antialiased;}
+body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--paper); -webkit-font-smoothing:antialiased; transition:background .25s ease, color .25s ease;}
 .app{max-width:480px; margin:0 auto; min-height:100vh; background:
     radial-gradient(circle at 12% 0%, rgba(var(--accent-rgb),.10), transparent 55%),
     radial-gradient(circle at 88% 26%, rgba(var(--protein-rgb),.08), transparent 55%),
@@ -60,10 +71,6 @@ body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemF
 .hero-sub{font-size:11.5px; color:var(--muted); margin-top:14px; padding-top:14px; border-top:1px solid var(--line);}
 
 .macro-row{display:flex; gap:10px; margin-top:12px;}
-.macro-card{flex:1; background:var(--surface); border-radius:16px; padding:14px 10px; border:1px solid var(--line); box-shadow:0 2px 10px rgba(24,45,30,.05); text-align:left;}
-.macro-icon{display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; font-size:15px; margin-bottom:10px;}
-.macro-card-num{font-size:17px; font-weight:800; letter-spacing:-.3px;}
-.macro-card-label{font-size:10.5px; color:var(--muted); font-weight:600; margin-top:2px; line-height:1.25;}
 
 .log-card{display:flex; align-items:center; gap:12px; background:var(--surface); border-radius:16px; padding:10px; margin-top:10px; border:1px solid var(--line); box-shadow:0 2px 8px rgba(24,45,30,.05); cursor:pointer;}
 .log-thumb{width:52px; height:52px; border-radius:12px; object-fit:cover; flex-shrink:0;}
@@ -161,6 +168,13 @@ details .inner{padding-top:10px;}
 .theme-dot{width:24px; height:24px; border-radius:50%; border:2px solid transparent; cursor:pointer; padding:0; box-shadow:0 0 0 1px var(--line-strong) inset;}
 .theme-dot.selected{border-color:var(--paper);}
 
+.switch{position:relative; display:inline-block; width:46px; height:27px; flex-shrink:0;}
+.switch input{opacity:0; width:0; height:0;}
+.switch-slider{position:absolute; inset:0; background:var(--line-strong); border-radius:20px; cursor:pointer; transition:background .2s ease;}
+.switch-slider:before{content:''; position:absolute; width:21px; height:21px; left:3px; top:3px; background:var(--surface); border-radius:50%; transition:transform .2s ease; box-shadow:0 1px 3px rgba(0,0,0,.25);}
+.switch input:checked + .switch-slider{background:var(--accent);}
+.switch input:checked + .switch-slider:before{transform:translateX(19px);}
+
 .pro-banner{display:flex; align-items:center; gap:12px; padding:16px 18px; margin-top:14px; border-radius:14px; background:linear-gradient(135deg, rgba(var(--accent-rgb),.13), rgba(var(--accent-rgb),.04)); border:1px solid rgba(var(--accent-rgb),.35);}
 .pro-banner .pro-icon{width:34px; height:34px; border-radius:50%; background:var(--accent); color:#FFFFFF; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:15px;}
 .pro-banner .pro-title{font-family:inherit; font-weight:700; font-size:13.5px; color:var(--paper);}
@@ -177,7 +191,12 @@ details .inner{padding-top:10px;}
 
 .pending-photo{width:100%; max-height:220px; object-fit:cover; border-radius:12px; margin-bottom:14px; border:1px solid var(--line-strong);}
 
-.detail-photo{width:100%; height:240px; object-fit:cover; border-radius:14px; border:1px solid var(--line-strong);}
+.detail-photo{width:100%; height:280px; object-fit:cover; border-radius:16px; border:1px solid var(--line-strong);}
+.detail-title-row{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-top:14px;}
+.detail-title-row h1{font-size:20px; font-weight:800; margin:0; line-height:1.25; letter-spacing:-.3px;}
+.qty-pill{font-family:inherit; font-size:13px; font-weight:700; padding:7px 12px; border-radius:20px; border:1.5px solid var(--line-strong); background:var(--surface-2); color:var(--paper); cursor:pointer; white-space:nowrap; flex-shrink:0;}
+.ingredient-chips{display:flex; flex-wrap:wrap; gap:8px;}
+.ingredient-chip{font-size:12px; font-weight:600; padding:7px 12px; border-radius:20px; background:var(--surface-2); border:1px solid var(--line); color:var(--paper);}
 .detail-photo-fallback{display:flex; align-items:center; justify-content:center; background:var(--surface-2); font-size:52px; border-radius:14px; border:1px solid var(--line-strong);}
 .macro-grid{display:flex; gap:10px;}
 .macro-chip{flex:1; border-radius:12px; padding:14px 8px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:5px; border:1px solid var(--line);}
@@ -187,6 +206,15 @@ details .inner{padding-top:10px;}
 
 .supp-btn{font-family:inherit; font-size:11px; font-weight:600; padding:7px 14px; border-radius:20px; border:1.5px solid var(--line-strong); background:transparent; color:var(--muted); cursor:pointer; white-space:nowrap; text-transform:uppercase; letter-spacing:.5px; transition:all .15s ease;}
 .supp-btn.taken{background:var(--accent); color:#FFFFFF; border-color:var(--accent);}
+
+.reminder-row{padding:12px 0; border-bottom:1px solid var(--line);}
+.reminder-row:last-child{border-bottom:none;}
+.reminder-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; gap:10px;}
+.reminder-count{font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap;}
+.water-track{height:6px; background:var(--line-strong); border-radius:4px; overflow:hidden;}
+.water-fill{height:100%; background:var(--accent); border-radius:4px; transition:width .4s ease;}
+.water-fill.is-done{background:var(--protein);}
+.supp-btn:disabled{opacity:1; cursor:default;}
 </style>
 </head>
 <body>
@@ -361,7 +389,7 @@ async function importBackupCode(code){
   await safeSet('logDates', dates);
 }
 
-let state = { profile:null, tab:'today', log:{foods:[],exercises:[]}, weights:[], logDates:[], supplements:[], takenToday:new Set(), daySummaries:[], analyzing:false, pendingFood:null };
+let state = { profile:null, tab:'today', log:{foods:[],exercises:[]}, weights:[], logDates:[], supplements:[], takenToday:{}, daySummaries:[], analyzing:false, pendingFood:null };
 
 function todayStr(){
   const d = new Date();
@@ -422,7 +450,7 @@ function calcTargets(p){
 
 async function reloadApp(){
   document.getElementById('onboard').classList.add('hide');
-  state = { profile:null, tab:'today', log:{foods:[],exercises:[]}, weights:[], logDates:[], supplements:[], takenToday:new Set(), daySummaries:[], analyzing:false, pendingFood:null };
+  state = { profile:null, tab:'today', log:{foods:[],exercises:[]}, weights:[], logDates:[], supplements:[], takenToday:{}, daySummaries:[], analyzing:false, pendingFood:null };
   await init();
   setTab('today');
 }
@@ -448,8 +476,9 @@ async function init(){
   state.logDates = (await safeGet('logDates')) || [];
   state.daySummaries = await loadDaySummaries();
   state.supplements = (await safeGet('supplements')) || [];
-  const takenArr = (await safeGet('suppTaken:' + todayStr())) || [];
-  state.takenToday = new Set(takenArr);
+  const takenRaw = (await safeGet('suppTaken:' + todayStr())) || {};
+  // migrate old format (array of ids marked "taken") to the new count object
+  state.takenToday = Array.isArray(takenRaw) ? Object.fromEntries(takenRaw.map(id => [id, 1])) : takenRaw;
   renderAll();
 }
 
@@ -474,6 +503,7 @@ async function saveOnboarding(){
   await safeSet('weights', state.weights);
   document.getElementById('onboard').classList.add('hide');
   if(state.profile.theme) applyTheme(state.profile.theme);
+  applyDarkMode(state.profile.darkMode);
   const log = await safeGet(logKey());
   state.log = log || { foods: [], exercises: [] };
   renderAll();
@@ -631,7 +661,25 @@ function renderToday(){
         </div>`).join('');
 
   const suppRows = state.supplements.map(s=>{
-    const taken = state.takenToday.has(s.id);
+    const count = state.takenToday[s.id] || 0;
+    if(s.type === 'water'){
+      const target = s.target || 8;
+      const done = count >= target;
+      const pct = target > 0 ? Math.min(100, Math.round((count/target)*100)) : 0;
+      return `<div class="reminder-row">
+        <div class="reminder-top">
+          <span class="rname">💧 ${s.name}</span>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="reminder-count">${count}/${target} vasos</span>
+            ${done
+              ? `<button class="supp-btn taken" disabled>✓ Completado</button>`
+              : `<button class="supp-btn" onclick="incrementWater('${s.id}')">+1</button>`}
+          </div>
+        </div>
+        <div class="water-track"><div class="water-fill ${done ? 'is-done' : ''}" style="width:${pct}%;"></div></div>
+      </div>`;
+    }
+    const taken = count > 0;
     return `<div class="row">
       <span class="rname">💊 ${s.name}</span>
       <button class="supp-btn ${taken ? 'taken' : ''}" onclick="toggleSupplement('${s.id}')">${taken ? '✓ Tomado' : 'Marcar'}</button>
@@ -670,7 +718,7 @@ function renderToday(){
       </div>
     </div>
 
-    ${state.supplements.length ? `<div class="section-title">💊 Suplementos de hoy</div><div class="panel">${suppRows}</div>` : ''}
+    ${state.supplements.length ? `<div class="section-title">🔔 Recordatorios de hoy</div><div class="panel">${suppRows}</div>` : ''}
 
     <div class="section-title">Registrado recientemente</div>
     ${foodRows}
@@ -682,14 +730,51 @@ function renderToday(){
 function openFoodDetail(id){
   const f = state.log.foods.find(x => x.id === id);
   if(!f) return;
+  const servings = f.servings || 1;
+  const hs = f.healthScore;
+  const hsPct = hs ? Math.round((hs/10)*100) : 0;
+  const hsColor = !hs ? 'var(--line-strong)' : hs >= 7 ? 'var(--protein)' : hs >= 4 ? 'var(--burn)' : 'var(--warn)';
+
   document.getElementById('food-detail-body').innerHTML = `
     ${f.photo ? `<img src="${f.photo}" class="detail-photo">` : `<div class="detail-photo detail-photo-fallback">🍽️</div>`}
-    <h1 style="margin:14px 0 2px 0;">${f.name}</h1>
-    <div style="color:var(--muted); font-size:13px; margin-bottom:18px;">${f.cal} kcal totales</div>
-    <div class="macro-grid">
+
+    <div class="detail-title-row">
+      <h1>${f.name}</h1>
+      <div id="qty-pill-wrap">${qtyPillHTML(servings, f.id)}</div>
+    </div>
+
+    <div class="hero-card" style="margin-top:14px;">
+      <div class="hero-top">
+        <div>
+          <div class="hero-number">${f.cal}</div>
+          <div class="hero-label">🔥 Calorías</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="macro-grid" style="margin-top:12px;">
       <div class="macro-chip" style="background:var(--protein-soft);"><span>🥩</span><b>${f.protein} g</b><small>Proteína</small></div>
       <div class="macro-chip" style="background:var(--carbs-soft);"><span>🍞</span><b>${f.carb} g</b><small>Carbohidratos</small></div>
       <div class="macro-chip" style="background:var(--fat-soft);"><span>🥑</span><b>${f.fat} g</b><small>Grasas</small></div>
+    </div>
+
+    ${hs ? `
+    <div class="hero-card" style="margin-top:12px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <span style="font-size:13px; font-weight:700;">❤️ Nota de salud</span>
+        <span style="font-size:13px; font-weight:700; color:${hsColor};">${hs}/10</span>
+      </div>
+      <div class="water-track"><div class="water-fill" style="width:${hsPct}%; background:${hsColor};"></div></div>
+    </div>` : ''}
+
+    ${f.ingredients && f.ingredients.length ? `
+    <div class="section-title">Ingredientes</div>
+    <div class="ingredient-chips">
+      ${f.ingredients.map(ing => `<span class="ingredient-chip">${ing}</span>`).join('')}
+    </div>` : ''}
+
+    <div id="fix-results-wrap" style="margin-top:18px;">
+      ${f.photo ? `<button class="btn ghost" onclick="startFixResults('${f.id}')">✨ Arreglar resultados</button>` : ''}
     </div>
   `;
   document.getElementById('food-detail').classList.remove('hide');
@@ -698,14 +783,99 @@ function closeFoodDetail(){
   document.getElementById('food-detail').classList.add('hide');
 }
 
-async function addSupplement(){
-  const input = document.getElementById('new-supp-name');
-  const name = input.value.trim();
-  if(!name){ showToast('Escribe el nombre del suplemento', true); return; }
-  state.supplements.push({ id: Date.now().toString(), name });
+function qtyPillHTML(servings, id){
+  return `<button class="qty-pill" onclick="startEditServings('${id}')">${servings}× <span style="opacity:.6;">✎</span></button>`;
+}
+
+function startEditServings(id){
+  const f = state.log.foods.find(x => x.id === id);
+  if(!f) return;
+  document.getElementById('qty-pill-wrap').innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px;">
+      <input id="servings-input" type="number" step="0.25" min="0.25" value="${f.servings || 1}" style="width:56px; border:1.5px solid var(--line-strong); border-radius:8px; padding:5px 6px; font-size:13px; text-align:center;">
+      <button class="btn accent small" onclick="confirmServings('${id}')" style="padding:6px 10px;">✓</button>
+    </div>`;
+}
+
+async function confirmServings(id){
+  const f = state.log.foods.find(x => x.id === id);
+  if(!f) return;
+  const newServings = parseFloat(document.getElementById('servings-input').value) || 1;
+  const oldServings = f.servings || 1;
+  const ratio = newServings / oldServings;
+  f.cal = Math.round(f.cal * ratio);
+  f.protein = Math.round(f.protein * ratio);
+  f.carb = Math.round(f.carb * ratio);
+  f.fat = Math.round(f.fat * ratio);
+  f.servings = newServings;
+  await saveLog();
+  showToast('Cantidad actualizada');
+  openFoodDetail(id);
+  renderToday();
+}
+
+function startFixResults(id){
+  document.getElementById('fix-results-wrap').innerHTML = `
+    <div class="field"><label>¿Qué está mal? (opcional)</label>
+      <textarea id="fix-note" rows="2" placeholder="Ej: esto es pollo, no salmón / la ración es más pequeña..." style="width:100%; border:1.5px solid var(--line-strong); border-radius:10px; padding:8px; font-family:inherit; font-size:13px;"></textarea>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn accent" onclick="submitFixResults('${id}')">Enviar corrección</button>
+      <button class="btn ghost small" onclick="openFoodDetail('${id}')">Cancelar</button>
+    </div>`;
+}
+
+async function submitFixResults(id){
+  const f = state.log.foods.find(x => x.id === id);
+  if(!f || !f.photo) return;
+  const note = document.getElementById('fix-note').value.trim();
+  document.getElementById('fix-results-wrap').innerHTML = `<div class="empty">Analizando de nuevo…</div>`;
+  try{
+    const base64 = f.photo.split(',')[1];
+    const result = await analyzeFoodImage(base64, 'image/jpeg', note || 'el resultado anterior no era correcto, corrígelo');
+    const servings = f.servings || 1;
+    f.name = result.name;
+    f.cal = Math.round(result.cal * servings);
+    f.protein = Math.round(result.protein * servings);
+    f.carb = Math.round(result.carb * servings);
+    f.fat = Math.round(result.fat * servings);
+    f.healthScore = result.healthScore;
+    f.ingredients = result.ingredients;
+    await saveLog();
+    showToast('Resultado corregido');
+    openFoodDetail(id);
+    renderToday();
+  }catch(e){
+    showToast('No se pudo corregir: ' + e.message, true);
+    openFoodDetail(id);
+  }
+}
+
+function toggleReminderTargetField(){
+  const type = document.getElementById('new-reminder-type').value;
+  const targetField = document.getElementById('reminder-target-field');
+  const nameInput = document.getElementById('new-reminder-name');
+  if(type === 'water'){
+    targetField.style.display = 'block';
+    if(!nameInput.value.trim()) nameInput.value = 'Agua';
+  } else {
+    targetField.style.display = 'none';
+  }
+}
+
+async function addReminder(){
+  const type = document.getElementById('new-reminder-type').value;
+  const input = document.getElementById('new-reminder-name');
+  const name = input.value.trim() || (type === 'water' ? 'Agua' : '');
+  if(!name){ showToast('Escribe un nombre', true); return; }
+  const reminder = { id: Date.now().toString(), name, type };
+  if(type === 'water'){
+    reminder.target = parseInt(document.getElementById('new-reminder-target').value) || 8;
+  }
+  state.supplements.push(reminder);
   await safeSet('supplements', state.supplements);
   input.value = '';
-  showToast('Suplemento añadido');
+  showToast('Recordatorio añadido');
   renderAll();
 }
 async function removeSupplement(id){
@@ -714,9 +884,18 @@ async function removeSupplement(id){
   renderAll();
 }
 async function toggleSupplement(id){
-  if(state.takenToday.has(id)) state.takenToday.delete(id);
-  else state.takenToday.add(id);
-  await safeSet('suppTaken:' + todayStr(), Array.from(state.takenToday));
+  const current = state.takenToday[id] || 0;
+  state.takenToday[id] = current > 0 ? 0 : 1;
+  await safeSet('suppTaken:' + todayStr(), state.takenToday);
+  renderAll();
+}
+async function incrementWater(id){
+  const reminder = state.supplements.find(s => s.id === id);
+  const target = (reminder && reminder.target) || 8;
+  const current = state.takenToday[id] || 0;
+  if(current >= target) return; // ya completado, no sumar más
+  state.takenToday[id] = current + 1;
+  await safeSet('suppTaken:' + todayStr(), state.takenToday);
   renderAll();
 }
 
@@ -753,6 +932,16 @@ async function setTheme(themeId){
   applyTheme(themeId);
   await safeSet('profile', state.profile);
   renderAll();
+}
+
+function applyDarkMode(enabled){
+  document.body.classList.toggle('dark-mode', !!enabled);
+}
+
+async function toggleDarkMode(){
+  state.profile.darkMode = !state.profile.darkMode;
+  applyDarkMode(state.profile.darkMode);
+  await safeSet('profile', state.profile);
 }
 
 async function onAvatarSelected(evt){
@@ -894,7 +1083,7 @@ function fileToCompressedBase64(file){
     reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
     img.onload = () => {
       const analysisUrl = resizeToDataUrl(img, 1024, 0.8);
-      const thumbnail = resizeToDataUrl(img, 360, 0.6);
+      const thumbnail = resizeToDataUrl(img, 720, 0.78);
       resolve({ base64: analysisUrl.split(',')[1], mediaType: 'image/jpeg', thumbnail });
     };
     img.onerror = () => reject(new Error('No se pudo procesar la imagen'));
@@ -922,6 +1111,70 @@ async function callGeminiWithFallback(baseUrlNoKey, apiKey, requestBody){
   });
 }
 
+async function analyzeFoodImage(base64, mediaType, correctionNote){
+  const { url, headers, mode, provider, apiKey } = await getPhotoEndpoint();
+  const basePrompt = 'Analiza esta foto de comida y estima sus valores nutricionales para la porción mostrada.';
+  const correctionPart = correctionNote
+    ? ` Esta foto ya se había analizado antes y el usuario dice que el resultado estaba mal, con esta corrección: "${correctionNote}". Ten en cuenta esa corrección y vuelve a estimarlo bien.`
+    : '';
+  const schemaPart = ' Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin backticks, exactamente con este formato: {"name":"nombre breve del plato en español","calories":numero_entero,"protein_g":numero_entero,"carbs_g":numero_entero,"fat_g":numero_entero,"health_score":numero_entero_del_1_al_10_donde_10_es_muy_saludable,"ingredients":["ingrediente1","ingrediente2"]} (la lista de ingredients debe tener como máximo 6 elementos breves, en español).';
+  const prompt = basePrompt + correctionPart + schemaPart;
+
+  const requestBody = provider === 'gemini'
+    ? {
+        contents: [{
+          parts: [
+            { inline_data: { mime_type: mediaType, data: base64 } },
+            { text: prompt }
+          ]
+        }]
+      }
+    : {
+        model: 'claude-sonnet-4-6',
+        max_tokens: 500,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      };
+
+  const resp = (provider === 'gemini' && apiKey)
+    ? await callGeminiWithFallback(url, apiKey, requestBody)
+    : await fetch(url, { method: 'POST', headers, body: JSON.stringify(requestBody) });
+
+  if(!resp.ok){
+    const errBody = await resp.text();
+    if((resp.status === 401 || resp.status === 403) && mode === 'claude'){
+      throw new Error('Esta función solo funciona dentro del chat de Claude, o configurando un proxy/clave gratis de Gemini en Perfil.');
+    }
+    if((resp.status === 401 || resp.status === 403) && provider === 'gemini'){
+      throw new Error('Google rechazó la clave (código ' + resp.status + '). Revisa que la API "Generative Language API" esté activada en tu proyecto de Google Cloud, o crea una clave nueva en aistudio.google.com.');
+    }
+    throw new Error('HTTP ' + resp.status + ': ' + errBody.slice(0,150));
+  }
+  const data = await resp.json();
+  if(data.error){ throw new Error(data.error.message || 'Error de la API'); }
+
+  const text = provider === 'gemini'
+    ? ((data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || []).map(p=>p.text||'').join('').trim())
+    : ((data.content || []).map(b=>b.text || '').join('').trim());
+  if(!text) throw new Error('Respuesta vacía del modelo');
+  const clean = text.replace(/```json|```/g, '').trim();
+  const parsed = JSON.parse(clean);
+  return {
+    name: parsed.name || 'Comida',
+    cal: Math.round(parsed.calories) || 0,
+    protein: Math.round(parsed.protein_g) || 0,
+    carb: Math.round(parsed.carbs_g) || 0,
+    fat: Math.round(parsed.fat_g) || 0,
+    healthScore: parsed.health_score != null ? Math.max(1, Math.min(10, Math.round(parsed.health_score))) : null,
+    ingredients: Array.isArray(parsed.ingredients) ? parsed.ingredients.slice(0,6) : []
+  };
+}
+
 async function onPhotoSelected(evt){
   const file = evt.target.files[0];
   if(!file) return;
@@ -933,61 +1186,8 @@ async function onPhotoSelected(evt){
   renderAdd();
   try{
     const { base64, mediaType, thumbnail } = await fileToCompressedBase64(file);
-    const { url, headers, mode, provider, apiKey } = await getPhotoEndpoint();
-    const prompt = 'Analiza esta foto de comida y estima sus valores nutricionales para la porción mostrada. Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin backticks, exactamente con este formato: {"name":"nombre breve del plato en español","calories":numero_entero,"protein_g":numero_entero,"carbs_g":numero_entero,"fat_g":numero_entero}';
-
-    const requestBody = provider === 'gemini'
-      ? {
-          contents: [{
-            parts: [
-              { inline_data: { mime_type: mediaType, data: base64 } },
-              { text: prompt }
-            ]
-          }]
-        }
-      : {
-          model: 'claude-sonnet-4-6',
-          max_tokens: 500,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-              { type: 'text', text: prompt }
-            ]
-          }]
-        };
-
-    const resp = (provider === 'gemini' && apiKey)
-      ? await callGeminiWithFallback(url, apiKey, requestBody)
-      : await fetch(url, { method: 'POST', headers, body: JSON.stringify(requestBody) });
-
-    if(!resp.ok){
-      const errBody = await resp.text();
-      if((resp.status === 401 || resp.status === 403) && mode === 'claude'){
-        throw new Error('Esta función solo funciona dentro del chat de Claude, o configurando un proxy/clave gratis de Gemini en Perfil.');
-      }
-      if((resp.status === 401 || resp.status === 403) && provider === 'gemini'){
-        throw new Error('Google rechazó la clave (código ' + resp.status + '). Revisa que la API "Generative Language API" esté activada en tu proyecto de Google Cloud, o crea una clave nueva en aistudio.google.com.');
-      }
-      throw new Error('HTTP ' + resp.status + ': ' + errBody.slice(0,150));
-    }
-    const data = await resp.json();
-    if(data.error){ throw new Error(data.error.message || 'Error de la API'); }
-
-    const text = provider === 'gemini'
-      ? ((data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || []).map(p=>p.text||'').join('').trim())
-      : ((data.content || []).map(b=>b.text || '').join('').trim());
-    if(!text) throw new Error('Respuesta vacía del modelo');
-    const clean = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
-    state.pendingFood = {
-      name: parsed.name || 'Comida',
-      cal: Math.round(parsed.calories) || 0,
-      protein: Math.round(parsed.protein_g) || 0,
-      carb: Math.round(parsed.carbs_g) || 0,
-      fat: Math.round(parsed.fat_g) || 0,
-      photo: thumbnail
-    };
+    const result = await analyzeFoodImage(base64, mediaType);
+    state.pendingFood = { ...result, photo: thumbnail };
     showToast('Foto analizada, revisa y confirma');
   }catch(e){
     console.error('analyze photo failed:', e);
@@ -1005,7 +1205,13 @@ function confirmPendingFood(){
   const protein = parseFloat(document.getElementById('pf-protein').value) || 0;
   const carb = parseFloat(document.getElementById('pf-carb').value) || 0;
   const fat = parseFloat(document.getElementById('pf-fat').value) || 0;
-  addFoodEntry({ name, cal, protein, carb, fat, source: 'photo', photo: state.pendingFood.photo });
+  addFoodEntry({
+    name, cal, protein, carb, fat, source: 'photo',
+    photo: state.pendingFood.photo,
+    healthScore: state.pendingFood.healthScore,
+    ingredients: state.pendingFood.ingredients,
+    servings: 1
+  });
   state.pendingFood = null;
 }
 function cancelPendingFood(){ state.pendingFood = null; renderAdd(); }
@@ -1044,7 +1250,6 @@ function buildProgressHTML(){
   const toGoal = (latest - p.goalWeight).toFixed(1);
 
   return `
-    <div class="section-title">⚖️ Progreso de peso</div>
     <div class="panel">
       <div class="weight-row">
         <div><div class="big-number">${latest} kg</div><div style="font-size:12px;color:var(--muted);">${Math.abs(toGoal)} kg ${toGoal>0?'por perder':'por ganar'} · meta ${p.goalWeight} kg</div></div>
@@ -1057,9 +1262,6 @@ function buildProgressHTML(){
       </div>
       ${sorted.length > 1 ? sparkSvg(sorted, p.goalWeight) : `<div class="empty">Registra tu peso varios días para ver la gráfica</div>`}
     </div>
-
-    <div class="section-title">📅 Historial de días</div>
-    <div class="panel">${renderHistoryList()}</div>
   `;
 }
 
@@ -1160,10 +1362,6 @@ function renderProfile(){
       <div class="avatar-name">${p.name}</div>
     </div>
 
-    <div class="theme-row">
-      ${THEMES.map(th => `<button class="theme-dot ${p.theme===th.id?'selected':''}" style="background:${th.accent};" onclick="setTheme('${th.id}')" aria-label="${th.id}"></button>`).join('')}
-    </div>
-
     <div class="pro-banner">
       <div class="pro-icon">★</div>
       <div style="flex:1;">
@@ -1173,8 +1371,8 @@ function renderProfile(){
       <div class="pro-tag">Próximamente</div>
     </div>
 
+    <div class="section-title">Tu objetivo</div>
     <div class="panel plist">
-      <div class="row"><span class="rname">Nombre</span><span class="rval">${p.name}</span></div>
       <div class="row"><span class="rname">Peso actual</span><span class="rval">${p.currentWeight} kg</span></div>
       <div class="row"><span class="rname">Peso objetivo</span><span class="rval">${p.goalWeight} kg</span></div>
       <div class="row"><span class="rname">Actividad</span><span class="rval">${actLabels[p.activityLevel]}</span></div>
@@ -1187,8 +1385,24 @@ function renderProfile(){
       <div class="row"><span class="rname">Tiempo estimado</span><span class="rval">${t.weeksToGoal} sem</span></div>
     </div>
 
+    <div class="section-title">Peso</div>
     ${buildProgressHTML()}
 
+    <div class="section-title">Tema</div>
+    <div class="panel">
+      <div class="theme-row" style="padding-top:2px;">
+        ${THEMES.map(th => `<button class="theme-dot ${p.theme===th.id?'selected':''}" style="background:${th.accent};" onclick="setTheme('${th.id}')" aria-label="${th.id}"></button>`).join('')}
+      </div>
+      <div class="row" style="margin-top:6px; border-top:1px solid var(--line); padding-top:16px;">
+        <span class="rname">🌙 Modo oscuro</span>
+        <label class="switch">
+          <input type="checkbox" ${p.darkMode ? 'checked' : ''} onchange="toggleDarkMode()">
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="section-title">Ajustes</div>
     <details>
       <summary>Editar datos y objetivos</summary>
       <div class="inner">
@@ -1244,27 +1458,31 @@ function renderProfile(){
       </div>
     </details>
 
+    <div class="section-title">Recordatorios</div>
     <details>
-      <summary>💊 Suplementos diarios</summary>
+      <summary>🔔 Gestionar recordatorios</summary>
       <div class="inner">
-        <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">Se reinician cada día — aparecerán en "Hoy" para que los marques como tomados.</p>
+        <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">Se reinician cada día y aparecen en "Hoy" — suplementos para marcar como tomados, o agua para ir sumando vasos.</p>
         <div class="panel" style="margin-top:0;">
           ${state.supplements.length ? state.supplements.map(s=>`
-            <div class="row"><span class="rname">${s.name}</span><span class="del" onclick="removeSupplement('${s.id}')">✕</span></div>
-          `).join('') : `<div class="empty">Aún no has añadido suplementos</div>`}
+            <div class="row"><span class="rname">${s.type==='water' ? '💧' : '💊'} ${s.name}${s.type==='water' ? ` · ${s.target||8} vasos/día` : ''}</span><span class="del" onclick="removeSupplement('${s.id}')">✕</span></div>
+          `).join('') : `<div class="empty">Aún no has añadido recordatorios</div>`}
         </div>
-        <div class="field" style="margin-top:14px;"><label>Nuevo suplemento</label>
-          <div style="display:flex; gap:10px;">
-            <input id="new-supp-name" placeholder="Vitamina D" style="flex:1;">
-            <button class="btn accent small" onclick="addSupplement()">Añadir</button>
-          </div>
+        <div class="field" style="margin-top:14px;"><label>Tipo</label>
+          <select id="new-reminder-type" onchange="toggleReminderTargetField()">
+            <option value="supplement">Suplemento</option>
+            <option value="water">Agua (vasos al día)</option>
+          </select>
         </div>
+        <div class="field"><label>Nombre</label><input id="new-reminder-name" placeholder="Vitamina D"></div>
+        <div class="field" id="reminder-target-field" style="display:none;"><label>Vasos objetivo al día</label><input id="new-reminder-target" type="number" placeholder="8"></div>
+        <button class="btn accent small" onclick="addReminder()">Añadir</button>
       </div>
     </details>
 
-
+    <div class="section-title">Cuenta</div>
     <details>
-      <summary>🔐 Copia de seguridad de tu cuenta</summary>
+      <summary>🔐 Copia de seguridad</summary>
       <div class="inner">
         <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">
           ${HAS_CLOUD ? 'Tu cuenta ya se guarda sola aquí. Usa este código como copia extra, o para llevarte tus datos a otro sitio.' : (HAS_LOCAL_STORAGE ? 'Tus datos ya se guardan en este navegador, así que no se resetean al cerrar la página. Usa este código como copia de seguridad extra, o para pasar tus datos a otro dispositivo.' : 'Este navegador no permite guardar datos de forma persistente: genera tu código y guárdalo para no perderlo al cerrar.')}
