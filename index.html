@@ -149,8 +149,8 @@ details .inner{padding-top:10px;}
 .toast{position:fixed; bottom:calc(88px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:var(--paper); color:var(--void); padding:10px 16px; border-radius:10px; font-size:12.5px; max-width:82%; text-align:center; z-index:60; font-weight:600;}
 .toast.err{background:var(--warn); color:#fff;}
 
-.tabbar{position:fixed; bottom:0; left:0; right:0; max-width:480px; margin:0 auto; background:rgba(21,20,15,.9); backdrop-filter:blur(14px); border-top:1px solid var(--line); display:flex; justify-content:center; gap:70px; padding-bottom:env(safe-area-inset-bottom); z-index:30;}
-.tabbar button{flex:none; background:none; border:none; padding:12px 22px 10px 22px; color:var(--muted); cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px;}
+.tabbar{position:fixed; bottom:0; left:0; right:0; max-width:480px; margin:0 auto; background:rgba(21,20,15,.9); backdrop-filter:blur(14px); border-top:1px solid var(--line); display:flex; justify-content:space-around; padding-bottom:env(safe-area-inset-bottom); z-index:30;}
+.tabbar button{flex:1; background:none; border:none; padding:12px 4px 10px 4px; color:var(--muted); cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px;}
 .tabbar button.active{color:var(--accent);}
 .tabbar svg{width:21px; height:21px;}
 .tabbar span{font-family:inherit; font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.5px;}
@@ -189,11 +189,8 @@ details .inner{padding-top:10px;}
 .switch input:checked + .switch-slider{background:var(--accent);}
 .switch input:checked + .switch-slider:before{transform:translateX(19px);}
 
-.pro-banner{display:flex; align-items:center; gap:12px; padding:16px 18px; margin-top:14px; border-radius:14px; background:linear-gradient(135deg, rgba(var(--accent-rgb),.13), rgba(var(--accent-rgb),.04)); border:1px solid rgba(var(--accent-rgb),.35);}
-.pro-banner .pro-icon{width:34px; height:34px; border-radius:50%; background:var(--accent); color:#FFFFFF; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:15px;}
-.pro-banner .pro-title{font-family:inherit; font-weight:700; font-size:13.5px; color:var(--paper);}
-.pro-banner .pro-sub{font-size:11.5px; color:var(--muted); margin-top:2px;}
-.pro-banner .pro-tag{font-family:inherit; font-size:9px; color:var(--accent); letter-spacing:1px; text-transform:uppercase; border:1px solid rgba(var(--accent-rgb),.5); border-radius:20px; padding:3px 8px; flex-shrink:0;}
+.plan-badge{font-size:11px; font-weight:700; color:var(--muted); background:var(--surface-2); border:1px solid var(--line-strong); border-radius:20px; padding:4px 12px; margin-top:2px;}
+.plan-badge.is-pro{color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.1);}
 
 .footer-credit{text-align:center; font-family:inherit; font-size:10px; color:var(--muted); padding:26px 0 8px 0; letter-spacing:.5px;}
 .note{font-size:11px; color:var(--muted); text-align:center; padding:16px 0 0 0;}
@@ -243,7 +240,9 @@ details .inner{padding-top:10px;}
 
   <div id="screen-today" class="screen"></div>
   <div id="screen-add" class="screen hide"></div>
+  <div id="screen-datos" class="screen hide"></div>
   <div id="screen-profile" class="screen hide"></div>
+  <div id="screen-pro" class="screen hide"></div>
 
   <button class="fab" onclick="setTab('add')" aria-label="Añadir">
     <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -254,9 +253,17 @@ details .inner{padding-top:10px;}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
       <span>Hoy</span>
     </button>
+    <button id="tab-datos" onclick="setTab('datos')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V10M12 19V5M20 19v-7"/></svg>
+      <span>Datos</span>
+    </button>
     <button id="tab-profile" onclick="setTab('profile')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
       <span>Perfil</span>
+    </button>
+    <button id="tab-pro" onclick="setTab('pro')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.6 6.6L22 9.3l-5 4.6L18.5 21 12 17.3 5.5 21 7 13.9l-5-4.6 7.4-.7z"/></svg>
+      <span>Pro</span>
     </button>
   </div>
 </div>
@@ -851,9 +858,11 @@ async function restoreFromOnboarding(){
   }
 }
 
+function isPro(){ return !!(state.profile && state.profile.isPro); }
+
 function setTab(tab){
   state.tab = tab;
-  ['today','add','profile'].forEach(t=>{
+  ['today','add','datos','profile','pro'].forEach(t=>{
     const screenEl = document.getElementById('screen-'+t);
     if(screenEl) screenEl.classList.toggle('hide', t !== tab);
     const tabEl = document.getElementById('tab-'+t);
@@ -862,9 +871,15 @@ function setTab(tab){
   renderAll();
 }
 
+function updateProTabVisibility(){
+  const el = document.getElementById('tab-pro');
+  if(el) el.style.display = isPro() ? 'none' : 'flex';
+}
+
 function renderAll(){
   if(!state.profile) return;
-  renderToday(); renderAdd(); renderProfile();
+  updateProTabVisibility();
+  renderToday(); renderAdd(); renderDatos(); renderProfile(); renderProTab();
 }
 
 function thinBar(label, value, target, color, unit, icon){
@@ -1048,7 +1063,7 @@ function renderToday(){
       </div>
     </div>
 
-    ${state.supplements.length ? `<div class="section-title">🔔 Recordatorios de hoy</div><div class="panel">${suppRows}</div>` : ''}
+    ${(isPro() && state.supplements.length) ? `<div class="section-title">🔔 Recordatorios de hoy</div><div class="panel">${suppRows}</div>` : ''}
 
     <div class="section-title">Registrado recientemente</div>
     ${foodRows}
@@ -1373,7 +1388,14 @@ async function removeExercise(id){
 
 function renderAdd(){
   document.getElementById('screen-add').innerHTML = `
-    ${state.analyzing ? `
+    ${!isPro() ? `
+    <div class="panel" style="text-align:center; padding:26px 20px;">
+      <div style="font-size:28px; margin-bottom:6px;">🔒</div>
+      <div style="font-weight:700; font-size:14px; margin-bottom:4px;">Analizar comida por foto es Pro</div>
+      <p class="sub" style="margin:0 0 14px 0;">Añade tu comida a mano abajo, o desbloquea el análisis con IA.</p>
+      <button class="btn accent" onclick="setTab('pro')">Desbloquear con Pro</button>
+    </div>
+    ` : state.analyzing ? `
     <div class="analyzing-wrap">
       <div class="analyzing-label">Analizando comida…</div>
       <div class="analyzing-track"><div class="analyzing-fill"></div></div>
@@ -1640,6 +1662,47 @@ function buildProgressHTML(){
   `;
 }
 
+function renderDatos(){
+  const el = document.getElementById('screen-datos');
+  if(!el) return;
+  if(isPro()){
+    el.innerHTML = `
+      <div class="section-title">⚖️ Progreso de peso</div>
+      ${buildProgressHTML()}
+    `;
+  } else {
+    el.innerHTML = `
+      <div class="section-title">⚖️ Progreso de peso</div>
+      <div class="panel" style="text-align:center; padding:32px 20px;">
+        <div style="font-size:32px; margin-bottom:8px;">🔒</div>
+        <div style="font-weight:700; font-size:15px; margin-bottom:6px;">Función Pro</div>
+        <p class="sub" style="margin:0 0 16px 0;">La gráfica de evolución de tu peso es parte de eatiseasy Pro.</p>
+        <button class="btn accent" onclick="setTab('pro')">Desbloquear con Pro</button>
+      </div>
+    `;
+  }
+}
+
+function renderProTab(){
+  const el = document.getElementById('screen-pro');
+  if(!el) return;
+  if(isPro()){
+    el.innerHTML = `
+      <div style="text-align:center; padding:50px 20px;">
+        <div style="font-size:40px; margin-bottom:10px;">✅</div>
+        <h1 style="margin:0 0 6px 0;">Ya eres Pro</h1>
+        <p class="sub">Gracias por apoyar eatiseasy — tienes acceso a todo.</p>
+      </div>
+    `;
+  } else {
+    el.innerHTML = `
+      <h1 style="text-align:center;">Desbloquea eatiseasy Pro</h1>
+      <p class="sub" style="text-align:center;">Lo mejor de eatiseasy, de un pago, para siempre.</p>
+      ${buildProPitchHTML()}
+    `;
+  }
+}
+
 function formatDateLabel(d){
   const dt = new Date(d + 'T00:00:00');
   const label = dt.toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
@@ -1735,15 +1798,7 @@ function renderProfile(){
       </label>
       <input id="avatar-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onAvatarSelected(event)">
       <div class="avatar-name">${p.name}</div>
-    </div>
-
-    <div class="pro-banner">
-      <div class="pro-icon">★</div>
-      <div style="flex:1;">
-        <div class="pro-title">eatiseasy Pro</div>
-        <div class="pro-sub">Más funciones muy pronto</div>
-      </div>
-      <div class="pro-tag">Próximamente</div>
+      <div class="plan-badge ${isPro() ? 'is-pro' : ''}">${isPro() ? '★ Plan Pro' : 'Plan Free'}</div>
     </div>
 
     <div class="section-title">Tu objetivo</div>
@@ -1759,9 +1814,6 @@ function renderProfile(){
       <div class="row"><span class="rname">Grasas</span><span class="rval">${fmt1(t.fatG)} g</span></div>
       <div class="row"><span class="rname">Tiempo estimado</span><span class="rval">${t.weeksToGoal} sem</span></div>
     </div>
-
-    <div class="section-title">Peso</div>
-    ${buildProgressHTML()}
 
     <div class="section-title">Tema</div>
     <div class="panel">
@@ -1834,6 +1886,14 @@ function renderProfile(){
     </details>
 
     <div class="section-title">Recordatorios</div>
+    ${!isPro() ? `
+    <div class="panel" style="text-align:center; padding:24px 20px;">
+      <div style="font-size:26px; margin-bottom:6px;">🔒</div>
+      <div style="font-weight:700; font-size:14px; margin-bottom:4px;">Función Pro</div>
+      <p class="sub" style="margin:0 0 14px 0;">Suplementos y recordatorios de agua son parte de eatiseasy Pro.</p>
+      <button class="btn accent" onclick="setTab('pro')">Desbloquear con Pro</button>
+    </div>
+    ` : `
     <details>
       <summary>🔔 Gestionar recordatorios</summary>
       <div class="inner">
@@ -1854,6 +1914,7 @@ function renderProfile(){
         <button class="btn accent small" onclick="addReminder()">Añadir</button>
       </div>
     </details>
+    `}
 
     <div class="section-title">Cuenta</div>
     <div class="panel">
