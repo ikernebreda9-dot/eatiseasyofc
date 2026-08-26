@@ -6,6 +6,7 @@
 <title>eatiseasy</title>
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="eie-beta.png">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root{
   /* Watermelon palette — piel (rind), pulpa (flesh), pepitas (seeds) */
@@ -152,6 +153,9 @@ details .inner{padding-top:10px;}
 .overlay-card{max-width:480px; width:100%; padding:32px 20px calc(28px + env(safe-area-inset-bottom)) 20px;}
 .overlay-card h1{font-family:inherit; font-size:26px; font-weight:600; margin:6px 0 4px 0; letter-spacing:-.3px; color:var(--paper);}
 .overlay-card p.sub{color:var(--muted); font-size:13px; margin:0 0 24px 0; line-height:1.5;}
+.ob-progress{height:5px; background:var(--line-strong); border-radius:4px; overflow:hidden; margin-bottom:24px;}
+.ob-progress-fill{height:100%; background:var(--accent); border-radius:4px; transition:width .35s ease;}
+.ob-loading-title{font-size:17px; font-weight:800; text-align:center; letter-spacing:-.2px;}
 
 .big-number{font-family:inherit; font-size:34px; font-weight:600; letter-spacing:-.5px; color:var(--paper);}
 .weight-row{display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-top:4px;}
@@ -194,6 +198,8 @@ details .inner{padding-top:10px;}
 .detail-photo{width:100%; height:280px; object-fit:cover; border-radius:16px; border:1px solid var(--line-strong);}
 .detail-title-row{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-top:14px;}
 .detail-title-row h1{font-size:20px; font-weight:800; margin:0; line-height:1.25; letter-spacing:-.3px;}
+.pending-name-input{width:100%; border:none; border-bottom:2px solid var(--accent); background:transparent; padding:6px 2px; font-size:19px; font-weight:800; color:var(--paper); font-family:inherit;}
+.pending-name-input:focus{outline:none;}
 .qty-pill{font-family:inherit; font-size:13px; font-weight:700; padding:7px 12px; border-radius:20px; border:1.5px solid var(--line-strong); background:var(--surface-2); color:var(--paper); cursor:pointer; white-space:nowrap; flex-shrink:0;}
 .ingredient-chips{display:flex; flex-wrap:wrap; gap:8px;}
 .ingredient-chip{font-size:12px; font-weight:600; padding:7px 12px; border-radius:20px; background:var(--surface-2); border:1px solid var(--line); color:var(--paper);}
@@ -247,57 +253,7 @@ details .inner{padding-top:10px;}
 
 <div id="onboard" class="overlay hide">
   <div class="overlay-card">
-    <h1>Hola 👋</h1>
-    <p class="sub">Cuéntanos un poco de ti para calcular tu objetivo diario de calorías y macros. Tu progreso se guarda solo, ligado a tu cuenta.</p>
-    <div class="row2">
-      <div class="field"><label>Nombre</label><input id="ob-name" placeholder="Tu nombre"></div>
-      <div class="field"><label>Sexo</label><select id="ob-sex"><option value="female">Mujer</option><option value="male">Hombre</option></select></div>
-    </div>
-    <div class="row2">
-      <div class="field"><label>Edad</label><input id="ob-age" type="number" placeholder="30"></div>
-      <div class="field"><label>Altura (cm)</label><input id="ob-height" type="number" placeholder="170"></div>
-    </div>
-    <div class="row2">
-      <div class="field"><label>Peso actual (kg)</label><input id="ob-current" type="number" step="0.1" placeholder="80"></div>
-      <div class="field"><label>Peso objetivo (kg)</label><input id="ob-goal" type="number" step="0.1" placeholder="72"></div>
-    </div>
-    <div class="field"><label>Nivel de actividad</label>
-      <select id="ob-activity">
-        <option value="sedentary">Sedentario</option>
-        <option value="light" selected>Ligero (1-3 días/sem)</option>
-        <option value="moderate">Moderado (3-5 días/sem)</option>
-        <option value="active">Activo (6-7 días/sem)</option>
-        <option value="veryActive">Muy activo</option>
-      </select>
-    </div>
-    <div class="field"><label>Objetivo</label>
-      <select id="ob-goaltype">
-        <option value="auto" selected>Automático (según tu peso objetivo)</option>
-        <option value="deficit">Déficit — quiero perder grasa</option>
-        <option value="maintain">Mantenimiento</option>
-        <option value="surplus">Superávit — quiero ganar músculo</option>
-      </select>
-    </div>
-    <div class="field"><label>Ritmo deseado</label>
-      <select id="ob-pace">
-        <option value="0.25">Suave · 0.25 kg/sem</option>
-        <option value="0.5" selected>Moderado · 0.5 kg/sem</option>
-        <option value="0.75">Rápido · 0.75 kg/sem</option>
-        <option value="1">Intenso · 1 kg/sem</option>
-      </select>
-    </div>
-    <div class="field"><label>Objetivo de kcal quemadas con ejercicio / día</label><input id="ob-burn" type="number" value="300"></div>
-    <button class="btn accent" onclick="saveOnboarding()">Empezar</button>
-
-    <details style="margin-top:18px;">
-      <summary>¿Ya tienes una cuenta? Restaurar con código</summary>
-      <div class="inner">
-        <div class="field"><label>Pega aquí tu código de copia de seguridad</label>
-          <textarea id="ob-restore-code" rows="4" style="width:100%; border:1.5px solid var(--line); border-radius:8px; padding:8px; font-family:inherit; font-size:12px;"></textarea>
-        </div>
-        <button class="btn ghost" onclick="restoreFromOnboarding()">Restaurar mi cuenta</button>
-      </div>
-    </details>
+    <div id="onboard-content"></div>
   </div>
 </div>
 
@@ -397,6 +353,14 @@ function todayStr(){
 }
 function logKey(){ return 'log:'+todayStr(); }
 
+// Gramos con máximo 1 decimal en toda la app: round1 para guardar/calcular,
+// fmt1 para mostrar (sin ".0" sobrante si es un número entero).
+function round1(n){ return Math.round((n || 0) * 10) / 10; }
+function fmt1(n){
+  const r = round1(n);
+  return Number.isInteger(r) ? String(r) : r.toFixed(1);
+}
+
 function showToast(msg, isErr){
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -427,17 +391,17 @@ function calcTargets(p){
   else if(direction === 'surplus') autoCalorieTarget = tdee + adjustment;
   autoCalorieTarget = Math.max(1200, Math.round(autoCalorieTarget));
 
-  const autoProteinG = Math.round(1.8 * p.currentWeight);
+  const autoProteinG = round1(1.8 * p.currentWeight);
   const autoProteinCal = autoProteinG * 4;
   const autoRemaining = Math.max(0, autoCalorieTarget - autoProteinCal);
-  const autoCarbG = Math.round((autoRemaining * 0.55) / 4);
-  const autoFatG = Math.round((autoRemaining * 0.45) / 9);
+  const autoCarbG = round1((autoRemaining * 0.55) / 4);
+  const autoFatG = round1((autoRemaining * 0.45) / 9);
 
   const isCustom = !!p.customMode;
   const calorieTarget = (isCustom && p.customCalories) ? Math.round(p.customCalories) : autoCalorieTarget;
-  const proteinG = (isCustom && p.customProtein != null) ? Math.round(p.customProtein) : autoProteinG;
-  const carbG = (isCustom && p.customCarb != null) ? Math.round(p.customCarb) : autoCarbG;
-  const fatG = (isCustom && p.customFat != null) ? Math.round(p.customFat) : autoFatG;
+  const proteinG = (isCustom && p.customProtein != null) ? round1(p.customProtein) : autoProteinG;
+  const carbG = (isCustom && p.customCarb != null) ? round1(p.customCarb) : autoCarbG;
+  const fatG = (isCustom && p.customFat != null) ? round1(p.customFat) : autoFatG;
 
   return {
     bmr: Math.round(bmr), tdee: Math.round(tdee), calorieTarget,
@@ -466,7 +430,10 @@ async function init(){
   await safeDelete('photoProxyUrl');
   state.profile = await safeGet('profile');
   if(!state.profile){
+    obDraft = {};
+    obStep = 1;
     document.getElementById('onboard').classList.remove('hide');
+    renderOnboardStep();
     return;
   }
   const log = await safeGet(logKey());
@@ -482,25 +449,256 @@ async function init(){
   renderAll();
 }
 
-async function saveOnboarding(){
-  const name = document.getElementById('ob-name').value.trim() || 'Tú';
-  const sex = document.getElementById('ob-sex').value;
-  const age = parseFloat(document.getElementById('ob-age').value);
-  const heightCm = parseFloat(document.getElementById('ob-height').value);
-  const currentWeight = parseFloat(document.getElementById('ob-current').value);
-  const goalWeight = parseFloat(document.getElementById('ob-goal').value);
-  const activityLevel = document.getElementById('ob-activity').value;
-  const goalType = document.getElementById('ob-goaltype').value;
-  const paceKgWeek = parseFloat(document.getElementById('ob-pace').value);
-  const dailyBurnGoal = parseFloat(document.getElementById('ob-burn').value) || 300;
-  if(!age || !heightCm || !currentWeight || !goalWeight){
+// ======================================================================
+// ASISTENTE DE BIENVENIDA — varios pasos en vez de un formulario enorme.
+// ======================================================================
+let obDraft = {};
+let obStep = 1;
+const OB_TOTAL_STEPS = 4;
+
+// Client ID de OAuth de Google para "Continuar con Google" — esto NO es
+// secreto, los client IDs están hechos para ir en código público.
+const DEFAULT_GOOGLE_CLIENT_ID = '172112549058-i71mees906on0s7v1go5oq6vhrn5r5bq.apps.googleusercontent.com';
+
+function obSaveCurrentStepInputs(){
+  const val = id => { const el = document.getElementById(id); return el ? el.value : null; };
+  if(obStep === 1){
+    obDraft.name = val('ob-name') || obDraft.name;
+    obDraft.sex = val('ob-sex') || obDraft.sex;
+  } else if(obStep === 2){
+    obDraft.age = parseFloat(val('ob-age')) || obDraft.age;
+    obDraft.heightCm = parseFloat(val('ob-height')) || obDraft.heightCm;
+    obDraft.currentWeight = parseFloat(val('ob-current')) || obDraft.currentWeight;
+    obDraft.goalWeight = parseFloat(val('ob-goal')) || obDraft.goalWeight;
+  } else if(obStep === 3){
+    obDraft.activityLevel = val('ob-activity') || obDraft.activityLevel;
+    obDraft.goalType = val('ob-goaltype') || obDraft.goalType;
+    obDraft.paceKgWeek = parseFloat(val('ob-pace')) || obDraft.paceKgWeek;
+  } else if(obStep === 4){
+    obDraft.dailyBurnGoal = parseFloat(val('ob-burn')) || obDraft.dailyBurnGoal;
+  }
+}
+
+function obGoStep(next){
+  obSaveCurrentStepInputs();
+  if(next > obStep && obStep === 2){
+    if(!obDraft.age || !obDraft.heightCm || !obDraft.currentWeight || !obDraft.goalWeight){
+      showToast('Completa todos los campos numéricos', true);
+      return;
+    }
+  }
+  obStep = next;
+  renderOnboardStep();
+}
+
+function renderOnboardStep(){
+  const pct = Math.round((obStep / OB_TOTAL_STEPS) * 100);
+  const d = obDraft;
+  let stepHtml = '';
+
+  if(obStep === 1){
+    stepHtml = `
+      <h1>Hola 👋</h1>
+      <p class="sub">Empecemos por lo básico.</p>
+      <div id="google-signin-btn" style="margin-bottom:14px;"></div>
+      <div style="text-align:center; color:var(--muted); font-size:11px; margin:2px 0 18px 0;">— o rellena a mano —</div>
+      <div class="field"><label>Nombre</label><input id="ob-name" placeholder="Tu nombre" value="${d.name||''}"></div>
+      <div class="field"><label>Sexo</label>
+        <select id="ob-sex">
+          <option value="female" ${d.sex!=='male'?'selected':''}>Mujer</option>
+          <option value="male" ${d.sex==='male'?'selected':''}>Hombre</option>
+        </select>
+      </div>`;
+  } else if(obStep === 2){
+    stepHtml = `
+      <h1>Sobre ti</h1>
+      <p class="sub">Para calcular tu metabolismo basal.</p>
+      <div class="row2">
+        <div class="field"><label>Edad</label><input id="ob-age" type="number" placeholder="30" value="${d.age||''}"></div>
+        <div class="field"><label>Altura (cm)</label><input id="ob-height" type="number" placeholder="170" value="${d.heightCm||''}"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Peso actual (kg)</label><input id="ob-current" type="number" step="0.1" placeholder="80" value="${d.currentWeight||''}"></div>
+        <div class="field"><label>Peso objetivo (kg)</label><input id="ob-goal" type="number" step="0.1" placeholder="72" value="${d.goalWeight||''}"></div>
+      </div>`;
+  } else if(obStep === 3){
+    const act = d.activityLevel || 'light';
+    const gt = d.goalType || 'auto';
+    const pace = d.paceKgWeek || 0.5;
+    stepHtml = `
+      <h1>Tu actividad</h1>
+      <p class="sub">¿Cómo es tu día a día, y qué buscas?</p>
+      <div class="field"><label>Nivel de actividad</label>
+        <select id="ob-activity">
+          <option value="sedentary" ${act==='sedentary'?'selected':''}>Sedentario</option>
+          <option value="light" ${act==='light'?'selected':''}>Ligero (1-3 días/sem)</option>
+          <option value="moderate" ${act==='moderate'?'selected':''}>Moderado (3-5 días/sem)</option>
+          <option value="active" ${act==='active'?'selected':''}>Activo (6-7 días/sem)</option>
+          <option value="veryActive" ${act==='veryActive'?'selected':''}>Muy activo</option>
+        </select>
+      </div>
+      <div class="field"><label>Objetivo</label>
+        <select id="ob-goaltype">
+          <option value="auto" ${gt==='auto'?'selected':''}>Automático (según tu peso objetivo)</option>
+          <option value="deficit" ${gt==='deficit'?'selected':''}>Déficit — quiero perder grasa</option>
+          <option value="maintain" ${gt==='maintain'?'selected':''}>Mantenimiento</option>
+          <option value="surplus" ${gt==='surplus'?'selected':''}>Superávit — quiero ganar músculo</option>
+        </select>
+      </div>
+      <div class="field"><label>Ritmo deseado</label>
+        <select id="ob-pace">
+          <option value="0.25" ${pace==0.25?'selected':''}>Suave · 0.25 kg/sem</option>
+          <option value="0.5" ${pace==0.5?'selected':''}>Moderado · 0.5 kg/sem</option>
+          <option value="0.75" ${pace==0.75?'selected':''}>Rápido · 0.75 kg/sem</option>
+          <option value="1" ${pace==1?'selected':''}>Intenso · 1 kg/sem</option>
+        </select>
+      </div>`;
+  } else if(obStep === 4){
+    stepHtml = `
+      <h1>Último paso</h1>
+      <p class="sub">¿Cuánto quieres quemar con ejercicio al día?</p>
+      <div class="field"><label>Objetivo de kcal quemadas con ejercicio / día</label><input id="ob-burn" type="number" value="${d.dailyBurnGoal||300}"></div>`;
+  }
+
+  const nav = `
+    <div style="display:flex; gap:10px; margin-top:22px;">
+      ${obStep > 1 ? `<button class="btn ghost" onclick="obGoStep(${obStep-1})">Atrás</button>` : ''}
+      <button class="btn accent" onclick="${obStep < OB_TOTAL_STEPS ? `obGoStep(${obStep+1})` : 'finishOnboarding()'}">${obStep < OB_TOTAL_STEPS ? 'Siguiente' : 'Empezar'}</button>
+    </div>`;
+
+  document.getElementById('onboard-content').innerHTML = `
+    <div class="ob-progress"><div class="ob-progress-fill" style="width:${pct}%;"></div></div>
+    ${stepHtml}
+    ${nav}
+    ${obStep === 1 ? `
+    <details style="margin-top:18px;">
+      <summary>¿Ya tienes una cuenta? Restaurar con código</summary>
+      <div class="inner">
+        <div class="field"><label>Pega aquí tu código de copia de seguridad</label>
+          <textarea id="ob-restore-code" rows="4" style="width:100%; border:1.5px solid var(--line); border-radius:8px; padding:8px; font-family:inherit; font-size:12px;"></textarea>
+        </div>
+        <button class="btn ghost" onclick="restoreFromOnboarding()">Restaurar mi cuenta</button>
+      </div>
+    </details>` : ''}
+  `;
+
+  if(obStep === 1) renderGoogleButton();
+}
+
+function renderGoogleButton(){
+  try{
+    if(!window.google || !google.accounts || !google.accounts.id) return;
+    google.accounts.id.initialize({ client_id: DEFAULT_GOOGLE_CLIENT_ID, callback: handleGoogleCredential });
+    const container = document.getElementById('google-signin-btn');
+    if(container){
+      container.innerHTML = '';
+      google.accounts.id.renderButton(container, { theme: 'outline', size: 'large', width: 280, text: 'continue_with', locale: 'es' });
+    }
+  }catch(e){ console.warn('Google sign-in no disponible', e); }
+}
+
+function decodeJwt(token){
+  const base64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+  const json = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00'+c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+  return JSON.parse(json);
+}
+
+function handleGoogleCredential(response){
+  try{
+    const payload = decodeJwt(response.credential);
+    obDraft.name = payload.name || obDraft.name;
+    obDraft.googleAvatarUrl = payload.picture || null;
+    showToast('Hola, ' + (payload.given_name || payload.name || '') + ' 👋');
+    renderOnboardStep();
+  }catch(e){
+    console.error('google credential decode failed', e);
+  }
+}
+
+function renderGoogleButtonProfile(){
+  try{
+    if(!window.google || !google.accounts || !google.accounts.id) return;
+    google.accounts.id.initialize({ client_id: DEFAULT_GOOGLE_CLIENT_ID, callback: handleGoogleCredentialProfile });
+    const container = document.getElementById('google-signin-btn-profile');
+    if(container){
+      container.innerHTML = '';
+      google.accounts.id.renderButton(container, { theme: 'outline', size: 'large', width: 280, text: 'continue_with', locale: 'es' });
+    }
+  }catch(e){ console.warn('Google sign-in no disponible', e); }
+}
+
+async function handleGoogleCredentialProfile(response){
+  try{
+    const payload = decodeJwt(response.credential);
+    state.profile.name = payload.name || state.profile.name;
+    if(payload.picture){
+      try{ state.profile.avatar = await fetchImageAsDataUrl(payload.picture, 200, 0.8); }
+      catch(e){ /* si falla la foto, seguimos solo con el nombre */ }
+    }
+    await safeSet('profile', state.profile);
+    showToast('Sesión iniciada con Google, ' + (payload.given_name || payload.name || ''));
+    renderAll();
+  }catch(e){
+    console.error('google credential (perfil) decode failed', e);
+    showToast('No se pudo iniciar sesión con Google', true);
+  }
+}
+
+function fetchImageAsDataUrl(url, maxDim, quality){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => { try{ resolve(resizeToDataUrl(img, maxDim, quality)); }catch(e){ reject(e); } };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+function showOnboardLoading(){
+  document.getElementById('onboard-content').innerHTML = `
+    <div style="padding:70px 0 40px 0;">
+      <div class="ob-loading-title">Estamos creando tu dieta ideal…</div>
+      <div class="ob-progress" style="margin-top:26px; margin-bottom:0;"><div id="ob-loading-fill" class="ob-progress-fill" style="width:0%;"></div></div>
+    </div>`;
+  requestAnimationFrame(() => {
+    const fill = document.getElementById('ob-loading-fill');
+    if(fill){
+      fill.style.transition = 'width 1.6s cubic-bezier(.4,0,.2,1)';
+      fill.style.width = '100%';
+    }
+  });
+}
+
+async function finishOnboarding(){
+  obSaveCurrentStepInputs();
+  if(!obDraft.age || !obDraft.heightCm || !obDraft.currentWeight || !obDraft.goalWeight){
     showToast('Completa todos los campos numéricos', true);
+    obStep = 2;
+    renderOnboardStep();
     return;
   }
-  state.profile = { name, sex, age, heightCm, currentWeight, goalWeight, activityLevel, goalType, paceKgWeek, dailyBurnGoal, customMode:false, createdAt: new Date().toISOString() };
+  showOnboardLoading();
+  await new Promise(r => setTimeout(r, 1700));
+
+  const name = (obDraft.name && obDraft.name.trim()) ? obDraft.name.trim() : 'Tú';
+  state.profile = {
+    name, sex: obDraft.sex || 'female', age: obDraft.age, heightCm: obDraft.heightCm,
+    currentWeight: obDraft.currentWeight, goalWeight: obDraft.goalWeight,
+    activityLevel: obDraft.activityLevel || 'light', goalType: obDraft.goalType || 'auto',
+    paceKgWeek: obDraft.paceKgWeek || 0.5, dailyBurnGoal: obDraft.dailyBurnGoal || 300,
+    customMode: false, createdAt: new Date().toISOString()
+  };
   await safeSet('profile', state.profile);
-  state.weights = [{ date: todayStr(), weight: currentWeight }];
+  state.weights = [{ date: todayStr(), weight: obDraft.currentWeight }];
   await safeSet('weights', state.weights);
+
+  if(obDraft.googleAvatarUrl){
+    try{
+      state.profile.avatar = await fetchImageAsDataUrl(obDraft.googleAvatarUrl, 200, 0.8);
+      await safeSet('profile', state.profile);
+    }catch(e){ /* avatar de Google opcional, si falla no pasa nada */ }
+  }
+
   document.getElementById('onboard').classList.add('hide');
   if(state.profile.theme) applyTheme(state.profile.theme);
   applyDarkMode(state.profile.darkMode);
@@ -638,9 +836,9 @@ function renderToday(){
   const fat = state.log.foods.reduce((s,f)=>s+f.fat,0);
 
   const remain = Math.max(0, Math.round(t.calorieTarget - consumed));
-  const proteinLeft = Math.max(0, Math.round(t.proteinG - protein));
-  const carbsLeft = Math.max(0, Math.round(t.carbG - carbs));
-  const fatLeft = Math.max(0, Math.round(t.fatG - fat));
+  const proteinLeft = Math.max(0, round1(t.proteinG - protein));
+  const carbsLeft = Math.max(0, round1(t.carbG - carbs));
+  const fatLeft = Math.max(0, round1(t.fatG - fat));
 
   const foodRows = state.log.foods.length
     ? state.log.foods.map(f=>`
@@ -648,7 +846,7 @@ function renderToday(){
           ${f.photo ? `<img src="${f.photo}" class="log-thumb">` : `<span class="log-thumb log-thumb-fallback">🍽️</span>`}
           <div class="log-info">
             <div class="log-name">${f.name}</div>
-            <div class="log-sub">${f.cal} kcal · P ${f.protein}g · C ${f.carb}g · G ${f.fat}g</div>
+            <div class="log-sub">${f.cal} kcal · P ${fmt1(f.protein)}g · C ${fmt1(f.carb)}g · G ${fmt1(f.fat)}g</div>
           </div>
           <span class="del" onclick="event.stopPropagation(); removeFood('${f.id}')">✕</span>
         </div>`).join('')
@@ -702,17 +900,17 @@ function renderToday(){
 
     <div class="macro-row">
       <div class="macro-card">
-        <div class="macro-card-num">${proteinLeft}g</div>
+        <div class="macro-card-num">${fmt1(proteinLeft)}g</div>
         <div class="macro-card-label">Proteína restante</div>
         <div class="macro-ring-wrap">${macroRingSvg(protein, t.proteinG, 'var(--protein)', '🥩')}</div>
       </div>
       <div class="macro-card">
-        <div class="macro-card-num">${carbsLeft}g</div>
+        <div class="macro-card-num">${fmt1(carbsLeft)}g</div>
         <div class="macro-card-label">Carbos restantes</div>
         <div class="macro-ring-wrap">${macroRingSvg(carbs, t.carbG, 'var(--carbs)', '🍞')}</div>
       </div>
       <div class="macro-card">
-        <div class="macro-card-num">${fatLeft}g</div>
+        <div class="macro-card-num">${fmt1(fatLeft)}g</div>
         <div class="macro-card-label">Grasas restantes</div>
         <div class="macro-ring-wrap">${macroRingSvg(fat, t.fatG, 'var(--fat)', '🥑')}</div>
       </div>
@@ -753,9 +951,9 @@ function openFoodDetail(id){
     </div>
 
     <div class="macro-grid" style="margin-top:12px;">
-      <div class="macro-chip" style="background:var(--protein-soft);"><span>🥩</span><b>${f.protein} g</b><small>Proteína</small></div>
-      <div class="macro-chip" style="background:var(--carbs-soft);"><span>🍞</span><b>${f.carb} g</b><small>Carbohidratos</small></div>
-      <div class="macro-chip" style="background:var(--fat-soft);"><span>🥑</span><b>${f.fat} g</b><small>Grasas</small></div>
+      <div class="macro-chip" style="background:var(--protein-soft);"><span>🥩</span><b>${fmt1(f.protein)} g</b><small>Proteína</small></div>
+      <div class="macro-chip" style="background:var(--carbs-soft);"><span>🍞</span><b>${fmt1(f.carb)} g</b><small>Carbohidratos</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft);"><span>🥑</span><b>${fmt1(f.fat)} g</b><small>Grasas</small></div>
     </div>
 
     ${hs ? `
@@ -783,6 +981,77 @@ function closeFoodDetail(){
   document.getElementById('food-detail').classList.add('hide');
 }
 
+function openPendingFoodDetail(){
+  const pf = state.pendingFood;
+  if(!pf) return;
+  const hs = pf.healthScore;
+  const hsPct = hs ? Math.round((hs/10)*100) : 0;
+  const hsColor = !hs ? 'var(--line-strong)' : hs >= 7 ? 'var(--protein)' : hs >= 4 ? 'var(--burn)' : 'var(--warn)';
+
+  document.getElementById('food-detail-body').innerHTML = `
+    ${pf.photo ? `<img src="${pf.photo}" class="detail-photo">` : `<div class="detail-photo detail-photo-fallback">🍽️</div>`}
+
+    <div class="field" style="margin-top:14px;">
+      <label>Nombre del plato</label>
+      <input id="pending-name-input" value="${pf.name}" class="pending-name-input">
+    </div>
+
+    <div class="hero-card">
+      <div class="hero-top">
+        <div>
+          <div class="hero-number">${pf.cal}</div>
+          <div class="hero-label">🔥 Calorías</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="macro-grid" style="margin-top:12px;">
+      <div class="macro-chip" style="background:var(--protein-soft);"><span>🥩</span><b>${fmt1(pf.protein)} g</b><small>Proteína</small></div>
+      <div class="macro-chip" style="background:var(--carbs-soft);"><span>🍞</span><b>${fmt1(pf.carb)} g</b><small>Carbohidratos</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft);"><span>🥑</span><b>${fmt1(pf.fat)} g</b><small>Grasas</small></div>
+    </div>
+
+    ${hs ? `
+    <div class="hero-card" style="margin-top:12px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <span style="font-size:13px; font-weight:700;">❤️ Nota de salud</span>
+        <span style="font-size:13px; font-weight:700; color:${hsColor};">${hs}/10</span>
+      </div>
+      <div class="water-track"><div class="water-fill" style="width:${hsPct}%; background:${hsColor};"></div></div>
+    </div>` : ''}
+
+    ${pf.ingredients && pf.ingredients.length ? `
+    <div class="section-title">Ingredientes</div>
+    <div class="ingredient-chips">
+      ${pf.ingredients.map(ing => `<span class="ingredient-chip">${ing}</span>`).join('')}
+    </div>` : ''}
+
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button class="btn accent" onclick="confirmPendingFoodFromDetail()">Añadir a mi día</button>
+      <button class="btn ghost small" onclick="cancelPendingFoodFromDetail()">Cancelar</button>
+    </div>
+  `;
+  document.getElementById('food-detail').classList.remove('hide');
+}
+
+function confirmPendingFoodFromDetail(){
+  const pf = state.pendingFood;
+  if(!pf) return;
+  const name = document.getElementById('pending-name-input').value.trim() || pf.name;
+  addFoodEntry({
+    name, cal: pf.cal, protein: pf.protein, carb: pf.carb, fat: pf.fat,
+    source: 'photo', photo: pf.photo, healthScore: pf.healthScore, ingredients: pf.ingredients, servings: 1
+  });
+  state.pendingFood = null;
+  closeFoodDetail();
+}
+
+function cancelPendingFoodFromDetail(){
+  state.pendingFood = null;
+  closeFoodDetail();
+  renderAdd();
+}
+
 function qtyPillHTML(servings, id){
   return `<button class="qty-pill" onclick="startEditServings('${id}')">${servings}× <span style="opacity:.6;">✎</span></button>`;
 }
@@ -804,9 +1073,9 @@ async function confirmServings(id){
   const oldServings = f.servings || 1;
   const ratio = newServings / oldServings;
   f.cal = Math.round(f.cal * ratio);
-  f.protein = Math.round(f.protein * ratio);
-  f.carb = Math.round(f.carb * ratio);
-  f.fat = Math.round(f.fat * ratio);
+  f.protein = round1(f.protein * ratio);
+  f.carb = round1(f.carb * ratio);
+  f.fat = round1(f.fat * ratio);
   f.servings = newServings;
   await saveLog();
   showToast('Cantidad actualizada');
@@ -836,9 +1105,9 @@ async function submitFixResults(id){
     const servings = f.servings || 1;
     f.name = result.name;
     f.cal = Math.round(result.cal * servings);
-    f.protein = Math.round(result.protein * servings);
-    f.carb = Math.round(result.carb * servings);
-    f.fat = Math.round(result.fat * servings);
+    f.protein = round1(result.protein * servings);
+    f.carb = round1(result.carb * servings);
+    f.fat = round1(result.fat * servings);
     f.healthScore = result.healthScore;
     f.ingredients = result.ingredients;
     await saveLog();
@@ -971,28 +1240,9 @@ async function removeExercise(id){
 }
 
 function renderAdd(){
-  const pending = state.pendingFood;
   document.getElementById('screen-add').innerHTML = `
     <label class="photo-btn" for="photo-input" onclick="triggerPhotoInput(event)">${state.analyzing ? 'Analizando…' : '📷  Añadir foto de la comida'}</label>
     <input id="photo-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onPhotoSelected(event)" ${state.analyzing ? 'disabled' : ''}>
-
-    ${pending ? `
-      <div class="panel">
-        ${pending.photo ? `<img src="${pending.photo}" class="pending-photo">` : ''}
-        <div class="field"><label>Nombre</label><input id="pf-name" value="${pending.name}"></div>
-        <div class="row2">
-          <div class="field"><label>Kcal</label><input id="pf-cal" type="number" value="${pending.cal}"></div>
-          <div class="field"><label>Proteína (g)</label><input id="pf-protein" type="number" value="${pending.protein}"></div>
-        </div>
-        <div class="row2">
-          <div class="field"><label>Carbs (g)</label><input id="pf-carb" type="number" value="${pending.carb}"></div>
-          <div class="field"><label>Grasas (g)</label><input id="pf-fat" type="number" value="${pending.fat}"></div>
-        </div>
-        <div style="display:flex; gap:10px;">
-          <button class="btn accent" onclick="confirmPendingFood()">Añadir</button>
-          <button class="btn ghost small" onclick="cancelPendingFood()">Cancelar</button>
-        </div>
-      </div>` : ''}
 
     <details>
       <summary>Añadir comida manualmente</summary>
@@ -1167,9 +1417,9 @@ async function analyzeFoodImage(base64, mediaType, correctionNote){
   return {
     name: parsed.name || 'Comida',
     cal: Math.round(parsed.calories) || 0,
-    protein: Math.round(parsed.protein_g) || 0,
-    carb: Math.round(parsed.carbs_g) || 0,
-    fat: Math.round(parsed.fat_g) || 0,
+    protein: round1(parsed.protein_g) || 0,
+    carb: round1(parsed.carbs_g) || 0,
+    fat: round1(parsed.fat_g) || 0,
     healthScore: parsed.health_score != null ? Math.max(1, Math.min(10, Math.round(parsed.health_score))) : null,
     ingredients: Array.isArray(parsed.ingredients) ? parsed.ingredients.slice(0,6) : []
   };
@@ -1184,11 +1434,12 @@ async function onPhotoSelected(evt){
   }
   state.analyzing = true;
   renderAdd();
+  let succeeded = false;
   try{
     const { base64, mediaType, thumbnail } = await fileToCompressedBase64(file);
     const result = await analyzeFoodImage(base64, mediaType);
     state.pendingFood = { ...result, photo: thumbnail };
-    showToast('Foto analizada, revisa y confirma');
+    succeeded = true;
   }catch(e){
     console.error('analyze photo failed:', e);
     showToast('No se pudo analizar la foto: ' + e.message, true);
@@ -1197,24 +1448,8 @@ async function onPhotoSelected(evt){
     evt.target.value = '';
     renderAdd();
   }
+  if(succeeded) openPendingFoodDetail();
 }
-
-function confirmPendingFood(){
-  const name = document.getElementById('pf-name').value.trim() || 'Comida';
-  const cal = parseFloat(document.getElementById('pf-cal').value) || 0;
-  const protein = parseFloat(document.getElementById('pf-protein').value) || 0;
-  const carb = parseFloat(document.getElementById('pf-carb').value) || 0;
-  const fat = parseFloat(document.getElementById('pf-fat').value) || 0;
-  addFoodEntry({
-    name, cal, protein, carb, fat, source: 'photo',
-    photo: state.pendingFood.photo,
-    healthScore: state.pendingFood.healthScore,
-    ingredients: state.pendingFood.ingredients,
-    servings: 1
-  });
-  state.pendingFood = null;
-}
-function cancelPendingFood(){ state.pendingFood = null; renderAdd(); }
 
 async function addFoodEntry(f){
   state.log.foods.push({ id: Date.now().toString(), time: new Date().toISOString(), ...f });
@@ -1227,9 +1462,9 @@ function addManualFood(){
   const name = document.getElementById('mf-name').value.trim();
   const cal = parseFloat(document.getElementById('mf-cal').value);
   if(!name || !cal){ showToast('Introduce nombre y calorías', true); return; }
-  const protein = parseFloat(document.getElementById('mf-protein').value) || 0;
-  const carb = parseFloat(document.getElementById('mf-carb').value) || 0;
-  const fat = parseFloat(document.getElementById('mf-fat').value) || 0;
+  const protein = round1(document.getElementById('mf-protein').value);
+  const carb = round1(document.getElementById('mf-carb').value);
+  const fat = round1(document.getElementById('mf-fat').value);
   addFoodEntry({ name, cal, protein, carb, fat, source: 'manual' });
 }
 
@@ -1304,9 +1539,9 @@ async function openDayDetail(date){
     <div style="color:var(--muted); font-size:12px; margin-bottom:6px;">Resumen del día</div>
     <div class="ring-wrap" style="margin:0 0 8px 0; padding:10px 0;">${ringSvg(consumed, t.calorieTarget)}</div>
     <div class="macro-grid" style="margin-bottom:18px;">
-      <div class="macro-chip" style="background:var(--protein-soft);"><span>🥩</span><b>${protein} g</b><small>Proteína</small></div>
-      <div class="macro-chip" style="background:var(--carbs-soft);"><span>🍞</span><b>${carbs} g</b><small>Carbohidratos</small></div>
-      <div class="macro-chip" style="background:var(--fat-soft);"><span>🥑</span><b>${fat} g</b><small>Grasas</small></div>
+      <div class="macro-chip" style="background:var(--protein-soft);"><span>🥩</span><b>${fmt1(protein)} g</b><small>Proteína</small></div>
+      <div class="macro-chip" style="background:var(--carbs-soft);"><span>🍞</span><b>${fmt1(carbs)} g</b><small>Carbohidratos</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft);"><span>🥑</span><b>${fmt1(fat)} g</b><small>Grasas</small></div>
     </div>
     <div class="section-title">Comida</div>
     ${foodRows}
@@ -1379,9 +1614,9 @@ function renderProfile(){
       <div class="row"><span class="rname">TDEE estimado</span><span class="rval">${t.tdee} kcal</span></div>
       <div class="row"><span class="rname">Objetivo</span><span class="rval">${GOAL_LABELS[t.goalType]}${t.isCustom?' · manual':''}</span></div>
       <div class="row"><span class="rname">Calorías diarias</span><span class="rval">${t.calorieTarget} kcal</span></div>
-      <div class="row"><span class="rname">Proteína</span><span class="rval">${t.proteinG} g</span></div>
-      <div class="row"><span class="rname">Carbohidratos</span><span class="rval">${t.carbG} g</span></div>
-      <div class="row"><span class="rname">Grasas</span><span class="rval">${t.fatG} g</span></div>
+      <div class="row"><span class="rname">Proteína</span><span class="rval">${fmt1(t.proteinG)} g</span></div>
+      <div class="row"><span class="rname">Carbohidratos</span><span class="rval">${fmt1(t.carbG)} g</span></div>
+      <div class="row"><span class="rname">Grasas</span><span class="rval">${fmt1(t.fatG)} g</span></div>
       <div class="row"><span class="rname">Tiempo estimado</span><span class="rval">${t.weeksToGoal} sem</span></div>
     </div>
 
@@ -1481,6 +1716,11 @@ function renderProfile(){
     </details>
 
     <div class="section-title">Cuenta</div>
+    <div class="panel">
+      <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">Vincula tu Google para usar tu nombre y foto de perfil automáticamente.</p>
+      <div id="google-signin-btn-profile"></div>
+    </div>
+
     <details>
       <summary>🔐 Copia de seguridad</summary>
       <div class="inner">
@@ -1509,6 +1749,7 @@ function renderProfile(){
 
     <div class="footer-credit">Desarrollado por Iker Nebreda</div>
   `;
+  renderGoogleButtonProfile();
 }
 
 async function generateBackupCode(){
