@@ -47,6 +47,7 @@ body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemF
 .topbar .brand{font-family:inherit; font-size:19px; font-weight:600; letter-spacing:-.2px; color:var(--paper);}
 .topbar .brand .dot{color:var(--accent);}
 .topbar .date{font-family:inherit; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px;}
+.header-streak{font-size:11px; font-weight:700; color:var(--accent); margin-top:3px;}
 .screen{padding:2px 20px 24px 20px;}
 
 .ring-wrap{display:flex; justify-content:center; padding:22px 0 8px 0;}
@@ -73,12 +74,17 @@ body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemF
 
 .macro-row{display:flex; gap:10px; margin-top:12px;}
 
-.log-card{display:flex; align-items:center; gap:12px; background:var(--surface); border-radius:16px; padding:10px; margin-top:10px; border:1px solid var(--line); box-shadow:0 2px 8px rgba(24,45,30,.05); cursor:pointer;}
-.log-thumb{width:52px; height:52px; border-radius:12px; object-fit:cover; flex-shrink:0;}
-.log-thumb-fallback{display:flex; align-items:center; justify-content:center; background:var(--surface-2); font-size:20px;}
-.log-info{flex:1; min-width:0;}
-.log-name{font-size:14px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-.log-sub{font-size:11.5px; color:var(--muted); margin-top:2px;}
+.log-card2{position:relative; display:flex; gap:14px; background:var(--surface); border-radius:18px; padding:12px; margin-top:10px; border:1px solid var(--line); box-shadow:0 2px 8px rgba(24,45,30,.05); cursor:pointer;}
+.log-photo{width:84px; height:84px; border-radius:14px; overflow:hidden; flex-shrink:0; background:var(--surface-2); display:flex; align-items:center; justify-content:center; font-size:30px;}
+.log-photo img{width:100%; height:100%; object-fit:cover;}
+.log-body{flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:7px;}
+.log-top{display:flex; align-items:center; gap:8px;}
+.log-title{flex:1; min-width:0; font-size:16px; font-weight:800; letter-spacing:-.2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.log-time{font-size:10.5px; font-weight:700; background:var(--surface-2); border:1px solid var(--line); border-radius:20px; padding:4px 10px; flex-shrink:0; color:var(--muted); white-space:nowrap;}
+.log-cal{font-size:14.5px; font-weight:700; display:flex; align-items:center; gap:6px;}
+.log-macros{display:flex; gap:14px; font-size:12.5px; font-weight:700;}
+.log-macros span{display:flex; align-items:center; gap:4px;}
+.log-card2 .del{background:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--muted); flex-shrink:0;}
 .ring{width:210px; height:210px; filter:drop-shadow(0 4px 16px rgba(var(--accent-rgb),.28));}
 .ring-track{fill:none; stroke:var(--protein); opacity:1; stroke-width:9; stroke-opacity:.28;}
 .ring-fill{fill:none; stroke-width:9; stroke-linecap:round; transition:stroke-dashoffset .6s cubic-bezier(.4,0,.2,1);}
@@ -145,6 +151,22 @@ details .inner{padding-top:10px;}
   100%{width:92%;}
 }
 .visually-hidden-file{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;}
+
+.dim-overlay{position:fixed; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(2px); z-index:150; display:flex; align-items:flex-end; justify-content:center; padding:0 20px calc(110px + env(safe-area-inset-bottom)) 20px;}
+.fab-menu{display:flex; flex-direction:column; gap:12px; width:100%; max-width:400px;}
+.fab-option{display:flex; align-items:center; gap:12px; background:var(--surface); color:var(--paper); border:1px solid var(--line-strong); border-radius:16px; padding:15px 18px; font-family:inherit; font-size:14.5px; font-weight:700; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.25); animation:fabIn .25s ease both;}
+.fab-option-icon{font-size:19px;}
+
+.exercise-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px;}
+.exercise-type-btn{display:flex; flex-direction:column; align-items:center; gap:6px; background:var(--surface); border:1px solid var(--line-strong); border-radius:14px; padding:16px 8px; font-family:inherit; font-weight:700; font-size:12px; color:var(--paper); cursor:pointer;}
+.exercise-type-btn span{font-size:26px;}
+@keyframes fabIn{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
+
+.splash-screen{position:fixed; inset:0; background:var(--void); z-index:200; display:flex; align-items:center; justify-content:center; padding:40px; text-align:center; transition:opacity .3s ease;}
+.splash-screen.fade-out{opacity:0;}
+.splash-quote{font-size:21px; font-weight:800; line-height:1.35; color:var(--paper); letter-spacing:-.2px; opacity:0; transform:scale(.9) translateY(8px); transition:opacity .4s ease, transform .4s cubic-bezier(.2,.8,.3,1);}
+.splash-quote.show{opacity:1; transform:scale(1) translateY(0);}
+.splash-quote:before{content:'🍉'; display:block; font-size:34px; margin-bottom:14px;}
 
 .toast{position:fixed; bottom:calc(88px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:var(--paper); color:var(--void); padding:10px 16px; border-radius:10px; font-size:12.5px; max-width:82%; text-align:center; z-index:60; font-weight:600;}
 .toast.err{background:var(--warn); color:#fff;}
@@ -235,7 +257,10 @@ details .inner{padding-top:10px;}
 <div class="app">
   <div class="topbar">
     <div class="brand">eatis<span class="dot">•</span>easy</div>
-    <div class="date" id="header-date"></div>
+    <div style="text-align:right;">
+      <div class="date" id="header-date"></div>
+      <div class="header-streak" id="header-streak"></div>
+    </div>
   </div>
 
   <div id="screen-today" class="screen"></div>
@@ -244,7 +269,7 @@ details .inner{padding-top:10px;}
   <div id="screen-profile" class="screen hide"></div>
   <div id="screen-pro" class="screen hide"></div>
 
-  <button class="fab" onclick="setTab('add')" aria-label="Añadir">
+  <button class="fab" onclick="openAddMenu()" aria-label="Añadir">
     <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </button>
 
@@ -279,6 +304,46 @@ details .inner{padding-top:10px;}
     <button onclick="closeFoodDetail()" style="position:absolute; top:18px; right:18px; background:var(--surface); border:1px solid var(--line); border-radius:50%; width:32px; height:32px; font-size:14px; cursor:pointer;">✕</button>
     <div id="food-detail-body"></div>
   </div>
+</div>
+
+<div id="add-menu-overlay" class="dim-overlay hide" onclick="if(event.target===this) closeAddMenu()">
+  <div class="fab-menu">
+    <button class="fab-option" onclick="closeAddMenu(); openManualFoodForm();">
+      <span class="fab-option-icon">📝</span> Registrar comida
+    </button>
+    <button class="fab-option" onclick="closeAddMenu(); openScanChoice();">
+      <span class="fab-option-icon">📷</span> Escanear comida
+    </button>
+    <button class="fab-option" onclick="closeAddMenu(); openSavedMeals();">
+      <span class="fab-option-icon">⭐</span> Comida guardada
+    </button>
+    <button class="fab-option" onclick="closeAddMenu(); openExercisePicker();">
+      <span class="fab-option-icon">🏃</span> Registrar ejercicio
+    </button>
+  </div>
+</div>
+
+<div id="scan-choice-overlay" class="dim-overlay hide" onclick="if(event.target===this) closeScanChoice()">
+  <div class="fab-menu">
+    <label class="fab-option" for="photo-input-menu">
+      <span class="fab-option-icon">📷</span> Hacer foto a la comida
+    </label>
+    <input id="photo-input-menu" type="file" accept="image/*" class="visually-hidden-file" onchange="closeScanChoice(); onPhotoSelected(event);">
+    <button class="fab-option" onclick="closeScanChoice(); openBarcodeScanner();">
+      <span class="fab-option-icon">📊</span> Escanear código de barras
+    </button>
+  </div>
+</div>
+
+<div id="action-overlay" class="overlay hide" onclick="if(event.target===this) closeActionOverlay()">
+  <div class="overlay-card" style="position:relative;">
+    <button onclick="closeActionOverlay()" style="position:absolute; top:18px; right:18px; background:var(--surface); border:1px solid var(--line); border-radius:50%; width:32px; height:32px; font-size:14px; cursor:pointer;">✕</button>
+    <div id="action-overlay-body"></div>
+  </div>
+</div>
+
+<div id="splash-screen" class="splash-screen hide">
+  <div id="splash-quote" class="splash-quote"></div>
 </div>
 
 <div id="toast" class="toast hide"></div>
@@ -364,9 +429,9 @@ async function importBackupCode(code){
   await safeSet('supplements', payload.supplements || []);
 }
 
-// Sube esto en cada cambio que subas a producción (1.0 → 1.1 → 1.2...),
+// Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '1.0';
+const APP_VERSION = '0.04';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -412,6 +477,74 @@ const I18N = {
 function tr(key){
   const lang = (state.profile && state.profile.lang) || 'es';
   return (I18N[lang] && I18N[lang][key]) || I18N.es[key] || key;
+}
+
+// ======================================================================
+// FRASES MOTIVADORAS — una al azar cada vez que se abre la app (con
+// cuenta ya creada), en una intro animada de menos de 2 segundos.
+// ======================================================================
+const MOTIVATIONAL_QUOTES = {
+  es: [
+    'Cada comida es una oportunidad para cuidarte.',
+    'El progreso no es lineal, pero sí constante.',
+    'No cuentes los días, haz que los días cuenten.',
+    'Pequeños hábitos, grandes resultados.',
+    'Tu única competencia es quien fuiste ayer.',
+    'La disciplina de hoy es el resultado de mañana.',
+    'No busques la perfección, busca la constancia.',
+    'Un paso a la vez es más que ningún paso.',
+    'Tu cuerpo escucha todo lo que le dices, sé amable.',
+    'La motivación te arranca, el hábito te lleva a la meta.',
+    'Comer bien no es un castigo, es un acto de cariño.',
+    'Hoy es un buen día para empezar de nuevo.'
+  ],
+  en: [
+    'Every meal is a chance to take care of yourself.',
+    'Progress isn\'t linear, but it is constant.',
+    'Don\'t count the days, make the days count.',
+    'Small habits, big results.',
+    'Your only competition is who you were yesterday.',
+    'Today\'s discipline is tomorrow\'s result.',
+    'Don\'t chase perfection, chase consistency.',
+    'One step at a time beats no steps at all.',
+    'Your body hears everything you say — be kind.',
+    'Motivation gets you started, habit gets you there.',
+    'Eating well isn\'t punishment, it\'s self-care.',
+    'Today is a great day to start again.'
+  ],
+  eu: [
+    'Otordu bakoitza zeure burua zaintzeko aukera da.',
+    'Aurrerapena ez da lineala, baina etengabea da.',
+    'Ez zenbatu egunak, egin egunak balio izan dezaten.',
+    'Ohitura txikiak, emaitza handiak.',
+    'Zure lehia bakarra atzoko zeu zara.',
+    'Gaurko diziplina biharko emaitza da.',
+    'Ez bilatu perfekzioa, bilatu iraunkortasuna.',
+    'Urrats bat aldiz urratsik ez baino gehiago da.',
+    'Zure gorputzak entzuten du diozun guztia, izan atsegina.',
+    'Motibazioak hasarazten zaitu, ohiturak helmugara eramaten.',
+    'Ondo jatea ez da zigorra, zeure burua zaintzea da.',
+    'Gaur egun ona da berriro hasteko.'
+  ]
+};
+
+function showSplash(){
+  return new Promise(resolve => {
+    const overlay = document.getElementById('splash-screen');
+    const quoteEl = document.getElementById('splash-quote');
+    if(!overlay || !quoteEl){ resolve(); return; }
+    const lang = (state.profile && state.profile.lang) || 'es';
+    const list = MOTIVATIONAL_QUOTES[lang] || MOTIVATIONAL_QUOTES.es;
+    quoteEl.textContent = list[Math.floor(Math.random() * list.length)];
+    quoteEl.classList.remove('show');
+    overlay.classList.remove('fade-out');
+    overlay.classList.remove('hide');
+    requestAnimationFrame(() => requestAnimationFrame(() => quoteEl.classList.add('show')));
+    setTimeout(() => {
+      overlay.classList.add('fade-out');
+      setTimeout(() => { overlay.classList.add('hide'); resolve(); }, 250);
+    }, 1500);
+  });
 }
 
 // ======================================================================
@@ -551,6 +684,8 @@ async function init(){
     history.replaceState(null, '', location.pathname);
     showToast('¡eatiseasy Pro activado! 🎉');
   }
+  if(state.profile.theme) applyTheme(state.profile.theme);
+  applyDarkMode(state.profile.darkMode);
   const log = await safeGet(logKey());
   state.log = log || { foods: [], exercises: [] };
   const w = await safeGet('weights');
@@ -561,6 +696,7 @@ async function init(){
   const takenRaw = (await safeGet('suppTaken:' + todayStr())) || {};
   // migrate old format (array of ids marked "taken") to the new count object
   state.takenToday = Array.isArray(takenRaw) ? Object.fromEntries(takenRaw.map(id => [id, 1])) : takenRaw;
+  await showSplash();
   renderAll();
 }
 
@@ -974,10 +1110,18 @@ function applyLanguage(){
   set('tab-pro-label', 'tab_pro');
 }
 
+function updateStreakDisplay(){
+  const el = document.getElementById('header-streak');
+  if(!el) return;
+  const s = computeStreak();
+  el.textContent = s > 0 ? `🔥 ${s} día${s === 1 ? '' : 's'}` : '';
+}
+
 function renderAll(){
   if(!state.profile) return;
   updateProTabVisibility();
   applyLanguage();
+  updateStreakDisplay();
   renderToday(); renderAdd(); renderDatos(); renderProfile(); renderProTab();
 }
 
@@ -1086,23 +1230,38 @@ function renderToday(){
   const carbsLeft = Math.max(0, round1(t.carbG - carbs));
   const fatLeft = Math.max(0, round1(t.fatG - fat));
 
-  const foodRows = state.log.foods.length
-    ? state.log.foods.map(f=>`
-        <div class="log-card" onclick="openFoodDetail('${f.id}')">
-          ${f.photo ? `<img src="${f.photo}" class="log-thumb">` : `<span class="log-thumb log-thumb-fallback">🍽️</span>`}
-          <div class="log-info">
-            <div class="log-name">${f.name}</div>
-            <div class="log-sub">${f.cal} kcal · P ${fmt1(f.protein)}g · C ${fmt1(f.carb)}g · G ${fmt1(f.fat)}g</div>
-          </div>
-          <span class="del" onclick="event.stopPropagation(); removeFood('${f.id}')">✕</span>
-        </div>`).join('')
-    : `<div class="empty">Nada registrado aún hoy</div>`;
+  const foodItems = state.log.foods.map(f => ({ ...f, kind:'food' }));
+  const exItems = state.log.exercises.map(e => ({ ...e, kind:'exercise' }));
+  const loggedItems = [...foodItems, ...exItems].sort((a,b) => new Date(b.time) - new Date(a.time));
 
-  const exRows = state.log.exercises.map(e=>`
-        <div class="row">
-          <span class="rname">🔥 ${e.name}</span>
-          <span class="rval">${e.cal} kcal <span class="del" onclick="event.stopPropagation(); removeExercise('${e.id}')">✕</span></span>
-        </div>`).join('');
+  const logRows = loggedItems.length
+    ? loggedItems.map(item => {
+        const timeLabel = new Date(item.time).toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+        if(item.kind === 'exercise'){
+          return `
+            <div class="log-card2">
+              <div class="log-photo">🏃</div>
+              <div class="log-body">
+                <div class="log-top"><div class="log-title">${item.name}</div><div class="log-time">${timeLabel}</div><span class="del" onclick="event.stopPropagation(); removeExercise('${item.id}')">✕</span></div>
+                <div class="log-cal">🔥 <b>${item.cal}</b> calorías quemadas</div>
+              </div>
+            </div>`;
+        }
+        return `
+          <div class="log-card2" onclick="openFoodDetail('${item.id}')">
+            <div class="log-photo">${item.photo ? `<img src="${item.photo}">` : '🍽️'}</div>
+            <div class="log-body">
+              <div class="log-top"><div class="log-title">${item.name}</div><div class="log-time">${timeLabel}</div><span class="del" onclick="event.stopPropagation(); removeFood('${item.id}')">✕</span></div>
+              <div class="log-cal">🔥 <b>${item.cal}</b> calorías</div>
+              <div class="log-macros">
+                <span>🍗 ${fmt1(item.protein)}g</span>
+                <span>🍞 ${fmt1(item.carb)}g</span>
+                <span>💧 ${fmt1(item.fat)}g</span>
+              </div>
+            </div>
+          </div>`;
+      }).join('')
+    : `<div class="empty">Nada registrado aún hoy</div>`;
 
   const suppRows = state.supplements.map(s=>{
     const count = state.takenToday[s.id] || 0;
@@ -1158,16 +1317,14 @@ function renderToday(){
       <div class="macro-card">
         <div class="macro-card-num">${fmt1(fatLeft)}g</div>
         <div class="macro-card-label">${tr('fat_left')}</div>
-        <div class="macro-ring-wrap">${macroRingSvg(fat, t.fatG, 'var(--fat)', '🥑')}</div>
+        <div class="macro-ring-wrap">${macroRingSvg(fat, t.fatG, 'var(--fat)', '💧')}</div>
       </div>
     </div>
 
     ${(isPro() && state.supplements.length) ? `<div class="section-title">🔔 ${tr('reminders_today')}</div><div class="panel">${suppRows}</div>` : ''}
 
     <div class="section-title">${tr('recently_logged')}</div>
-    ${foodRows}
-
-    ${exRows ? `<div class="section-title">${tr('exercise')}</div><div class="panel">${exRows}</div>` : ''}
+    ${logRows}
   `;
 }
 
@@ -1184,7 +1341,10 @@ function openFoodDetail(id){
 
     <div class="detail-title-row">
       <h1>${f.name}</h1>
-      <div id="qty-pill-wrap">${qtyPillHTML(servings, f.id)}</div>
+      <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
+        ${isPro() ? `<button class="qty-pill" onclick="saveFoodAsTemplate('${f.id}')" aria-label="Guardar como plantilla">⭐</button>` : ''}
+        <div id="qty-pill-wrap">${qtyPillHTML(servings, f.id)}</div>
+      </div>
     </div>
 
     <div class="hero-card" style="margin-top:14px;">
@@ -1199,7 +1359,7 @@ function openFoodDetail(id){
     <div class="macro-grid" style="margin-top:12px;">
       <div class="macro-chip" style="background:var(--protein-soft);"><span>🥩</span><b>${fmt1(f.protein)} g</b><small>Proteína</small></div>
       <div class="macro-chip" style="background:var(--carbs-soft);"><span>🍞</span><b>${fmt1(f.carb)} g</b><small>Carbohidratos</small></div>
-      <div class="macro-chip" style="background:var(--fat-soft);"><span>🥑</span><b>${fmt1(f.fat)} g</b><small>Grasas</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft);"><span>💧</span><b>${fmt1(f.fat)} g</b><small>Grasas</small></div>
     </div>
 
     ${hs ? `
@@ -1254,7 +1414,7 @@ function openPendingFoodDetail(){
     <div class="macro-grid" style="margin-top:12px;">
       <div class="macro-chip" style="background:var(--protein-soft);"><span>🥩</span><b>${fmt1(pf.protein)} g</b><small>Proteína</small></div>
       <div class="macro-chip" style="background:var(--carbs-soft);"><span>🍞</span><b>${fmt1(pf.carb)} g</b><small>Carbohidratos</small></div>
-      <div class="macro-chip" style="background:var(--fat-soft);"><span>🥑</span><b>${fmt1(pf.fat)} g</b><small>Grasas</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft);"><span>💧</span><b>${fmt1(pf.fat)} g</b><small>Grasas</small></div>
     </div>
 
     ${hs ? `
@@ -1497,27 +1657,116 @@ async function removeExercise(id){
   renderAll();
 }
 
+function openAddMenu(){
+  document.getElementById('add-menu-overlay').classList.remove('hide');
+}
+function closeAddMenu(){
+  document.getElementById('add-menu-overlay').classList.add('hide');
+}
+function openScanChoice(){
+  if(!isPro()){ showToast('Escanear comida es una función Pro', true); setTab('pro'); return; }
+  document.getElementById('scan-choice-overlay').classList.remove('hide');
+}
+function closeScanChoice(){
+  document.getElementById('scan-choice-overlay').classList.add('hide');
+}
+
+function openActionOverlay(html){
+  document.getElementById('action-overlay-body').innerHTML = html;
+  document.getElementById('action-overlay').classList.remove('hide');
+}
+function closeActionOverlay(){
+  if(window.__activeBarcodeScanner){
+    try{ window.__activeBarcodeScanner.stop(); }catch(e){}
+    window.__activeBarcodeScanner = null;
+  }
+  document.getElementById('action-overlay').classList.add('hide');
+}
+
+function loadScriptOnce(src){
+  return new Promise((resolve, reject) => {
+    if(document.querySelector(`script[src="${src}"]`)){ resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('No se pudo cargar el lector de códigos'));
+    document.head.appendChild(s);
+  });
+}
+
+async function openBarcodeScanner(){
+  if(!isPro()){ showToast('Escanear código de barras es una función Pro', true); setTab('pro'); return; }
+  openActionOverlay(`
+    <h1 style="margin:0 0 10px 0;">Código de barras</h1>
+    <p class="sub">Apunta a un código de barras del producto envasado.</p>
+    <div id="barcode-reader" style="width:100%; border-radius:14px; overflow:hidden;"></div>
+    <div id="barcode-status" class="empty" style="margin-top:10px;">Cargando cámara…</div>
+  `);
+  try{
+    await loadScriptOnce('https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js');
+    const statusEl = document.getElementById('barcode-status');
+    if(statusEl) statusEl.textContent = 'Buscando código…';
+    const html5QrCode = new Html5Qrcode('barcode-reader');
+    window.__activeBarcodeScanner = html5QrCode;
+    await html5QrCode.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 250, height: 120 } },
+      async (decodedText) => {
+        try{ await html5QrCode.stop(); }catch(e){}
+        window.__activeBarcodeScanner = null;
+        await lookupBarcodeProduct(decodedText);
+      },
+      () => { /* fallo de lectura de un frame suelto, se ignora */ }
+    );
+  }catch(e){
+    const statusEl = document.getElementById('barcode-status');
+    if(statusEl) statusEl.textContent = 'No se pudo acceder a la cámara: ' + e.message;
+  }
+}
+
+async function lookupBarcodeProduct(barcode){
+  const statusEl = document.getElementById('barcode-status');
+  if(statusEl) statusEl.textContent = 'Buscando producto…';
+  try{
+    const resp = await withTimeout(
+      fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`),
+      10000, 'La búsqueda ha tardado demasiado'
+    );
+    const data = await resp.json();
+    if(!data.product) throw new Error('Producto no encontrado');
+    const p = data.product;
+    const n = p.nutriments || {};
+    const name = (p.product_name || p.generic_name || 'Producto escaneado') + ' (100 g)';
+    const cal = Math.round(n['energy-kcal_100g'] || 0);
+    const protein = round1(n['proteins_100g'] || 0);
+    const carb = round1(n['carbohydrates_100g'] || 0);
+    const fat = round1(n['fat_100g'] || 0);
+    closeActionOverlay();
+    const newId = await addFoodEntry({ name, cal, protein, carb, fat, source:'barcode', servings:1 });
+    openFoodDetail(newId);
+  }catch(e){
+    if(statusEl) statusEl.textContent = 'No se encontró ese producto — añádelo a mano.';
+  }
+}
+
+function openManualFoodForm(){
+  setTab('add');
+  setTimeout(() => {
+    const details = document.getElementById('manual-food-details');
+    if(details) details.open = true;
+  }, 0);
+}
+
 function renderAdd(){
   document.getElementById('screen-add').innerHTML = `
-    ${!isPro() ? `
-    <div class="panel" style="text-align:center; padding:26px 20px;">
-      <div style="font-size:28px; margin-bottom:6px;">🔒</div>
-      <div style="font-weight:700; font-size:14px; margin-bottom:4px;">Analizar comida por foto es Pro</div>
-      <p class="sub" style="margin:0 0 14px 0;">Añade tu comida a mano abajo, o desbloquea el análisis con IA.</p>
-      <button class="btn accent" onclick="setTab('pro')">Desbloquear con Pro</button>
-    </div>
-    ` : state.analyzing ? `
+    ${state.analyzing ? `
     <div class="analyzing-wrap">
       <div class="analyzing-label">Analizando comida…</div>
       <div class="analyzing-track"><div class="analyzing-fill"></div></div>
     </div>
-    <input id="photo-input" type="file" accept="image/*" class="visually-hidden-file" disabled>
-    ` : `
-    <label class="photo-btn" for="photo-input" onclick="triggerPhotoInput(event)">📷  Añadir foto de la comida</label>
-    <input id="photo-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onPhotoSelected(event)">
-    `}
+    ` : ''}
 
-    <details>
+    <details id="manual-food-details" open>
       <summary>Añadir comida manualmente</summary>
       <div class="inner">
         <div class="field"><label>Nombre</label><input id="mf-name" placeholder="Ensalada de pollo"></div>
@@ -1530,15 +1779,6 @@ function renderAdd(){
           <div class="field"><label>Grasas (g)</label><input id="mf-fat" type="number" placeholder="15"></div>
         </div>
         <button class="btn" onclick="addManualFood()">Añadir comida</button>
-      </div>
-    </details>
-
-    <details>
-      <summary>Registrar ejercicio</summary>
-      <div class="inner">
-        <div class="field"><label>Actividad</label><input id="ex-name" placeholder="Correr 30 min"></div>
-        <div class="field"><label>Kcal quemadas</label><input id="ex-cal" type="number" placeholder="250"></div>
-        <button class="btn" onclick="addExercise()">Registrar</button>
       </div>
     </details>
   `;
@@ -1737,10 +1977,58 @@ async function onPhotoSelected(evt){
 }
 
 async function addFoodEntry(f){
-  state.log.foods.push({ id: Date.now().toString(), time: new Date().toISOString(), ...f });
+  const id = Date.now().toString();
+  state.log.foods.push({ id, time: new Date().toISOString(), ...f });
   await saveLog();
   showToast('Comida añadida');
   setTab('today');
+  return id;
+}
+
+async function saveFoodAsTemplate(id){
+  if(!isPro()){ showToast('Guardar plantillas es una función Pro', true); return; }
+  const f = state.log.foods.find(x => x.id === id);
+  if(!f) return;
+  const saved = (await safeGet('savedMeals')) || [];
+  saved.push({
+    id: Date.now().toString(), name: f.name, cal: f.cal, protein: f.protein,
+    carb: f.carb, fat: f.fat, photo: f.photo, healthScore: f.healthScore, ingredients: f.ingredients
+  });
+  await safeSet('savedMeals', saved);
+  showToast('Guardado como plantilla ⭐');
+}
+
+async function openSavedMeals(){
+  if(!isPro()){ showToast('Comida guardada es una función Pro', true); setTab('pro'); return; }
+  const saved = (await safeGet('savedMeals')) || [];
+  const rows = saved.length ? saved.map(s => `
+    <div class="log-card2" onclick="useSavedMeal('${s.id}')">
+      <div class="log-photo">${s.photo ? `<img src="${s.photo}">` : '🍽️'}</div>
+      <div class="log-body">
+        <div class="log-top"><div class="log-title">${s.name}</div><span class="del" onclick="event.stopPropagation(); removeSavedMeal('${s.id}')">✕</span></div>
+        <div class="log-cal">🔥 <b>${s.cal}</b> calorías</div>
+      </div>
+    </div>`).join('') : `<div class="empty">Aún no has guardado ninguna comida — abre una comida ya registrada y toca ⭐ para guardarla.</div>`;
+  openActionOverlay(`<h1 style="margin:0 0 6px 0;">⭐ Comida guardada</h1><p class="sub" style="margin:0 0 14px 0;">Toca una para añadirla a hoy.</p>${rows}`);
+}
+
+async function useSavedMeal(id){
+  const saved = (await safeGet('savedMeals')) || [];
+  const s = saved.find(x => x.id === id);
+  if(!s) return;
+  closeActionOverlay();
+  const newId = await addFoodEntry({
+    name: s.name, cal: s.cal, protein: s.protein, carb: s.carb, fat: s.fat,
+    photo: s.photo, healthScore: s.healthScore, ingredients: s.ingredients, source: 'saved', servings: 1
+  });
+  openFoodDetail(newId);
+}
+
+async function removeSavedMeal(id){
+  let saved = (await safeGet('savedMeals')) || [];
+  saved = saved.filter(x => x.id !== id);
+  await safeSet('savedMeals', saved);
+  openSavedMeals();
 }
 
 function addManualFood(){
@@ -1753,12 +2041,76 @@ function addManualFood(){
   addFoodEntry({ name, cal, protein, carb, fat, source: 'manual' });
 }
 
-async function addExercise(){
-  const name = document.getElementById('ex-name').value.trim();
-  const cal = parseFloat(document.getElementById('ex-cal').value);
-  if(!name || !cal){ showToast('Introduce actividad y calorías', true); return; }
+const EXERCISE_TYPES = {
+  correr: { label:'Correr', icon:'🏃', met:9.8, hasDistance:true },
+  andar: { label:'Andar', icon:'🚶', met:3.5, hasDistance:true },
+  bici: { label:'Bici', icon:'🚴', met:7.5, hasDistance:true },
+  gimnasio: { label:'Gimnasio', icon:'🏋️', met:6.0, hasDistance:false },
+  otro: { label:'Otro', icon:'⚙️', met:null, hasDistance:false }
+};
+
+function openExercisePicker(){
+  openActionOverlay(`
+    <h1 style="margin:0 0 4px 0;">Registrar ejercicio</h1>
+    <p class="sub">¿Qué has hecho?</p>
+    <div class="exercise-grid">
+      ${Object.entries(EXERCISE_TYPES).map(([key, cfg]) => `
+        <button class="exercise-type-btn" onclick="selectExerciseType('${key}')"><span>${cfg.icon}</span>${cfg.label}</button>
+      `).join('')}
+    </div>
+  `);
+}
+
+function selectExerciseType(type){
+  const cfg = EXERCISE_TYPES[type];
+  if(type === 'otro'){
+    openActionOverlay(`
+      <h1 style="margin:0 0 14px 0;">⚙️ Otro ejercicio</h1>
+      <div class="field"><label>Nombre</label><input id="ex-custom-name" placeholder="Natación, pádel, yoga..."></div>
+      <div class="field"><label>Calorías quemadas</label><input id="ex-custom-cal" type="number" placeholder="200"></div>
+      <button class="btn accent" onclick="submitCustomExercise()">Registrar</button>
+    `);
+    return;
+  }
+  openActionOverlay(`
+    <h1 style="margin:0 0 14px 0;">${cfg.icon} ${cfg.label}</h1>
+    <div class="field"><label>Minutos</label><input id="ex-minutes" type="number" placeholder="30"></div>
+    ${cfg.hasDistance ? `<div class="field"><label>Kilómetros (opcional)</label><input id="ex-km" type="number" step="0.1" placeholder="5"></div>` : ''}
+    <div class="field"><label>Calorías quemadas (opcional — si no la sabes, la calculamos)</label><input id="ex-cal-input" type="number" placeholder="Auto"></div>
+    <button class="btn accent" onclick="submitTypedExercise('${type}')">Registrar</button>
+  `);
+}
+
+function estimateExerciseCal(type, minutes){
+  const cfg = EXERCISE_TYPES[type];
+  const weight = (state.profile && state.profile.currentWeight) || 70;
+  return Math.round(cfg.met * weight * (minutes / 60));
+}
+
+async function submitTypedExercise(type){
+  const cfg = EXERCISE_TYPES[type];
+  const minutes = parseFloat(document.getElementById('ex-minutes').value);
+  const km = cfg.hasDistance ? parseFloat(document.getElementById('ex-km').value) : null;
+  const manualCal = parseFloat(document.getElementById('ex-cal-input').value);
+  if(!minutes){ showToast('Introduce los minutos', true); return; }
+  const cal = manualCal || estimateExerciseCal(type, minutes);
+  let name = cfg.label;
+  if(km) name += ` · ${km} km`;
+  name += ` · ${minutes} min`;
+  state.log.exercises.push({ id: Date.now().toString(), name, cal, minutes, km: km || null, time: new Date().toISOString() });
+  await saveLog();
+  closeActionOverlay();
+  showToast('Ejercicio registrado');
+  setTab('today');
+}
+
+async function submitCustomExercise(){
+  const name = document.getElementById('ex-custom-name').value.trim();
+  const cal = parseFloat(document.getElementById('ex-custom-cal').value);
+  if(!name || !cal){ showToast('Introduce nombre y calorías', true); return; }
   state.log.exercises.push({ id: Date.now().toString(), name, cal, time: new Date().toISOString() });
   await saveLog();
+  closeActionOverlay();
   showToast('Ejercicio registrado');
   setTab('today');
 }
@@ -1935,7 +2287,7 @@ async function openDayDetail(date){
     <div class="macro-grid" style="margin-bottom:18px;">
       <div class="macro-chip" style="background:var(--protein-soft);"><span>🥩</span><b>${fmt1(protein)} g</b><small>Proteína</small></div>
       <div class="macro-chip" style="background:var(--carbs-soft);"><span>🍞</span><b>${fmt1(carbs)} g</b><small>Carbohidratos</small></div>
-      <div class="macro-chip" style="background:var(--fat-soft);"><span>🥑</span><b>${fmt1(fat)} g</b><small>Grasas</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft);"><span>💧</span><b>${fmt1(fat)} g</b><small>Grasas</small></div>
     </div>
     <div class="section-title">Comida</div>
     ${foodRows}
@@ -2092,7 +2444,7 @@ function renderProfile(){
           </div>
           <div class="row2">
             <div class="field"><label>🥩 Proteína (g)</label><input id="pr-custom-protein" type="number" value="${p.customProtein != null ? p.customProtein : t.autoProteinG}"></div>
-            <div class="field"><label>🥑 Grasas (g)</label><input id="pr-custom-fat" type="number" value="${p.customFat != null ? p.customFat : t.autoFatG}"></div>
+            <div class="field"><label>💧 Grasas (g)</label><input id="pr-custom-fat" type="number" value="${p.customFat != null ? p.customFat : t.autoFatG}"></div>
           </div>
           <div class="field"><label>🍞 Carbohidratos (g)</label><input id="pr-custom-carb" type="number" value="${p.customCarb != null ? p.customCarb : t.autoCarbG}"></div>
           <button type="button" class="btn ghost small" onclick="recalcMacrosPreview()">↻ Recalcular macros según estas calorías</button>
