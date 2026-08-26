@@ -134,6 +134,16 @@ details[open] summary:before{content:'– ';}
 details .inner{padding-top:10px;}
 
 .photo-btn{display:block; width:100%; padding:22px; text-align:center; border-radius:14px; background:var(--surface); color:var(--accent); font-family:inherit; font-weight:700; font-size:13.5px; cursor:pointer; border:1.5px dashed var(--line-strong);}
+
+.analyzing-wrap{padding:22px; background:var(--surface); border-radius:14px; border:1.5px solid var(--line-strong);}
+.analyzing-label{font-size:13.5px; font-weight:700; text-align:center; margin-bottom:14px; color:var(--paper);}
+.analyzing-track{height:8px; background:var(--line-strong); border-radius:5px; overflow:hidden;}
+.analyzing-fill{height:100%; background:var(--accent); border-radius:5px; width:0%; animation:analyzingProgress 3.5s cubic-bezier(.2,.7,.3,1) forwards;}
+@keyframes analyzingProgress{
+  0%{width:0%;}
+  55%{width:70%;}
+  100%{width:92%;}
+}
 .visually-hidden-file{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;}
 
 .toast{position:fixed; bottom:calc(88px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:var(--paper); color:var(--void); padding:10px 16px; border-radius:10px; font-size:12.5px; max-width:82%; text-align:center; z-index:60; font-weight:600;}
@@ -345,6 +355,10 @@ async function importBackupCode(code){
   await safeSet('logDates', dates);
 }
 
+// Sube esto en cada cambio que subas a producción (1.0 → 1.1 → 1.2...),
+// así se puede comprobar de un vistazo si una web tiene la última versión.
+const APP_VERSION = '1.0';
+
 let state = { profile:null, tab:'today', log:{foods:[],exercises:[]}, weights:[], logDates:[], supplements:[], takenToday:{}, daySummaries:[], analyzing:false, pendingFood:null };
 
 function todayStr(){
@@ -454,7 +468,7 @@ async function init(){
 // ======================================================================
 let obDraft = {};
 let obStep = 1;
-const OB_TOTAL_STEPS = 4;
+const OB_TOTAL_STEPS = 3;
 
 // Client ID de OAuth de Google para "Continuar con Google" — esto NO es
 // secreto, los client IDs están hechos para ir en código público.
@@ -474,8 +488,6 @@ function obSaveCurrentStepInputs(){
     obDraft.activityLevel = val('ob-activity') || obDraft.activityLevel;
     obDraft.goalType = val('ob-goaltype') || obDraft.goalType;
     obDraft.paceKgWeek = parseFloat(val('ob-pace')) || obDraft.paceKgWeek;
-  } else if(obStep === 4){
-    obDraft.dailyBurnGoal = parseFloat(val('ob-burn')) || obDraft.dailyBurnGoal;
   }
 }
 
@@ -553,11 +565,6 @@ function renderOnboardStep(){
           <option value="1" ${pace==1?'selected':''}>Intenso · 1 kg/sem</option>
         </select>
       </div>`;
-  } else if(obStep === 4){
-    stepHtml = `
-      <h1>Último paso</h1>
-      <p class="sub">¿Cuánto quieres quemar con ejercicio al día?</p>
-      <div class="field"><label>Objetivo de kcal quemadas con ejercicio / día</label><input id="ob-burn" type="number" value="${d.dailyBurnGoal||300}"></div>`;
   }
 
   const nav = `
@@ -685,7 +692,7 @@ async function finishOnboarding(){
     name, sex: obDraft.sex || 'female', age: obDraft.age, heightCm: obDraft.heightCm,
     currentWeight: obDraft.currentWeight, goalWeight: obDraft.goalWeight,
     activityLevel: obDraft.activityLevel || 'light', goalType: obDraft.goalType || 'auto',
-    paceKgWeek: obDraft.paceKgWeek || 0.5, dailyBurnGoal: obDraft.dailyBurnGoal || 300,
+    paceKgWeek: obDraft.paceKgWeek || 0.5, dailyBurnGoal: 300,
     customMode: false, createdAt: new Date().toISOString()
   };
   await safeSet('profile', state.profile);
@@ -699,6 +706,51 @@ async function finishOnboarding(){
     }catch(e){ /* avatar de Google opcional, si falla no pasa nada */ }
   }
 
+  showOnboardReveal();
+}
+
+function showOnboardReveal(){
+  const t = calcTargets(state.profile);
+  document.getElementById('onboard-content').innerHTML = `
+    <div style="text-align:center;">
+      <h1>¡Listo, ${state.profile.name}! 🎉</h1>
+      <p class="sub">Este es tu plan diario, calculado a tu medida.</p>
+      <div class="ring-wrap" style="padding-top:6px;">
+        <svg class="ring" viewBox="0 0 200 200">
+          <circle class="ring-track" cx="100" cy="100" r="80"></circle>
+          <circle class="ring-fill" cx="100" cy="100" r="80" stroke="var(--accent)"
+            stroke-dasharray="502.65" stroke-dashoffset="0" transform="rotate(-90 100 100)"></circle>
+          <text id="reveal-cal-num" x="100" y="96" class="ring-num" fill="var(--accent)">0</text>
+          <text x="100" y="120" class="ring-label">kcal al día</text>
+        </svg>
+      </div>
+      <div class="macro-row" style="margin-top:4px;">
+        <div class="macro-card"><div class="macro-card-num">${fmt1(t.proteinG)}g</div><div class="macro-card-label">Proteína</div></div>
+        <div class="macro-card"><div class="macro-card-num">${fmt1(t.carbG)}g</div><div class="macro-card-label">Carbohidratos</div></div>
+        <div class="macro-card"><div class="macro-card-num">${fmt1(t.fatG)}g</div><div class="macro-card-label">Grasas</div></div>
+      </div>
+      <p class="sub" style="margin-top:16px;">Podrás ajustar todo esto cuando quieras desde Perfil.</p>
+      <button class="btn accent" onclick="enterAppFromReveal()">Empezar</button>
+    </div>
+  `;
+  animateCountUp('reveal-cal-num', t.calorieTarget);
+}
+
+function animateCountUp(elId, target, duration){
+  duration = duration || 1100;
+  const el = document.getElementById(elId);
+  if(!el) return;
+  const start = performance.now();
+  function tick(now){
+    const p = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(target * eased);
+    if(p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+async function enterAppFromReveal(){
   document.getElementById('onboard').classList.add('hide');
   if(state.profile.theme) applyTheme(state.profile.theme);
   applyDarkMode(state.profile.darkMode);
@@ -1241,8 +1293,16 @@ async function removeExercise(id){
 
 function renderAdd(){
   document.getElementById('screen-add').innerHTML = `
-    <label class="photo-btn" for="photo-input" onclick="triggerPhotoInput(event)">${state.analyzing ? 'Analizando…' : '📷  Añadir foto de la comida'}</label>
-    <input id="photo-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onPhotoSelected(event)" ${state.analyzing ? 'disabled' : ''}>
+    ${state.analyzing ? `
+    <div class="analyzing-wrap">
+      <div class="analyzing-label">Analizando comida…</div>
+      <div class="analyzing-track"><div class="analyzing-fill"></div></div>
+    </div>
+    <input id="photo-input" type="file" accept="image/*" class="visually-hidden-file" disabled>
+    ` : `
+    <label class="photo-btn" for="photo-input" onclick="triggerPhotoInput(event)">📷  Añadir foto de la comida</label>
+    <input id="photo-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onPhotoSelected(event)">
+    `}
 
     <details>
       <summary>Añadir comida manualmente</summary>
@@ -1747,7 +1807,7 @@ function renderProfile(){
       </div>
     </details>
 
-    <div class="footer-credit">Desarrollado por Iker Nebreda</div>
+    <div class="footer-credit">Desarrollado por Iker Nebreda<br><span style="opacity:.6;">v${APP_VERSION}</span></div>
   `;
   renderGoogleButtonProfile();
 }
