@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>eatiseasy</title>
 <link rel="icon" type="image/png" href="icon.png">
-<link rel="apple-touch-icon" href="apple-icon.png">
+<link rel="apple-touch-icon" href="eie-beta.png">
 <style>
 :root{
   --bg:#FAFAF8; --surface:#FFFFFF; --ink:#171713; --muted:#8B8878; --line:#EDEAE1;
@@ -358,6 +358,12 @@ async function reloadApp(){
 async function init(){
   document.getElementById('header-date').textContent =
     new Date().toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'short' });
+  // one-time cleanup: remove any old personal key/proxy saved back when the
+  // "fotos fuera de Claude" section still existed in Perfil — that section
+  // is gone now, and a stale value here would silently override the
+  // built-in DEFAULT_GEMINI_KEY / DEFAULT_PHOTO_PROXY_URL.
+  await safeDelete('geminiKey');
+  await safeDelete('photoProxyUrl');
   state.profile = await safeGet('profile');
   if(!state.profile){
     document.getElementById('onboard').classList.remove('hide');
@@ -700,20 +706,6 @@ const DEFAULT_GEMINI_KEY = 'AQ.Ab8RN6Lwiy5wFkI096Lj6CNzbElrOO4_YS-f3vRk6CD-kHl37
 const DEFAULT_PHOTO_PROXY_URL = '';
 
 async function getPhotoEndpoint(){
-  const proxyUrl = await safeGet('photoProxyUrl');
-  if(proxyUrl && proxyUrl.trim()){
-    return { url: proxyUrl.trim(), headers: { 'Content-Type': 'application/json' }, mode: 'proxy', provider: 'gemini', apiKey: null };
-  }
-  const geminiKey = await safeGet('geminiKey');
-  if(geminiKey && geminiKey.trim()){
-    return {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent`,
-      headers: { 'Content-Type': 'application/json' },
-      mode: 'ownKey',
-      provider: 'gemini',
-      apiKey: geminiKey.trim()
-    };
-  }
   if(DEFAULT_PHOTO_PROXY_URL){
     return { url: DEFAULT_PHOTO_PROXY_URL, headers: { 'Content-Type': 'application/json' }, mode: 'defaultProxy', provider: 'gemini', apiKey: null };
   }
@@ -1147,22 +1139,6 @@ function renderProfile(){
 
     <div class="footer-credit">Desarrollado por Iker Nebreda</div>
   `;
-}
-
-async function saveProxyUrl(){
-  const url = document.getElementById('proxy-url-in').value.trim();
-  if(!url){ showToast('Pega la URL de tu proxy', true); return; }
-  await safeSet('photoProxyUrl', url);
-  showToast('Proxy guardado');
-  document.getElementById('proxy-url-in').value = url;
-}
-
-async function saveApiKey(){
-  const key = document.getElementById('api-key-in').value.trim();
-  if(!key){ showToast('Pega una clave válida', true); return; }
-  await safeSet('geminiKey', key);
-  showToast('Clave guardada');
-  document.getElementById('api-key-in').value = '••••••••••••';
 }
 
 async function generateBackupCode(){
