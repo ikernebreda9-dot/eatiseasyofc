@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>eatiseasy</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="apple-iconn.png">
+<style>
+:root{
+  --bg:#FAFAF8; --surface:#FFFFFF; --ink:#171713; --muted:#8B8878; --line:#EDEAE1;
+  --accent:#1FA363; --accent-dark:#0E7A46; --accent-soft:#DDF3E6; --warn:#E4572E;
+  --protein:#3B7DF6; --carbs:#F2A93B; --fat:#B15CE0; --burn:#FF7A45;
+  --protein-soft:#E4EDFE; --carbs-soft:#FDEFDA; --fat-soft:#F3E4FB;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{margin:0; background:var(--bg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--ink); -webkit-font-smoothing:antialiased;}
+.app{max-width:480px; margin:0 auto; min-height:100vh; background:var(--bg); position:relative; padding-bottom:calc(74px + env(safe-area-inset-bottom));}
+.hide{display:none !important;}
+.topbar{padding:18px 20px 6px 20px; display:flex; align-items:baseline; justify-content:space-between;}
+.topbar .brand{font-size:16px; font-weight:800; letter-spacing:-.2px; background:linear-gradient(90deg, var(--accent-dark), var(--burn)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+.topbar .brand .dot{color:var(--carbs); -webkit-text-fill-color:var(--carbs);}
+.topbar .date{font-size:12px; color:var(--muted); text-transform:capitalize;}
+.screen{padding:2px 20px 24px 20px;}
+.ring-wrap{display:flex; justify-content:center; padding:20px 0 4px 0; margin:0 -20px 0 -20px; background:radial-gradient(circle at 50% 0%, var(--accent-soft) 0%, rgba(221,243,230,0) 70%);}
+.ring{width:200px; height:200px;}
+.ring-track{fill:none; stroke:var(--line); stroke-width:12;}
+.ring-fill{fill:none; stroke-width:12; stroke-linecap:round; transition:stroke-dashoffset .5s ease;}
+.ring-num{font-size:38px; font-weight:800; text-anchor:middle;}
+.ring-num-mini{font-size:44px; font-weight:800; text-anchor:middle;}
+.mini-history-strip{display:flex; gap:16px; overflow-x:auto; padding:4px 2px 12px 2px; -webkit-overflow-scrolling:touch;}
+.mini-history-strip::-webkit-scrollbar{display:none;}
+.mini-day{display:flex; flex-direction:column; align-items:center; gap:5px; flex-shrink:0; cursor:pointer;}
+.mini-day-label{font-size:10px; font-weight:700; color:var(--muted); text-transform:capitalize;}
+.mini-day .ring-mini{width:52px; height:52px;}
+.ring-label{font-size:11px; text-anchor:middle; fill:var(--muted);}
+.section-title{font-size:12px; font-weight:700; color:var(--accent-dark); text-transform:uppercase; letter-spacing:.6px; margin:22px 0 10px 0;}
+.bar-block{margin-bottom:16px;}
+.bar-top{display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;}
+.bar-top .val{color:var(--muted); font-variant-numeric:tabular-nums;}
+.bar-track{height:6px; background:var(--line); border-radius:4px; overflow:hidden;}
+.bar-fill{height:100%; border-radius:4px; transition:width .4s ease;}
+.row{display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--line); font-size:14px;}
+.row:last-child{border-bottom:none;}
+.row .rname{display:flex; align-items:center; gap:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:70%;}
+.row .rval{display:flex; align-items:center; gap:10px; font-variant-numeric:tabular-nums; color:var(--ink);}
+.row .del{color:var(--muted); font-size:15px; line-height:1; cursor:pointer; padding:4px;}
+.empty{color:var(--muted); font-size:13px; padding:16px 0; text-align:center;}
+.panel{background:var(--surface); border-radius:16px; padding:16px; margin-top:14px; border:1px solid var(--line);}
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:11px; color:var(--muted); margin-bottom:5px;}
+.field input, .field select{width:100%; border:none; border-bottom:1.5px solid var(--line); background:transparent; padding:8px 2px; font-size:15px; color:var(--ink); font-family:inherit;}
+.field input:focus, .field select:focus{outline:none; border-color:var(--accent);}
+.row2{display:flex; gap:16px;}
+.row2 .field{flex:1;}
+.btn{font-family:inherit; font-weight:600; font-size:15px; padding:14px; border:none; border-radius:12px; cursor:pointer; background:var(--ink); color:#fff; width:100%;}
+.btn:disabled{opacity:.45;}
+.btn.accent{background:var(--accent);}
+.btn.ghost{background:transparent; color:var(--ink); border:1.5px solid var(--line);}
+.btn.small{width:auto; padding:9px 16px; font-size:13px; border-radius:10px;}
+details{margin-top:12px;}
+details summary{list-style:none; cursor:pointer; font-size:14px; font-weight:600; color:var(--accent); padding:4px 0;}
+details summary::-webkit-details-marker{display:none;}
+details summary:before{content:'+ ';}
+details[open] summary:before{content:'– ';}
+details .inner{padding-top:10px;}
+.photo-btn{display:block; width:100%; padding:20px; text-align:center; border-radius:16px; background:linear-gradient(135deg, var(--accent-soft), #FFF3D6); color:var(--accent-dark); font-weight:700; font-size:14px; cursor:pointer; border:1.5px dashed var(--accent);}
+.visually-hidden-file{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;}
+.toast{position:fixed; bottom:calc(88px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 16px; border-radius:10px; font-size:12.5px; max-width:82%; text-align:center; z-index:60;}
+.toast.err{background:var(--warn);}
+.tabbar{position:fixed; bottom:0; left:0; right:0; max-width:480px; margin:0 auto; background:rgba(250,250,248,.92); backdrop-filter:blur(10px); border-top:1px solid var(--line); display:flex; justify-content:center; gap:70px; padding-bottom:env(safe-area-inset-bottom); z-index:30;}
+.tabbar button{flex:none; background:none; border:none; padding:10px 22px 8px 22px; color:var(--muted); cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px;}
+.tabbar button.active{color:var(--accent-dark);}
+.tabbar svg{width:22px; height:22px;}
+.tabbar span{font-size:10px; font-weight:600;}
+.fab{position:fixed; right:calc((100vw - min(100vw,480px))/2 + 18px); bottom:calc(84px + env(safe-area-inset-bottom)); width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg, var(--accent), var(--accent-dark)); color:#fff; border:none; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(31,163,99,.4); z-index:35; cursor:pointer;}
+.fab svg{width:24px; height:24px;}
+.overlay{position:fixed; inset:0; background:var(--bg); z-index:100; overflow-y:auto; display:flex; justify-content:center;}
+.overlay-card{max-width:480px; width:100%; padding:28px 20px calc(28px + env(safe-area-inset-bottom)) 20px;}
+.overlay-card h1{font-size:22px; margin:6px 0 4px 0; letter-spacing:-.3px;}
+.overlay-card p.sub{color:var(--muted); font-size:13px; margin:0 0 22px 0;}
+.big-number{font-size:32px; font-weight:700; letter-spacing:-.5px;}
+.weight-row{display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-top:4px;}
+.spark{width:100%; height:auto; margin-top:18px;}
+.plist .row .rval{font-weight:500;}
+
+.avatar-header{display:flex; flex-direction:column; align-items:center; gap:8px; padding:16px 0 6px 0;}
+.avatar-circle{position:relative; width:84px; height:84px; border-radius:50%; background:var(--accent-soft); color:var(--accent-dark); display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:800; cursor:pointer; overflow:hidden; border:3px solid var(--surface); box-shadow:0 2px 10px rgba(0,0,0,.08);}
+.avatar-circle img{width:100%; height:100%; object-fit:cover;}
+.avatar-edit{position:absolute; bottom:-2px; right:-2px; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center; border:2px solid var(--surface);}
+.avatar-name{font-size:14px; font-weight:700;}
+
+.theme-row{display:flex; justify-content:center; gap:12px; padding:14px 0 4px 0;}
+.theme-dot{width:26px; height:26px; border-radius:50%; border:2px solid transparent; cursor:pointer; padding:0;}
+.theme-dot.selected{border-color:var(--ink);}
+
+.footer-credit{text-align:center; font-size:11px; color:var(--muted); padding:24px 0 8px 0;}
+.note{font-size:11px; color:var(--muted); text-align:center; padding:14px 0 0 0;}
+
+.row-thumb{width:34px; height:34px; border-radius:9px; object-fit:cover; flex-shrink:0;}
+.row-thumb-fallback{display:flex; align-items:center; justify-content:center; background:var(--accent-soft); font-size:16px;}
+.food-row{cursor:pointer;}
+.food-row .rname{gap:10px;}
+
+.pending-photo{width:100%; max-height:220px; object-fit:cover; border-radius:12px; margin-bottom:14px;}
+
+.detail-photo{width:100%; height:240px; object-fit:cover; border-radius:16px;}
+.detail-photo-fallback{display:flex; align-items:center; justify-content:center; background:var(--accent-soft); font-size:60px;}
+.macro-grid{display:flex; gap:10px;}
+.macro-chip{flex:1; border-radius:14px; padding:14px 8px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px;}
+.macro-chip span{font-size:20px;}
+.macro-chip b{font-size:15px;}
+.macro-chip small{font-size:10px; color:var(--muted);}
+
+.supp-btn{font-family:inherit; font-size:12px; font-weight:700; padding:7px 14px; border-radius:20px; border:1.5px solid var(--accent); background:transparent; color:var(--accent-dark); cursor:pointer; white-space:nowrap;}
+.supp-btn.taken{background:var(--accent); color:#fff; border-color:var(--accent);}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">eatis<span class="dot">•</span>easy</div>
+    <div class="date" id="header-date"></div>
+  </div>
+
+  <div id="screen-today" class="screen"></div>
+  <div id="screen-add" class="screen hide"></div>
+  <div id="screen-profile" class="screen hide"></div>
+
+  <button class="fab" onclick="setTab('add')" aria-label="Añadir">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+
+  <div class="tabbar">
+    <button id="tab-today" onclick="setTab('today')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
+      <span>Hoy</span>
+    </button>
+    <button id="tab-profile" onclick="setTab('profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+      <span>Perfil</span>
+    </button>
+  </div>
+</div>
+
+<div id="onboard" class="overlay hide">
+  <div class="overlay-card">
+    <h1>Hola 👋</h1>
+    <p class="sub">Cuéntanos un poco de ti para calcular tu objetivo diario de calorías y macros. Tu progreso se guarda solo, ligado a tu cuenta.</p>
+    <div class="row2">
+      <div class="field"><label>Nombre</label><input id="ob-name" placeholder="Tu nombre"></div>
+      <div class="field"><label>Sexo</label><select id="ob-sex"><option value="female">Mujer</option><option value="male">Hombre</option></select></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Edad</label><input id="ob-age" type="number" placeholder="30"></div>
+      <div class="field"><label>Altura (cm)</label><input id="ob-height" type="number" placeholder="170"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Peso actual (kg)</label><input id="ob-current" type="number" step="0.1" placeholder="80"></div>
+      <div class="field"><label>Peso objetivo (kg)</label><input id="ob-goal" type="number" step="0.1" placeholder="72"></div>
+    </div>
+    <div class="field"><label>Nivel de actividad</label>
+      <select id="ob-activity">
+        <option value="sedentary">Sedentario</option>
+        <option value="light" selected>Ligero (1-3 días/sem)</option>
+        <option value="moderate">Moderado (3-5 días/sem)</option>
+        <option value="active">Activo (6-7 días/sem)</option>
+        <option value="veryActive">Muy activo</option>
+      </select>
+    </div>
+    <div class="field"><label>Objetivo</label>
+      <select id="ob-goaltype">
+        <option value="auto" selected>Automático (según tu peso objetivo)</option>
+        <option value="deficit">Déficit — quiero perder grasa</option>
+        <option value="maintain">Mantenimiento</option>
+        <option value="surplus">Superávit — quiero ganar músculo</option>
+      </select>
+    </div>
+    <div class="field"><label>Ritmo deseado</label>
+      <select id="ob-pace">
+        <option value="0.25">Suave · 0.25 kg/sem</option>
+        <option value="0.5" selected>Moderado · 0.5 kg/sem</option>
+        <option value="0.75">Rápido · 0.75 kg/sem</option>
+        <option value="1">Intenso · 1 kg/sem</option>
+      </select>
+    </div>
+    <div class="field"><label>Objetivo de kcal quemadas con ejercicio / día</label><input id="ob-burn" type="number" value="300"></div>
+    <button class="btn accent" onclick="saveOnboarding()">Empezar</button>
+
+    <details style="margin-top:18px;">
+      <summary>¿Ya tienes una cuenta? Restaurar con código</summary>
+      <div class="inner">
+        <div class="field"><label>Pega aquí tu código de copia de seguridad</label>
+          <textarea id="ob-restore-code" rows="4" style="width:100%; border:1.5px solid var(--line); border-radius:8px; padding:8px; font-family:inherit; font-size:12px;"></textarea>
+        </div>
+        <button class="btn ghost" onclick="restoreFromOnboarding()">Restaurar mi cuenta</button>
+      </div>
+    </details>
+  </div>
+</div>
+
+<div id="food-detail" class="overlay hide" onclick="if(event.target===this) closeFoodDetail()">
+  <div class="overlay-card" style="position:relative;">
+    <button onclick="closeFoodDetail()" style="position:absolute; top:18px; right:18px; background:var(--surface); border:1px solid var(--line); border-radius:50%; width:32px; height:32px; font-size:14px; cursor:pointer;">✕</button>
+    <div id="food-detail-body"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast hide"></div>
+
+<script>
+// dual-mode storage: uses Claude's persistent storage when available (auto-save,
+// no setup), and falls back to the browser's own localStorage when the app
+// runs standalone outside Claude (e.g. embedded in Google Sites) — that way
+// closing/reopening the page does NOT reset your data back to zero.
+const HAS_CLOUD = (typeof window.storage !== 'undefined');
+const LOCAL_PREFIX = 'eatiseasy:';
+let HAS_LOCAL_STORAGE = false;
+try{
+  const testKey = '__eatiseasy_test__';
+  localStorage.setItem(testKey, '1');
+  localStorage.removeItem(testKey);
+  HAS_LOCAL_STORAGE = true;
+}catch(e){ HAS_LOCAL_STORAGE = false; }
+const memoryStore = {}; // last-resort fallback if localStorage is also blocked
+
+async function safeGet(key){
+  if(HAS_CLOUD){
+    try{ const r = await window.storage.get(key, false); return r ? JSON.parse(r.value) : null; }
+    catch(e){ return null; }
+  }
+  if(HAS_LOCAL_STORAGE){
+    try{ const raw = localStorage.getItem(LOCAL_PREFIX + key); return raw ? JSON.parse(raw) : null; }
+    catch(e){ return null; }
+  }
+  return Object.prototype.hasOwnProperty.call(memoryStore, key) ? JSON.parse(JSON.stringify(memoryStore[key])) : null;
+}
+async function safeSet(key, value){
+  if(HAS_CLOUD){
+    try{ await window.storage.set(key, JSON.stringify(value), false); return true; }
+    catch(e){ console.error('storage set failed', e); return false; }
+  }
+  if(HAS_LOCAL_STORAGE){
+    try{ localStorage.setItem(LOCAL_PREFIX + key, JSON.stringify(value)); return true; }
+    catch(e){ console.error('localStorage set failed', e); return false; }
+  }
+  memoryStore[key] = value;
+  return true;
+}
+async function safeDelete(key){
+  if(HAS_CLOUD){
+    try{ await window.storage.delete(key, false); }catch(e){}
+  } else if(HAS_LOCAL_STORAGE){
+    try{ localStorage.removeItem(LOCAL_PREFIX + key); }catch(e){}
+  } else {
+    delete memoryStore[key];
+  }
+}
+async function saveLog(){
+  await safeSet(logKey(), state.log);
+  const dates = (await safeGet('logDates')) || [];
+  if(!dates.includes(todayStr())){
+    dates.push(todayStr());
+    await safeSet('logDates', dates);
+  }
+  state.logDates = dates;
+}
+
+// ---------- backup code (export/import full account as text) ----------
+async function exportBackupCode(){
+  const logDates = (await safeGet('logDates')) || [];
+  const logs = {};
+  for(const d of logDates){ logs[d] = await safeGet('log:'+d); }
+  const payload = { v: 1, profile: state.profile, weights: state.weights, logs };
+  const json = JSON.stringify(payload);
+  return btoa(unescape(encodeURIComponent(json)));
+}
+async function importBackupCode(code){
+  const clean = code.replace(/\s+/g, '');
+  const json = decodeURIComponent(escape(atob(clean)));
+  const payload = JSON.parse(json);
+  if(!payload || !payload.profile) throw new Error('formato inválido');
+  await safeSet('profile', payload.profile);
+  await safeSet('weights', payload.weights || []);
+  const dates = Object.keys(payload.logs || {});
+  for(const d of dates){ await safeSet('log:'+d, payload.logs[d]); }
+  await safeSet('logDates', dates);
+}
+
+let state = { profile:null, tab:'today', log:{foods:[],exercises:[]}, weights:[], logDates:[], supplements:[], takenToday:new Set(), daySummaries:[], analyzing:false, pendingFood:null };
+
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function logKey(){ return 'log:'+todayStr(); }
+
+function showToast(msg, isErr){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isErr ? ' err' : '');
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(()=>{ t.className = 'toast hide'; }, 3000);
+}
+
+function calcTargets(p){
+  if(!p) return null;
+  const actMap = { sedentary:1.2, light:1.375, moderate:1.55, active:1.725, veryActive:1.9 };
+  const bmr = p.sex === 'male'
+    ? 10*p.currentWeight + 6.25*p.heightCm - 5*p.age + 5
+    : 10*p.currentWeight + 6.25*p.heightCm - 5*p.age - 161;
+  const tdee = bmr * (actMap[p.activityLevel] || 1.375);
+  const diff = p.goalWeight - p.currentWeight;
+
+  // goalType: 'auto' infers from current vs goal weight; otherwise it's explicit
+  let goalType = p.goalType || 'auto';
+  let direction = goalType;
+  if(goalType === 'auto'){
+    direction = diff < -0.1 ? 'deficit' : (diff > 0.1 ? 'surplus' : 'maintain');
+  }
+
+  const adjustment = (p.paceKgWeek || 0.5) * 1100;
+  let autoCalorieTarget = tdee;
+  if(direction === 'deficit') autoCalorieTarget = tdee - adjustment;
+  else if(direction === 'surplus') autoCalorieTarget = tdee + adjustment;
+  autoCalorieTarget = Math.max(1200, Math.round(autoCalorieTarget));
+
+  const autoProteinG = Math.round(1.8 * p.currentWeight);
+  const autoProteinCal = autoProteinG * 4;
+  const autoRemaining = Math.max(0, autoCalorieTarget - autoProteinCal);
+  const autoCarbG = Math.round((autoRemaining * 0.55) / 4);
+  const autoFatG = Math.round((autoRemaining * 0.45) / 9);
+
+  const isCustom = !!p.customMode;
+  const calorieTarget = (isCustom && p.customCalories) ? Math.round(p.customCalories) : autoCalorieTarget;
+  const proteinG = (isCustom && p.customProtein != null) ? Math.round(p.customProtein) : autoProteinG;
+  const carbG = (isCustom && p.customCarb != null) ? Math.round(p.customCarb) : autoCarbG;
+  const fatG = (isCustom && p.customFat != null) ? Math.round(p.customFat) : autoFatG;
+
+  return {
+    bmr: Math.round(bmr), tdee: Math.round(tdee), calorieTarget,
+    proteinG, carbG, fatG, burnGoal: p.dailyBurnGoal || 300,
+    direction, goalType, isCustom,
+    autoCalorieTarget, autoProteinG, autoCarbG, autoFatG,
+    weeksToGoal: diff !== 0 ? Math.abs(diff / (p.paceKgWeek || 0.5)).toFixed(1) : '0'
+  };
+}
+
+async function reloadApp(){
+  document.getElementById('onboard').classList.add('hide');
+  state = { profile:null, tab:'today', log:{foods:[],exercises:[]}, weights:[], logDates:[], supplements:[], takenToday:new Set(), daySummaries:[], analyzing:false, pendingFood:null };
+  await init();
+  setTab('today');
+}
+
+async function init(){
+  document.getElementById('header-date').textContent =
+    new Date().toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'short' });
+  // one-time cleanup: remove any old personal key/proxy saved back when the
+  // "fotos fuera de Claude" section still existed in Perfil — that section
+  // is gone now, and a stale value here would silently override the
+  // built-in DEFAULT_GEMINI_KEY / DEFAULT_PHOTO_PROXY_URL.
+  await safeDelete('geminiKey');
+  await safeDelete('photoProxyUrl');
+  state.profile = await safeGet('profile');
+  if(!state.profile){
+    document.getElementById('onboard').classList.remove('hide');
+    return;
+  }
+  const log = await safeGet(logKey());
+  state.log = log || { foods: [], exercises: [] };
+  const w = await safeGet('weights');
+  state.weights = w || [];
+  state.logDates = (await safeGet('logDates')) || [];
+  state.daySummaries = await loadDaySummaries();
+  state.supplements = (await safeGet('supplements')) || [];
+  const takenArr = (await safeGet('suppTaken:' + todayStr())) || [];
+  state.takenToday = new Set(takenArr);
+  renderAll();
+}
+
+async function saveOnboarding(){
+  const name = document.getElementById('ob-name').value.trim() || 'Tú';
+  const sex = document.getElementById('ob-sex').value;
+  const age = parseFloat(document.getElementById('ob-age').value);
+  const heightCm = parseFloat(document.getElementById('ob-height').value);
+  const currentWeight = parseFloat(document.getElementById('ob-current').value);
+  const goalWeight = parseFloat(document.getElementById('ob-goal').value);
+  const activityLevel = document.getElementById('ob-activity').value;
+  const goalType = document.getElementById('ob-goaltype').value;
+  const paceKgWeek = parseFloat(document.getElementById('ob-pace').value);
+  const dailyBurnGoal = parseFloat(document.getElementById('ob-burn').value) || 300;
+  if(!age || !heightCm || !currentWeight || !goalWeight){
+    showToast('Completa todos los campos numéricos', true);
+    return;
+  }
+  state.profile = { name, sex, age, heightCm, currentWeight, goalWeight, activityLevel, goalType, paceKgWeek, dailyBurnGoal, customMode:false, createdAt: new Date().toISOString() };
+  await safeSet('profile', state.profile);
+  state.weights = [{ date: todayStr(), weight: currentWeight }];
+  await safeSet('weights', state.weights);
+  document.getElementById('onboard').classList.add('hide');
+  if(state.profile.theme) applyTheme(state.profile.theme);
+  const log = await safeGet(logKey());
+  state.log = log || { foods: [], exercises: [] };
+  renderAll();
+}
+
+async function restoreFromOnboarding(){
+  const code = document.getElementById('ob-restore-code').value;
+  if(!code.trim()){ showToast('Pega tu código primero', true); return; }
+  try{
+    await importBackupCode(code);
+    showToast('Cuenta restaurada');
+    await reloadApp();
+  }catch(e){
+    showToast('Ese código no es válido', true);
+  }
+}
+
+function setTab(tab){
+  state.tab = tab;
+  ['today','add','profile'].forEach(t=>{
+    const screenEl = document.getElementById('screen-'+t);
+    if(screenEl) screenEl.classList.toggle('hide', t !== tab);
+    const tabEl = document.getElementById('tab-'+t);
+    if(tabEl) tabEl.classList.toggle('active', t === tab);
+  });
+  renderAll();
+}
+
+function renderAll(){
+  if(!state.profile) return;
+  renderToday(); renderAdd(); renderProfile();
+}
+
+function thinBar(label, value, target, color, unit, icon){
+  const pct = target > 0 ? Math.min(100, Math.round((value/target)*100)) : 0;
+  const over = value > target;
+  return `
+    <div class="bar-block">
+      <div class="bar-top"><span class="lbl">${icon?icon+' ':''}${label}</span><span class="val">${Math.round(value)} / ${Math.round(target)} ${unit}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${over ? 'var(--warn)' : color};"></div></div>
+    </div>`;
+}
+
+function ringSvg(net, target, mini){
+  const R=80, C=2*Math.PI*R;
+  const over = net > target;
+  const pct = target>0 ? Math.min(100, (net/target)*100) : 0;
+  const offset = C - (pct/100)*C;
+  const color = over ? 'var(--warn)' : 'var(--accent)';
+  const remain = Math.abs(Math.round(target - net));
+  if(mini){
+    return `
+      <svg class="ring ring-mini" viewBox="0 0 200 200">
+        <circle class="ring-track" cx="100" cy="100" r="${R}" stroke-width="16"></circle>
+        <circle class="ring-fill" cx="100" cy="100" r="${R}" stroke="${color}" stroke-width="16"
+          stroke-dasharray="${C}" stroke-dashoffset="${offset}" transform="rotate(-90 100 100)"></circle>
+        <text x="100" y="112" class="ring-num-mini" fill="${color}">${remain}</text>
+      </svg>`;
+  }
+  const label = over ? 'kcal de exceso' : 'kcal restantes';
+  return `
+    <svg class="ring" viewBox="0 0 200 200">
+      <circle class="ring-track" cx="100" cy="100" r="${R}"></circle>
+      <circle class="ring-fill" cx="100" cy="100" r="${R}" stroke="${color}"
+        stroke-dasharray="${C}" stroke-dashoffset="${offset}" transform="rotate(-90 100 100)"></circle>
+      <text x="100" y="96" class="ring-num" fill="${color}">${remain}</text>
+      <text x="100" y="120" class="ring-label">${label}</text>
+    </svg>`;
+}
+
+function renderMiniHistoryStrip(t){
+  if(!state.daySummaries || !state.daySummaries.length) return '';
+  const items = state.daySummaries.map(s=>{
+    const dt = new Date(s.date + 'T00:00:00');
+    const wd = dt.toLocaleDateString('es-ES', { weekday:'short' }).replace('.', '');
+    return `
+      <div class="mini-day" onclick="openDayDetail('${s.date}')">
+        <div class="mini-day-label">${wd} ${dt.getDate()}</div>
+        ${ringSvg(s.consumed, t.calorieTarget, true)}
+      </div>`;
+  }).join('');
+  return `<div class="mini-history-strip">${items}</div>`;
+}
+
+function renderToday(){
+  const t = calcTargets(state.profile);
+  const consumed = state.log.foods.reduce((s,f)=>s+f.cal,0);
+  const burned = state.log.exercises.reduce((s,e)=>s+e.cal,0);
+  const protein = state.log.foods.reduce((s,f)=>s+f.protein,0);
+  const carbs = state.log.foods.reduce((s,f)=>s+f.carb,0);
+  const fat = state.log.foods.reduce((s,f)=>s+f.fat,0);
+  const net = consumed - burned;
+
+  const foodRows = state.log.foods.length
+    ? state.log.foods.map(f=>`
+        <div class="row food-row" onclick="openFoodDetail('${f.id}')">
+          <span class="rname">
+            ${f.photo ? `<img src="${f.photo}" class="row-thumb">` : `<span class="row-thumb row-thumb-fallback">🍽️</span>`}
+            ${f.name}
+          </span>
+          <span class="rval">${f.cal} kcal <span class="del" onclick="event.stopPropagation(); removeFood('${f.id}')">✕</span></span>
+        </div>`).join('')
+    : `<div class="empty">Nada registrado aún hoy</div>`;
+
+  const exRows = state.log.exercises.map(e=>`
+        <div class="row">
+          <span class="rname">🔥 ${e.name}</span>
+          <span class="rval">${e.cal} kcal <span class="del" onclick="event.stopPropagation(); removeExercise('${e.id}')">✕</span></span>
+        </div>`).join('');
+
+  const suppRows = state.supplements.map(s=>{
+    const taken = state.takenToday.has(s.id);
+    return `<div class="row">
+      <span class="rname">💊 ${s.name}</span>
+      <button class="supp-btn ${taken ? 'taken' : ''}" onclick="toggleSupplement('${s.id}')">${taken ? '✓ Tomado' : 'Marcar'}</button>
+    </div>`;
+  }).join('');
+
+  document.getElementById('screen-today').innerHTML = `
+    <div class="ring-wrap">${ringSvg(consumed, t.calorieTarget)}</div>
+    <div class="panel">
+      ${thinBar('Ingeridas', consumed, t.calorieTarget, 'var(--accent)', 'kcal', '🔥')}
+      ${thinBar('Quemadas', burned, t.burnGoal, 'var(--burn)', 'kcal', '🏃')}
+      ${thinBar('Proteína', protein, t.proteinG, 'var(--protein)', 'g', '🥩')}
+      ${thinBar('Carbohidratos', carbs, t.carbG, 'var(--carbs)', 'g', '🍞')}
+      ${thinBar('Grasas', fat, t.fatG, 'var(--fat)', 'g', '🥑')}
+    </div>
+    ${state.supplements.length ? `<div class="section-title">💊 Suplementos de hoy</div><div class="panel">${suppRows}</div>` : ''}
+    <div class="section-title">Comida</div>
+    <div class="panel">${foodRows}</div>
+    ${exRows ? `<div class="section-title">Ejercicio</div><div class="panel">${exRows}</div>` : ''}
+    <div class="note">Tu progreso se guarda solo. No hace falta ni login ni conexión externa.</div>
+  `;
+}
+
+function openFoodDetail(id){
+  const f = state.log.foods.find(x => x.id === id);
+  if(!f) return;
+  document.getElementById('food-detail-body').innerHTML = `
+    ${f.photo ? `<img src="${f.photo}" class="detail-photo">` : `<div class="detail-photo detail-photo-fallback">🍽️</div>`}
+    <h1 style="margin:14px 0 2px 0;">${f.name}</h1>
+    <div style="color:var(--muted); font-size:13px; margin-bottom:18px;">${f.cal} kcal totales</div>
+    <div class="macro-grid">
+      <div class="macro-chip" style="background:var(--protein-soft);"><span>🥩</span><b>${f.protein} g</b><small>Proteína</small></div>
+      <div class="macro-chip" style="background:var(--carbs-soft);"><span>🍞</span><b>${f.carb} g</b><small>Carbohidratos</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft);"><span>🥑</span><b>${f.fat} g</b><small>Grasas</small></div>
+    </div>
+  `;
+  document.getElementById('food-detail').classList.remove('hide');
+}
+function closeFoodDetail(){
+  document.getElementById('food-detail').classList.add('hide');
+}
+
+async function addSupplement(){
+  const input = document.getElementById('new-supp-name');
+  const name = input.value.trim();
+  if(!name){ showToast('Escribe el nombre del suplemento', true); return; }
+  state.supplements.push({ id: Date.now().toString(), name });
+  await safeSet('supplements', state.supplements);
+  input.value = '';
+  showToast('Suplemento añadido');
+  renderAll();
+}
+async function removeSupplement(id){
+  state.supplements = state.supplements.filter(s => s.id !== id);
+  await safeSet('supplements', state.supplements);
+  renderAll();
+}
+async function toggleSupplement(id){
+  if(state.takenToday.has(id)) state.takenToday.delete(id);
+  else state.takenToday.add(id);
+  await safeSet('suppTaken:' + todayStr(), Array.from(state.takenToday));
+  renderAll();
+}
+
+async function loadDaySummaries(){
+  const dates = [...(state.logDates||[])].filter(d => d !== todayStr()).sort().reverse().slice(0, 10);
+  const summaries = [];
+  for(const d of dates){
+    const log = await safeGet('log:' + d);
+    const consumed = ((log && log.foods) || []).reduce((s,f) => s + f.cal, 0);
+    summaries.push({ date: d, consumed });
+  }
+  return summaries;
+}
+
+const THEMES = [
+  { id:'green', accent:'#1FA363', accentDark:'#0E7A46', accentSoft:'#DDF3E6' },
+  { id:'blue', accent:'#3B7DF6', accentDark:'#1E56C7', accentSoft:'#E1EBFE' },
+  { id:'coral', accent:'#FF6B5B', accentDark:'#D6432F', accentSoft:'#FFE4DF' },
+  { id:'purple', accent:'#A855F7', accentDark:'#7C22D9', accentSoft:'#F1E3FE' },
+  { id:'teal', accent:'#14B8A6', accentDark:'#0C7C70', accentSoft:'#D6F5F1' }
+];
+
+function applyTheme(themeId){
+  const theme = THEMES.find(t => t.id === themeId) || THEMES[0];
+  const root = document.documentElement.style;
+  root.setProperty('--accent', theme.accent);
+  root.setProperty('--accent-dark', theme.accentDark);
+  root.setProperty('--accent-soft', theme.accentSoft);
+}
+
+async function setTheme(themeId){
+  state.profile.theme = themeId;
+  applyTheme(themeId);
+  await safeSet('profile', state.profile);
+  renderAll();
+}
+
+async function onAvatarSelected(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  try{
+    const { thumbnail } = await fileToCompressedBase64(file);
+    state.profile.avatar = thumbnail;
+    await safeSet('profile', state.profile);
+    showToast('Foto de perfil actualizada');
+    renderAll();
+  }catch(e){
+    showToast('No se pudo procesar la imagen', true);
+  }
+  evt.target.value = '';
+}
+
+async function removeFood(id){
+  state.log.foods = state.log.foods.filter(f=>f.id !== id);
+  await saveLog();
+  renderAll();
+}
+async function removeExercise(id){
+  state.log.exercises = state.log.exercises.filter(e=>e.id !== id);
+  await saveLog();
+  renderAll();
+}
+
+function renderAdd(){
+  const pending = state.pendingFood;
+  document.getElementById('screen-add').innerHTML = `
+    <label class="photo-btn" for="photo-input" onclick="triggerPhotoInput(event)">${state.analyzing ? 'Analizando…' : '📷  Añadir foto de la comida'}</label>
+    <input id="photo-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onPhotoSelected(event)" ${state.analyzing ? 'disabled' : ''}>
+
+    ${pending ? `
+      <div class="panel">
+        ${pending.photo ? `<img src="${pending.photo}" class="pending-photo">` : ''}
+        <div class="field"><label>Nombre</label><input id="pf-name" value="${pending.name}"></div>
+        <div class="row2">
+          <div class="field"><label>Kcal</label><input id="pf-cal" type="number" value="${pending.cal}"></div>
+          <div class="field"><label>Proteína (g)</label><input id="pf-protein" type="number" value="${pending.protein}"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Carbs (g)</label><input id="pf-carb" type="number" value="${pending.carb}"></div>
+          <div class="field"><label>Grasas (g)</label><input id="pf-fat" type="number" value="${pending.fat}"></div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn accent" onclick="confirmPendingFood()">Añadir</button>
+          <button class="btn ghost small" onclick="cancelPendingFood()">Cancelar</button>
+        </div>
+      </div>` : ''}
+
+    <details>
+      <summary>Añadir comida manualmente</summary>
+      <div class="inner">
+        <div class="field"><label>Nombre</label><input id="mf-name" placeholder="Ensalada de pollo"></div>
+        <div class="row2">
+          <div class="field"><label>Kcal</label><input id="mf-cal" type="number" placeholder="450"></div>
+          <div class="field"><label>Proteína (g)</label><input id="mf-protein" type="number" placeholder="30"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Carbs (g)</label><input id="mf-carb" type="number" placeholder="40"></div>
+          <div class="field"><label>Grasas (g)</label><input id="mf-fat" type="number" placeholder="15"></div>
+        </div>
+        <button class="btn" onclick="addManualFood()">Añadir comida</button>
+      </div>
+    </details>
+
+    <details>
+      <summary>Registrar ejercicio</summary>
+      <div class="inner">
+        <div class="field"><label>Actividad</label><input id="ex-name" placeholder="Correr 30 min"></div>
+        <div class="field"><label>Kcal quemadas</label><input id="ex-cal" type="number" placeholder="250"></div>
+        <button class="btn" onclick="addExercise()">Registrar</button>
+      </div>
+    </details>
+  `;
+}
+
+// ======================================================================
+// OPCIÓN A (más simple, recomendada para empezar): pega aquí tu clave
+// gratuita de Gemini (aistudio.google.com), DESPUÉS de restringirla por
+// dominio en Google (ver instrucciones de Claude). Así, todo el mundo que
+// visite esta web la usa automáticamente, sin configurar nada, gratis.
+// ======================================================================
+const DEFAULT_GEMINI_KEY = 'AQ.Ab8RN6Lwiy5wFkI096Lj6CNzbElrOO4_YS-f3vRk6CD-kHl37A';
+
+// ======================================================================
+// OPCIÓN B (más robusta, con límite de peticiones por minuto): si en vez
+// de lo anterior despliegas el Worker de Cloudflare (ver
+// eatiseasy-photo-proxy-worker.js), pega aquí su URL en lugar de rellenar
+// la clave de arriba. Deja solo UNA de las dos rellena.
+// ======================================================================
+const DEFAULT_PHOTO_PROXY_URL = '';
+
+async function getPhotoEndpoint(){
+  if(DEFAULT_PHOTO_PROXY_URL){
+    return { url: DEFAULT_PHOTO_PROXY_URL, headers: { 'Content-Type': 'application/json' }, mode: 'defaultProxy', provider: 'gemini', apiKey: null };
+  }
+  if(DEFAULT_GEMINI_KEY){
+    return {
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent`,
+      headers: { 'Content-Type': 'application/json' },
+      mode: 'defaultKey',
+      provider: 'gemini',
+      apiKey: DEFAULT_GEMINI_KEY
+    };
+  }
+  return { url: 'https://api.anthropic.com/v1/messages', headers: { 'Content-Type': 'application/json' }, mode: 'claude', provider: 'anthropic', apiKey: null };
+}
+
+function triggerPhotoInput(evt){
+  // iOS Safari inside a sandboxed iframe sometimes ignores the native
+  // label->input association for file inputs, so trigger it explicitly.
+  const input = document.getElementById('photo-input');
+  if(input && !input.disabled){
+    evt.preventDefault();
+    input.click();
+  }
+}
+
+function resizeToDataUrl(img, maxDim, quality){
+  let { width, height } = img;
+  if(width > maxDim || height > maxDim){
+    if(width > height){ height = Math.round(height * (maxDim/width)); width = maxDim; }
+    else { width = Math.round(width * (maxDim/height)); height = maxDim; }
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = width; canvas.height = height;
+  canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
+function fileToCompressedBase64(file){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = () => { img.src = reader.result; };
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
+    img.onload = () => {
+      const analysisUrl = resizeToDataUrl(img, 1024, 0.8);
+      const thumbnail = resizeToDataUrl(img, 360, 0.6);
+      resolve({ base64: analysisUrl.split(',')[1], mediaType: 'image/jpeg', thumbnail });
+    };
+    img.onerror = () => reject(new Error('No se pudo procesar la imagen'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function callGeminiWithFallback(baseUrlNoKey, apiKey, requestBody){
+  // Try method 1: key as URL query param (Google's documented browser method)
+  try{
+    const resp1 = await fetch(`${baseUrlNoKey}?key=${encodeURIComponent(apiKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
+    });
+    if(resp1.ok) return resp1;
+    if(resp1.status !== 401 && resp1.status !== 403) return resp1; // different error, don't retry
+  }catch(e){ /* network error, fall through to try method 2 */ }
+
+  // Try method 2: key as x-goog-api-key header
+  return fetch(baseUrlNoKey, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    body: JSON.stringify(requestBody)
+  });
+}
+
+async function onPhotoSelected(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  if(!file.type || !file.type.startsWith('image/')){
+    showToast('Elige un archivo de imagen', true);
+    return;
+  }
+  state.analyzing = true;
+  renderAdd();
+  try{
+    const { base64, mediaType, thumbnail } = await fileToCompressedBase64(file);
+    const { url, headers, mode, provider, apiKey } = await getPhotoEndpoint();
+    const prompt = 'Analiza esta foto de comida y estima sus valores nutricionales para la porción mostrada. Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin backticks, exactamente con este formato: {"name":"nombre breve del plato en español","calories":numero_entero,"protein_g":numero_entero,"carbs_g":numero_entero,"fat_g":numero_entero}';
+
+    const requestBody = provider === 'gemini'
+      ? {
+          contents: [{
+            parts: [
+              { inline_data: { mime_type: mediaType, data: base64 } },
+              { text: prompt }
+            ]
+          }]
+        }
+      : {
+          model: 'claude-sonnet-4-6',
+          max_tokens: 500,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+              { type: 'text', text: prompt }
+            ]
+          }]
+        };
+
+    const resp = (provider === 'gemini' && apiKey)
+      ? await callGeminiWithFallback(url, apiKey, requestBody)
+      : await fetch(url, { method: 'POST', headers, body: JSON.stringify(requestBody) });
+
+    if(!resp.ok){
+      const errBody = await resp.text();
+      if((resp.status === 401 || resp.status === 403) && mode === 'claude'){
+        throw new Error('Esta función solo funciona dentro del chat de Claude, o configurando un proxy/clave gratis de Gemini en Perfil.');
+      }
+      if((resp.status === 401 || resp.status === 403) && provider === 'gemini'){
+        throw new Error('Google rechazó la clave (código ' + resp.status + '). Revisa que la API "Generative Language API" esté activada en tu proyecto de Google Cloud, o crea una clave nueva en aistudio.google.com.');
+      }
+      throw new Error('HTTP ' + resp.status + ': ' + errBody.slice(0,150));
+    }
+    const data = await resp.json();
+    if(data.error){ throw new Error(data.error.message || 'Error de la API'); }
+
+    const text = provider === 'gemini'
+      ? ((data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || []).map(p=>p.text||'').join('').trim())
+      : ((data.content || []).map(b=>b.text || '').join('').trim());
+    if(!text) throw new Error('Respuesta vacía del modelo');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    state.pendingFood = {
+      name: parsed.name || 'Comida',
+      cal: Math.round(parsed.calories) || 0,
+      protein: Math.round(parsed.protein_g) || 0,
+      carb: Math.round(parsed.carbs_g) || 0,
+      fat: Math.round(parsed.fat_g) || 0,
+      photo: thumbnail
+    };
+    showToast('Foto analizada, revisa y confirma');
+  }catch(e){
+    console.error('analyze photo failed:', e);
+    showToast('No se pudo analizar la foto: ' + e.message, true);
+  }finally{
+    state.analyzing = false;
+    evt.target.value = '';
+    renderAdd();
+  }
+}
+
+function confirmPendingFood(){
+  const name = document.getElementById('pf-name').value.trim() || 'Comida';
+  const cal = parseFloat(document.getElementById('pf-cal').value) || 0;
+  const protein = parseFloat(document.getElementById('pf-protein').value) || 0;
+  const carb = parseFloat(document.getElementById('pf-carb').value) || 0;
+  const fat = parseFloat(document.getElementById('pf-fat').value) || 0;
+  addFoodEntry({ name, cal, protein, carb, fat, source: 'photo', photo: state.pendingFood.photo });
+  state.pendingFood = null;
+}
+function cancelPendingFood(){ state.pendingFood = null; renderAdd(); }
+
+async function addFoodEntry(f){
+  state.log.foods.push({ id: Date.now().toString(), time: new Date().toISOString(), ...f });
+  await saveLog();
+  showToast('Comida añadida');
+  setTab('today');
+}
+
+function addManualFood(){
+  const name = document.getElementById('mf-name').value.trim();
+  const cal = parseFloat(document.getElementById('mf-cal').value);
+  if(!name || !cal){ showToast('Introduce nombre y calorías', true); return; }
+  const protein = parseFloat(document.getElementById('mf-protein').value) || 0;
+  const carb = parseFloat(document.getElementById('mf-carb').value) || 0;
+  const fat = parseFloat(document.getElementById('mf-fat').value) || 0;
+  addFoodEntry({ name, cal, protein, carb, fat, source: 'manual' });
+}
+
+async function addExercise(){
+  const name = document.getElementById('ex-name').value.trim();
+  const cal = parseFloat(document.getElementById('ex-cal').value);
+  if(!name || !cal){ showToast('Introduce actividad y calorías', true); return; }
+  state.log.exercises.push({ id: Date.now().toString(), name, cal, time: new Date().toISOString() });
+  await saveLog();
+  showToast('Ejercicio registrado');
+  setTab('today');
+}
+
+function buildProgressHTML(){
+  const p = state.profile;
+  const sorted = [...state.weights].sort((a,b)=> a.date.localeCompare(b.date));
+  const latest = sorted.length ? sorted[sorted.length-1].weight : p.currentWeight;
+  const toGoal = (latest - p.goalWeight).toFixed(1);
+
+  return `
+    <div class="section-title">⚖️ Progreso de peso</div>
+    <div class="panel">
+      <div class="weight-row">
+        <div><div class="big-number">${latest} kg</div><div style="font-size:12px;color:var(--muted);">${Math.abs(toGoal)} kg ${toGoal>0?'por perder':'por ganar'} · meta ${p.goalWeight} kg</div></div>
+      </div>
+      <div class="field" style="margin-top:16px;"><label>Actualizar peso de hoy</label>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <input id="w-today" type="number" step="0.1" placeholder="${latest}" style="flex:1;">
+          <button class="btn accent small" onclick="logWeight()">Guardar</button>
+        </div>
+      </div>
+      ${sorted.length > 1 ? sparkSvg(sorted, p.goalWeight) : `<div class="empty">Registra tu peso varios días para ver la gráfica</div>`}
+    </div>
+
+    <div class="section-title">📅 Historial de días</div>
+    <div class="panel">${renderHistoryList()}</div>
+  `;
+}
+
+function formatDateLabel(d){
+  const dt = new Date(d + 'T00:00:00');
+  const label = dt.toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
+  return d === todayStr() ? 'Hoy' : label;
+}
+
+function renderHistoryList(){
+  const dates = [...(state.logDates||[])].sort().reverse();
+  if(!dates.length) return `<div class="empty">Aún no hay días registrados</div>`;
+  return dates.map(d=>`
+    <div class="row" style="cursor:pointer;" onclick="openDayDetail('${d}')">
+      <span class="rname">${formatDateLabel(d)}</span>
+      <span class="rval" style="color:var(--muted);">Ver día ›</span>
+    </div>`).join('');
+}
+
+async function openDayDetail(date){
+  const t = calcTargets(state.profile);
+  const log = date === todayStr() ? state.log : ((await safeGet('log:'+date)) || { foods:[], exercises:[] });
+  const consumed = log.foods.reduce((s,f)=>s+f.cal,0);
+  const burned = log.exercises.reduce((s,e)=>s+e.cal,0);
+  const protein = log.foods.reduce((s,f)=>s+f.protein,0);
+  const carbs = log.foods.reduce((s,f)=>s+f.carb,0);
+  const fat = log.foods.reduce((s,f)=>s+f.fat,0);
+  const net = consumed - burned;
+
+  const foodRows = log.foods.length ? log.foods.map(f=>`
+    <div class="row"><span class="rname">
+      ${f.photo ? `<img src="${f.photo}" class="row-thumb">` : `<span class="row-thumb row-thumb-fallback">🍽️</span>`}
+      ${f.name}</span><span class="rval">${f.cal} kcal</span></div>`).join('')
+    : `<div class="empty">Sin comidas ese día</div>`;
+  const exRows = log.exercises.map(e=>`
+    <div class="row"><span class="rname">🔥 ${e.name}</span><span class="rval">${e.cal} kcal</span></div>`).join('');
+
+  document.getElementById('food-detail-body').innerHTML = `
+    <h1 style="margin:0 0 2px 0;">${formatDateLabel(date)}</h1>
+    <div style="color:var(--muted); font-size:12px; margin-bottom:6px;">Resumen del día</div>
+    <div class="ring-wrap" style="margin:0 0 8px 0; padding:10px 0;">${ringSvg(consumed, t.calorieTarget)}</div>
+    <div class="macro-grid" style="margin-bottom:18px;">
+      <div class="macro-chip" style="background:var(--protein-soft);"><span>🥩</span><b>${protein} g</b><small>Proteína</small></div>
+      <div class="macro-chip" style="background:var(--carbs-soft);"><span>🍞</span><b>${carbs} g</b><small>Carbohidratos</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft);"><span>🥑</span><b>${fat} g</b><small>Grasas</small></div>
+    </div>
+    <div class="section-title">Comida</div>
+    ${foodRows}
+    ${exRows ? `<div class="section-title">Ejercicio</div>${exRows}` : ''}
+  `;
+  document.getElementById('food-detail').classList.remove('hide');
+}
+
+function sparkSvg(points, goal){
+  const w = 380, h = 130, pad = 20;
+  const vals = points.map(p=>p.weight).concat([goal]);
+  const min = Math.min(...vals) - 1, max = Math.max(...vals) + 1;
+  const xStep = (w - pad*2) / (points.length - 1);
+  const yFor = v => h - pad - ((v - min)/(max - min)) * (h - pad*2);
+  const path = points.map((p,i)=> `${i===0?'M':'L'} ${pad + i*xStep} ${yFor(p.weight)}`).join(' ');
+  const goalY = yFor(goal);
+  const last = points[points.length-1];
+  return `
+    <svg class="spark" viewBox="0 0 ${w} ${h}">
+      <line x1="${pad}" y1="${goalY}" x2="${w-pad}" y2="${goalY}" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="3 3"></line>
+      <text x="${w-pad}" y="${goalY-6}" font-size="9" fill="var(--muted)" text-anchor="end">meta</text>
+      <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+      <circle cx="${pad+(points.length-1)*xStep}" cy="${yFor(last.weight)}" r="4" fill="var(--accent)"></circle>
+    </svg>`;
+}
+
+async function logWeight(){
+  const val = parseFloat(document.getElementById('w-today').value);
+  if(!val){ showToast('Introduce un peso válido', true); return; }
+  const today = todayStr();
+  const idx = state.weights.findIndex(w=>w.date===today);
+  if(idx >= 0) state.weights[idx].weight = val; else state.weights.push({ date: today, weight: val });
+  state.profile.currentWeight = val;
+  await safeSet('weights', state.weights);
+  await safeSet('profile', state.profile);
+  showToast('Peso guardado');
+  renderAll();
+}
+
+const GOAL_LABELS = { auto:'Automático', deficit:'Déficit calórico', maintain:'Mantenimiento', surplus:'Superávit calórico' };
+
+function renderProfile(){
+  const p = state.profile;
+  const t = calcTargets(p);
+  const actLabels = { sedentary:'Sedentario', light:'Ligero', moderate:'Moderado', active:'Activo', veryActive:'Muy activo' };
+  document.getElementById('screen-profile').innerHTML = `
+    <div class="avatar-header">
+      <label for="avatar-input" class="avatar-circle">
+        ${p.avatar ? `<img src="${p.avatar}">` : `<span>${(p.name||'?').trim().charAt(0).toUpperCase()}</span>`}
+        <span class="avatar-edit">✎</span>
+      </label>
+      <input id="avatar-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onAvatarSelected(event)">
+      <div class="avatar-name">${p.name}</div>
+    </div>
+
+    <div class="theme-row">
+      ${THEMES.map(th => `<button class="theme-dot ${p.theme===th.id?'selected':''}" style="background:${th.accent};" onclick="setTheme('${th.id}')" aria-label="${th.id}"></button>`).join('')}
+    </div>
+
+    <div class="panel plist">
+      <div class="row"><span class="rname">Nombre</span><span class="rval">${p.name}</span></div>
+      <div class="row"><span class="rname">Peso actual</span><span class="rval">${p.currentWeight} kg</span></div>
+      <div class="row"><span class="rname">Peso objetivo</span><span class="rval">${p.goalWeight} kg</span></div>
+      <div class="row"><span class="rname">Actividad</span><span class="rval">${actLabels[p.activityLevel]}</span></div>
+      <div class="row"><span class="rname">TDEE estimado</span><span class="rval">${t.tdee} kcal</span></div>
+      <div class="row"><span class="rname">Objetivo</span><span class="rval">${GOAL_LABELS[t.goalType]}${t.isCustom?' · manual':''}</span></div>
+      <div class="row"><span class="rname">Calorías diarias</span><span class="rval">${t.calorieTarget} kcal</span></div>
+      <div class="row"><span class="rname">Proteína</span><span class="rval">${t.proteinG} g</span></div>
+      <div class="row"><span class="rname">Carbohidratos</span><span class="rval">${t.carbG} g</span></div>
+      <div class="row"><span class="rname">Grasas</span><span class="rval">${t.fatG} g</span></div>
+      <div class="row"><span class="rname">Tiempo estimado</span><span class="rval">${t.weeksToGoal} sem</span></div>
+    </div>
+
+    ${buildProgressHTML()}
+
+    <details>
+      <summary>Editar datos y objetivos</summary>
+      <div class="inner">
+        <div class="row2">
+          <div class="field"><label>Peso actual (kg)</label><input id="pr-current" type="number" step="0.1" value="${p.currentWeight}"></div>
+          <div class="field"><label>Peso objetivo (kg)</label><input id="pr-goal" type="number" step="0.1" value="${p.goalWeight}"></div>
+        </div>
+        <div class="field"><label>Actividad</label>
+          <select id="pr-activity">
+            <option value="sedentary" ${p.activityLevel==='sedentary'?'selected':''}>Sedentario</option>
+            <option value="light" ${p.activityLevel==='light'?'selected':''}>Ligero</option>
+            <option value="moderate" ${p.activityLevel==='moderate'?'selected':''}>Moderado</option>
+            <option value="active" ${p.activityLevel==='active'?'selected':''}>Activo</option>
+            <option value="veryActive" ${p.activityLevel==='veryActive'?'selected':''}>Muy activo</option>
+          </select>
+        </div>
+        <div class="field"><label>Objetivo</label>
+          <select id="pr-goaltype">
+            <option value="auto" ${(p.goalType||'auto')==='auto'?'selected':''}>Automático (según tu peso objetivo)</option>
+            <option value="deficit" ${p.goalType==='deficit'?'selected':''}>Déficit — perder grasa</option>
+            <option value="maintain" ${p.goalType==='maintain'?'selected':''}>Mantenimiento</option>
+            <option value="surplus" ${p.goalType==='surplus'?'selected':''}>Superávit — ganar músculo</option>
+          </select>
+        </div>
+        <div class="field"><label>Ritmo (kg/semana)</label>
+          <select id="pr-pace">
+            <option value="0.25" ${p.paceKgWeek==0.25?'selected':''}>Suave · 0.25 kg</option>
+            <option value="0.5" ${p.paceKgWeek==0.5?'selected':''}>Moderado · 0.5 kg</option>
+            <option value="0.75" ${p.paceKgWeek==0.75?'selected':''}>Rápido · 0.75 kg</option>
+            <option value="1" ${p.paceKgWeek==1?'selected':''}>Intenso · 1 kg</option>
+          </select>
+        </div>
+        <div class="field"><label>Objetivo kcal quemadas/día (ejercicio)</label><input id="pr-burn" type="number" value="${p.dailyBurnGoal}"></div>
+
+        <div class="field" style="display:flex; align-items:center; gap:10px; margin-top:6px;">
+          <input type="checkbox" id="pr-custom-toggle" ${p.customMode?'checked':''} onchange="toggleCustomFields()" style="width:auto; accent-color:var(--accent);">
+          <label style="margin:0; font-size:13px; color:var(--ink);">Fijar yo mismo las calorías y macros diarios</label>
+        </div>
+        <div id="pr-custom-fields" style="${p.customMode?'':'display:none;'} background:var(--accent-soft); border-radius:12px; padding:14px; margin-top:8px;">
+          <div class="field"><label>Calorías objetivo al día</label>
+            <input id="pr-custom-cal" type="number" value="${p.customCalories || t.autoCalorieTarget}" oninput="recalcMacrosPreview()">
+          </div>
+          <div class="row2">
+            <div class="field"><label>🥩 Proteína (g)</label><input id="pr-custom-protein" type="number" value="${p.customProtein != null ? p.customProtein : t.autoProteinG}"></div>
+            <div class="field"><label>🥑 Grasas (g)</label><input id="pr-custom-fat" type="number" value="${p.customFat != null ? p.customFat : t.autoFatG}"></div>
+          </div>
+          <div class="field"><label>🍞 Carbohidratos (g)</label><input id="pr-custom-carb" type="number" value="${p.customCarb != null ? p.customCarb : t.autoCarbG}"></div>
+          <button type="button" class="btn ghost small" onclick="recalcMacrosPreview()">↻ Recalcular macros según estas calorías</button>
+          <p style="font-size:11px; color:var(--muted); margin:10px 0 0 0;">Puedes tocar los gramos y dejarlos como quieras — el botón solo te da un punto de partida sugerido.</p>
+        </div>
+
+        <button class="btn accent" style="margin-top:16px;" onclick="saveProfileEdit()">Guardar cambios</button>
+      </div>
+    </details>
+
+    <details>
+      <summary>💊 Suplementos diarios</summary>
+      <div class="inner">
+        <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">Se reinician cada día — aparecerán en "Hoy" para que los marques como tomados.</p>
+        <div class="panel" style="margin-top:0;">
+          ${state.supplements.length ? state.supplements.map(s=>`
+            <div class="row"><span class="rname">${s.name}</span><span class="del" onclick="removeSupplement('${s.id}')">✕</span></div>
+          `).join('') : `<div class="empty">Aún no has añadido suplementos</div>`}
+        </div>
+        <div class="field" style="margin-top:14px;"><label>Nuevo suplemento</label>
+          <div style="display:flex; gap:10px;">
+            <input id="new-supp-name" placeholder="Vitamina D" style="flex:1;">
+            <button class="btn accent small" onclick="addSupplement()">Añadir</button>
+          </div>
+        </div>
+      </div>
+    </details>
+
+
+    <details>
+      <summary>🔐 Copia de seguridad de tu cuenta</summary>
+      <div class="inner">
+        <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">
+          ${HAS_CLOUD ? 'Tu cuenta ya se guarda sola aquí. Usa este código como copia extra, o para llevarte tus datos a otro sitio.' : (HAS_LOCAL_STORAGE ? 'Tus datos ya se guardan en este navegador, así que no se resetean al cerrar la página. Usa este código como copia de seguridad extra, o para pasar tus datos a otro dispositivo.' : 'Este navegador no permite guardar datos de forma persistente: genera tu código y guárdalo para no perderlo al cerrar.')}
+        </p>
+        <button class="btn" onclick="generateBackupCode()">Generar mi código</button>
+        <textarea id="backup-code-out" readonly rows="4" style="width:100%; margin-top:10px; border:1.5px solid var(--line); border-radius:8px; padding:8px; font-family:inherit; font-size:11px; display:none;"></textarea>
+        <button id="backup-copy-btn" class="btn ghost small" style="margin-top:8px; display:none;" onclick="copyBackupCode()">Copiar código</button>
+
+        <div style="margin-top:18px; border-top:1px dashed var(--line); padding-top:14px;">
+          <div class="field"><label>Restaurar desde un código</label>
+            <textarea id="restore-code-in" rows="4" style="width:100%; border:1.5px solid var(--line); border-radius:8px; padding:8px; font-family:inherit; font-size:12px;"></textarea>
+          </div>
+          <button class="btn ghost" onclick="restoreFromProfile()">Restaurar</button>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary style="color:var(--warn);">Borrar cuenta</summary>
+      <div class="inner">
+        <button class="btn ghost" onclick="resetAccount()">Confirmar borrado y empezar de nuevo</button>
+      </div>
+    </details>
+
+    <div class="footer-credit">Desarrollado por Iker Nebreda</div>
+  `;
+}
+
+async function generateBackupCode(){
+  const code = await exportBackupCode();
+  const box = document.getElementById('backup-code-out');
+  box.value = code;
+  box.style.display = 'block';
+  document.getElementById('backup-copy-btn').style.display = 'block';
+  showToast('Código generado. Cópialo y guárdalo en un sitio seguro.');
+}
+function copyBackupCode(){
+  const box = document.getElementById('backup-code-out');
+  box.select();
+  navigator.clipboard && navigator.clipboard.writeText(box.value).then(()=>{
+    showToast('Código copiado');
+  }).catch(()=>{ document.execCommand('copy'); showToast('Código copiado'); });
+}
+async function restoreFromProfile(){
+  const code = document.getElementById('restore-code-in').value;
+  if(!code.trim()){ showToast('Pega tu código primero', true); return; }
+  try{
+    await importBackupCode(code);
+    showToast('Cuenta restaurada');
+    await reloadApp();
+  }catch(e){
+    showToast('Ese código no es válido', true);
+  }
+}
+
+function toggleCustomFields(){
+  const checked = document.getElementById('pr-custom-toggle').checked;
+  document.getElementById('pr-custom-fields').style.display = checked ? 'block' : 'none';
+}
+
+function recalcMacrosPreview(){
+  const cal = parseFloat(document.getElementById('pr-custom-cal').value) || 0;
+  const weight = state.profile.currentWeight;
+  const proteinG = Math.round(1.8 * weight);
+  const proteinCal = proteinG * 4;
+  const remaining = Math.max(0, cal - proteinCal);
+  const carbG = Math.round((remaining * 0.55) / 4);
+  const fatG = Math.round((remaining * 0.45) / 9);
+  document.getElementById('pr-custom-protein').value = proteinG;
+  document.getElementById('pr-custom-carb').value = carbG;
+  document.getElementById('pr-custom-fat').value = fatG;
+}
+
+async function saveProfileEdit(){
+  state.profile.currentWeight = parseFloat(document.getElementById('pr-current').value) || state.profile.currentWeight;
+  state.profile.goalWeight = parseFloat(document.getElementById('pr-goal').value) || state.profile.goalWeight;
+  state.profile.activityLevel = document.getElementById('pr-activity').value;
+  state.profile.goalType = document.getElementById('pr-goaltype').value;
+  state.profile.paceKgWeek = parseFloat(document.getElementById('pr-pace').value);
+  state.profile.dailyBurnGoal = parseFloat(document.getElementById('pr-burn').value) || 300;
+
+  const customMode = document.getElementById('pr-custom-toggle').checked;
+  state.profile.customMode = customMode;
+  if(customMode){
+    state.profile.customCalories = parseFloat(document.getElementById('pr-custom-cal').value) || null;
+    state.profile.customProtein = parseFloat(document.getElementById('pr-custom-protein').value);
+    state.profile.customCarb = parseFloat(document.getElementById('pr-custom-carb').value);
+    state.profile.customFat = parseFloat(document.getElementById('pr-custom-fat').value);
+  }
+
+  await safeSet('profile', state.profile);
+  showToast('Perfil actualizado');
+  renderAll();
+}
+
+async function resetAccount(){
+  await safeDelete('profile');
+  await safeDelete('weights');
+  await safeDelete('logDates');
+  await reloadApp();
+}
+
+init();
+</script>
+</body>
+</html>
