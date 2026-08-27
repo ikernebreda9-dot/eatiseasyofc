@@ -191,8 +191,8 @@ details .inner{padding-top:10px;}
 .camera-view{position:relative; width:100%; height:100dvh; background:#000; display:flex; flex-direction:column;}
 .camera-view video{flex:1; width:100%; min-height:0; object-fit:cover; background:#000;}
 .camera-controls{flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:18px 34px calc(22px + env(safe-area-inset-bottom)) 34px; background:#000;}
-.camera-shutter{width:66px; height:66px; border-radius:50%; background:#fff; border:4px solid rgba(255,255,255,.45); cursor:pointer; padding:0;}
-.camera-gallery-btn{width:44px; height:44px; border-radius:10px; background:rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center; font-size:20px; color:#fff; cursor:pointer;}
+.camera-shutter{width:66px; height:66px; border-radius:50%; background:var(--accent); border:4px solid rgba(var(--accent-rgb),.4); cursor:pointer; padding:0;}
+.camera-gallery-btn{width:44px; height:44px; border-radius:10px; background:rgba(var(--accent-rgb),.25); display:flex; align-items:center; justify-content:center; font-size:20px; color:var(--accent); cursor:pointer;}
 
 .barcode-shutter-row{display:flex; justify-content:center; margin-top:16px;}
 .barcode-shutter{width:60px; height:60px; border-radius:50%; background:var(--accent); border:4px solid var(--accent-soft); cursor:pointer; padding:0;}
@@ -250,6 +250,9 @@ details .inner{padding-top:10px;}
 .macro-chip{flex:1; border-radius:12px; padding:14px 8px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:5px; border:1px solid var(--line);}
 .macro-chip span{font-size:20px;}
 .icon-svg{width:1em; height:1em; display:inline-block; vertical-align:-0.15em; color:currentColor;}
+#screen-today .icon-svg{width:1.5em; height:1.5em; vertical-align:-0.25em;}
+.app-emoji{display:inline-block; font-size:1.35em; line-height:1; vertical-align:-0.2em;}
+#screen-today .app-emoji{font-size:1.65em; vertical-align:-0.28em;}
 .macro-chip b{font-family:inherit; font-size:14px; color:var(--paper);}
 .macro-chip small{font-family:inherit; font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px;}
 
@@ -424,7 +427,7 @@ async function importBackupCode(code){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.05';
+const APP_VERSION = '0.12';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -484,20 +487,21 @@ function tr(key){
 function svgIcon(paths, viewBox, extra){
   return `<svg class="icon-svg ${extra||''}" viewBox="${viewBox||'0 0 24 24'}" fill="none" xmlns="http://www.w3.org/2000/svg">${paths}</svg>`;
 }
+function bigEmoji(char){ return `<span class="app-emoji">${char}</span>`; }
 const ICON = {
-  fire: svgIcon(`<path d="M12 2c-1 3-4 4.5-4 8.5A4.5 4.5 0 0 0 12.5 15c2.5 0 4.5-2 4.5-4.5 0 2 1 3 1 5a6 6 0 0 1-12 0c0-4 2-6 3-7 .3 1.5 1 2 1 2-.5-3 1.5-5.5 2-8.5z" fill="currentColor"/>`),
-  protein: svgIcon(`<path d="M15.5 3.5c1.8-1.8 4.7-1.8 6.4 0 1.8 1.8 1.8 4.6.1 6.4l-1.1 1.1c-.6.6-1.5.9-2.3.7-1-.2-2 .1-2.7.8L8.3 20.1c-1.2 1.2-3.2 1.2-4.4 0-1.2-1.2-1.2-3.2 0-4.4l7.6-7.6c.7-.7 1-1.7.8-2.7-.2-.8.1-1.7.7-2.3l1.1-1.1c.4-.4.9-.7 1.4-.9z" fill="currentColor"/>`),
-  carbs: svgIcon(`<path d="M12 21c-4-1-8-5-8-10a8 8 0 0 1 8-8 3 3 0 0 1 3 3c0 1-.4 1.7-1 2.3 1 .1 2 .6 2 2 1 0 2 1 2 2.5 0 3-2 5-3 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 21V9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`),
-  fat: svgIcon(`<path d="M12 2C9 6.5 6 10 6 14a6 6 0 0 0 12 0c0-4-3-7.5-6-12z" fill="currentColor"/>`),
-  water: svgIcon(`<path d="M12 2c3.5 4.5 7 8.6 7 12.5A7 7 0 0 1 5 14.5C5 10.6 8.5 6.5 12 2z" fill="currentColor"/>`),
-  star: svgIcon(`<path d="M12 2.5l2.7 5.9 6.3.7-4.7 4.5 1.2 6.4L12 17l-5.5 3 1.2-6.4-4.7-4.5 6.3-.7z" fill="currentColor"/>`),
+  fire: bigEmoji('🔥'),
+  protein: bigEmoji('🥩'),
+  carbs: bigEmoji('🍞'),
+  fat: bigEmoji('💧'),
+  water: bigEmoji('💧'),
+  star: bigEmoji('⭐'),
   lock: svgIcon(`<rect x="5" y="10.5" width="14" height="10" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>`),
-  camera: svgIcon(`<rect x="3" y="7" width="18" height="13" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M8 7l1.6-2.5h4.8L16 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="13.5" r="3.4" stroke="currentColor" stroke-width="1.7"/>`),
-  barcode: svgIcon(`<path d="M4 5v14M8 5v14M11 5v14M15 5v14M18 5v14M21 5v14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`),
-  check: svgIcon(`<path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>`),
-  gallery: svgIcon(`<rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="8.5" cy="9.5" r="1.8" fill="currentColor"/><path d="M4 16l5-4.5 3.5 3 3-4L21 16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`),
-  bell: svgIcon(`<path d="M6 10a6 6 0 0 1 12 0c0 4 1.2 5.5 2 6.5H4c.8-1 2-2.5 2-6.5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.5 19a2.5 2.5 0 0 0 5 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>`),
-  pill: svgIcon(`<rect x="4" y="10.3" width="16" height="7.4" rx="3.7" transform="rotate(-45 12 14)" stroke="currentColor" stroke-width="1.7"/><path d="M9 15l6-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>`),
+  camera: bigEmoji('📷'),
+  barcode: bigEmoji('📊'),
+  check: bigEmoji('✓'),
+  gallery: bigEmoji('🖼️'),
+  bell: bigEmoji('🔔'),
+  pill: bigEmoji('💊'),
   run: svgIcon(`<circle cx="14" cy="4.5" r="1.8" fill="currentColor"/><path d="M8 21l2.5-4.5-1.5-3 3-2.5 2 3 3.5 1M9.5 13l2-4 3-1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`),
   walk: svgIcon(`<circle cx="13" cy="4.5" r="1.8" fill="currentColor"/><path d="M11 21l1-5-2-2 .5-4 3.5-1.5 1.5 2.5 3 1M10.5 13.5l2.5-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`),
   bike: svgIcon(`<circle cx="6" cy="17" r="3" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="17" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M6 17l4-8h4l4 8M10 9h4M8 17h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`),
@@ -772,7 +776,7 @@ function renderOnboardStep(){
 
   if(obStep === 1){
     stepHtml = `
-      <h1>Hola 👋</h1>
+      <h1>Hola ${bigEmoji('👋')}</h1>
       <p class="sub">Empecemos por lo básico.</p>
       <div id="google-signin-btn" style="margin-bottom:14px;"></div>
       <div style="text-align:center; color:var(--muted); font-size:11px; margin:2px 0 18px 0;">— o rellena a mano —</div>
@@ -955,7 +959,7 @@ async function finishOnboarding(){
     currentWeight: obDraft.currentWeight, goalWeight: obDraft.goalWeight,
     activityLevel: obDraft.activityLevel || 'light', goalType: obDraft.goalType || 'auto',
     paceKgWeek: obDraft.paceKgWeek || 0.5, dailyBurnGoal: 300,
-    customMode: false, createdAt: new Date().toISOString()
+    customMode: false, darkMode: true, createdAt: new Date().toISOString()
   };
   await safeSet('profile', state.profile);
   state.weights = [{ date: todayStr(), weight: obDraft.currentWeight }];
@@ -975,7 +979,7 @@ function showOnboardReveal(){
   const t = calcTargets(state.profile);
   document.getElementById('onboard-content').innerHTML = `
     <div style="text-align:center;">
-      <h1>¡Listo, ${state.profile.name}! 🎉</h1>
+      <h1>¡Listo, ${state.profile.name}! ${bigEmoji('🎉')}</h1>
       <p class="sub">Este es tu plan diario, calculado a tu medida.</p>
       <div class="ring-wrap" style="padding-top:6px;">
         <svg class="ring" viewBox="0 0 200 200">
@@ -987,9 +991,9 @@ function showOnboardReveal(){
         </svg>
       </div>
       <div class="macro-row" style="margin-top:4px;">
-        <div class="macro-card"><div class="macro-card-num">${fmt1(t.proteinG)}g</div><div class="macro-card-label">Proteína</div></div>
-        <div class="macro-card"><div class="macro-card-num">${fmt1(t.carbG)}g</div><div class="macro-card-label">Carbohidratos</div></div>
-        <div class="macro-card"><div class="macro-card-num">${fmt1(t.fatG)}g</div><div class="macro-card-label">Grasas</div></div>
+        <div class="macro-card"><div class="macro-card-num">${Math.round(t.proteinG)}g</div><div class="macro-card-label">Proteína</div></div>
+        <div class="macro-card"><div class="macro-card-num">${Math.round(t.carbG)}g</div><div class="macro-card-label">Carbohidratos</div></div>
+        <div class="macro-card"><div class="macro-card-num">${Math.round(t.fatG)}g</div><div class="macro-card-label">Grasas</div></div>
       </div>
       <p class="sub" style="margin-top:16px;">Podrás ajustar todo esto cuando quieras desde Perfil.</p>
       <button class="btn accent" onclick="showProPaywall(true)">Empezar</button>
@@ -1279,9 +1283,9 @@ function renderToday(){
               <div class="log-top"><div class="log-title">${item.name}</div><div class="log-time">${timeLabel}</div><span class="del" onclick="event.stopPropagation(); removeFood('${item.id}')">✕</span></div>
               <div class="log-cal">${ICON.fire} <b>${item.cal}</b> calorías</div>
               <div class="log-macros">
-                <span>🍗 ${fmt1(item.protein)}g</span>
-                <span>${ICON.carbs} ${fmt1(item.carb)}g</span>
-                <span>${ICON.water} ${fmt1(item.fat)}g</span>
+                <span>🍗 ${Math.round(item.protein)}g</span>
+                <span>${ICON.carbs} ${Math.round(item.carb)}g</span>
+                <span>${ICON.water} ${Math.round(item.fat)}g</span>
               </div>
             </div>
           </div>`;
@@ -1330,17 +1334,17 @@ function renderToday(){
 
     <div class="macro-row">
       <div class="macro-card">
-        <div class="macro-card-num">${fmt1(proteinLeft)}g</div>
+        <div class="macro-card-num">${Math.round(proteinLeft)}g</div>
         <div class="macro-card-label">${tr('protein_left')}</div>
         <div class="macro-ring-wrap">${macroRingSvg(protein, t.proteinG, 'var(--protein)', ICON.protein)}</div>
       </div>
       <div class="macro-card">
-        <div class="macro-card-num">${fmt1(carbsLeft)}g</div>
+        <div class="macro-card-num">${Math.round(carbsLeft)}g</div>
         <div class="macro-card-label">${tr('carbs_left')}</div>
         <div class="macro-ring-wrap">${macroRingSvg(carbs, t.carbG, 'var(--carbs)', ICON.carbs)}</div>
       </div>
       <div class="macro-card">
-        <div class="macro-card-num">${fmt1(fatLeft)}g</div>
+        <div class="macro-card-num">${Math.round(fatLeft)}g</div>
         <div class="macro-card-label">${tr('fat_left')}</div>
         <div class="macro-ring-wrap">${macroRingSvg(fat, t.fatG, 'var(--fat)', ICON.water)}</div>
       </div>
@@ -1390,7 +1394,7 @@ function openFoodDetail(id){
     ${hs ? `
     <div class="hero-card" style="margin-top:12px;">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-        <span style="font-size:13px; font-weight:700;">❤️ Nota de salud</span>
+        <span style="font-size:13px; font-weight:700;">${bigEmoji('❤️')} Nota de salud</span>
         <span style="font-size:13px; font-weight:700; color:${hsColor};">${hs}/10</span>
       </div>
       <div class="water-track"><div class="water-fill" style="width:${hsPct}%; background:${hsColor};"></div></div>
@@ -1403,7 +1407,7 @@ function openFoodDetail(id){
     </div>` : ''}
 
     <div id="fix-results-wrap" style="margin-top:18px;">
-      ${f.photo ? `<button class="btn ghost" onclick="startFixResults('${f.id}')">✨ Arreglar resultados</button>` : ''}
+      ${f.photo ? `<button class="btn ghost" onclick="startFixResults('${f.id}')">${bigEmoji('✨')} Arreglar resultados</button>` : ''}
     </div>
   `;
   document.getElementById('food-detail').classList.remove('hide');
@@ -1445,7 +1449,7 @@ function openPendingFoodDetail(){
     ${hs ? `
     <div class="hero-card" style="margin-top:12px;">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-        <span style="font-size:13px; font-weight:700;">❤️ Nota de salud</span>
+        <span style="font-size:13px; font-weight:700;">${bigEmoji('❤️')} Nota de salud</span>
         <span style="font-size:13px; font-weight:700; color:${hsColor};">${hs}/10</span>
       </div>
       <div class="water-track"><div class="water-fill" style="width:${hsPct}%; background:${hsColor};"></div></div>
@@ -1862,7 +1866,7 @@ function renderAdd(){
     ` : ''}
 
     <details id="manual-food-details" open>
-      <summary>Añadir comida manualmente</summary>
+      <summary>${bigEmoji('📝')} Añadir comida manualmente</summary>
       <div class="inner">
         <div class="field"><label>Nombre</label><input id="mf-name" placeholder="Ensalada de pollo"></div>
         <div class="row2">
@@ -2141,35 +2145,35 @@ function addManualFood(){
 }
 
 const EXERCISE_TYPES = {
-  correr: { label:'Correr al aire libre', icon:ICON.run, met:9.8, hasDistance:true },
-  correr_cinta: { label:'Correr en cinta', icon:ICON.run, met:8.3, hasDistance:true },
-  andar: { label:'Andar', icon:ICON.walk, met:3.5, hasDistance:true },
-  senderismo: { label:'Senderismo', icon:ICON.walk, met:6.0, hasDistance:true },
-  bici: { label:'Bici al aire libre', icon:ICON.bike, met:7.5, hasDistance:true },
-  bici_estatica: { label:'Bici estática', icon:ICON.bike, met:6.8, hasDistance:false },
-  natacion: { label:'Natación', icon:ICON.swim, met:8.0, hasDistance:false },
-  eliptica: { label:'Elíptica', icon:ICON.run, met:5.0, hasDistance:false },
-  remo: { label:'Remo', icon:ICON.dumbbell, met:7.0, hasDistance:false },
-  escaladora: { label:'Escaladora', icon:ICON.walk, met:8.8, hasDistance:false },
-  hiit: { label:'HIIT', icon:ICON.fire, met:8.0, hasDistance:false },
-  funcional: { label:'Entrenamiento funcional', icon:ICON.dumbbell, met:6.0, hasDistance:false },
-  gimnasio: { label:'Pesas / Gimnasio', icon:ICON.dumbbell, met:5.0, hasDistance:false },
-  yoga: { label:'Yoga', icon:ICON.yoga, met:2.5, hasDistance:false },
-  pilates: { label:'Pilates', icon:ICON.yoga, met:3.0, hasDistance:false },
-  baile: { label:'Baile', icon:ICON.yoga, met:5.5, hasDistance:false },
-  boxeo: { label:'Boxeo', icon:ICON.dumbbell, met:7.8, hasDistance:false },
-  artes_marciales: { label:'Artes marciales', icon:ICON.dumbbell, met:10.3, hasDistance:false },
-  baloncesto: { label:'Baloncesto', icon:ICON.ball, met:6.5, hasDistance:false },
-  futbol: { label:'Fútbol', icon:ICON.ball, met:7.0, hasDistance:false },
-  tenis: { label:'Tenis', icon:ICON.ball, met:7.3, hasDistance:false },
-  padel: { label:'Pádel', icon:ICON.ball, met:6.0, hasDistance:false },
-  voleibol: { label:'Voleibol', icon:ICON.ball, met:4.0, hasDistance:false },
-  golf: { label:'Golf', icon:ICON.ball, met:4.8, hasDistance:false },
-  esqui: { label:'Esquí', icon:ICON.walk, met:7.0, hasDistance:false },
-  surf: { label:'Surf', icon:ICON.swim, met:5.0, hasDistance:false },
-  escalada: { label:'Escalada', icon:ICON.walk, met:8.0, hasDistance:false },
-  patinaje: { label:'Patinaje', icon:ICON.walk, met:7.0, hasDistance:false },
-  otro: { label:'Otro', icon:ICON.other, met:null, hasDistance:false }
+  correr: { label:'Correr al aire libre', icon:bigEmoji('🏃'), met:9.8, hasDistance:true },
+  correr_cinta: { label:'Correr en cinta', icon:bigEmoji('🏃'), met:8.3, hasDistance:true },
+  andar: { label:'Andar', icon:bigEmoji('🚶'), met:3.5, hasDistance:true },
+  senderismo: { label:'Senderismo', icon:bigEmoji('🥾'), met:6.0, hasDistance:true },
+  bici: { label:'Bici al aire libre', icon:bigEmoji('🚴'), met:7.5, hasDistance:true },
+  bici_estatica: { label:'Bici estática', icon:bigEmoji('🚲'), met:6.8, hasDistance:false },
+  natacion: { label:'Natación', icon:bigEmoji('🏊'), met:8.0, hasDistance:false },
+  eliptica: { label:'Elíptica', icon:bigEmoji('🏃'), met:5.0, hasDistance:false },
+  remo: { label:'Remo', icon:bigEmoji('🚣'), met:7.0, hasDistance:false },
+  escaladora: { label:'Escaladora', icon:bigEmoji('🪜'), met:8.8, hasDistance:false },
+  hiit: { label:'HIIT', icon:bigEmoji('🔥'), met:8.0, hasDistance:false },
+  funcional: { label:'Entrenamiento funcional', icon:bigEmoji('🏋️'), met:6.0, hasDistance:false },
+  gimnasio: { label:'Pesas / Gimnasio', icon:bigEmoji('🏋️'), met:5.0, hasDistance:false },
+  yoga: { label:'Yoga', icon:bigEmoji('🧘'), met:2.5, hasDistance:false },
+  pilates: { label:'Pilates', icon:bigEmoji('🧘'), met:3.0, hasDistance:false },
+  baile: { label:'Baile', icon:bigEmoji('💃'), met:5.5, hasDistance:false },
+  boxeo: { label:'Boxeo', icon:bigEmoji('🥊'), met:7.8, hasDistance:false },
+  artes_marciales: { label:'Artes marciales', icon:bigEmoji('🥋'), met:10.3, hasDistance:false },
+  baloncesto: { label:'Baloncesto', icon:bigEmoji('🏀'), met:6.5, hasDistance:false },
+  futbol: { label:'Fútbol', icon:bigEmoji('⚽'), met:7.0, hasDistance:false },
+  tenis: { label:'Tenis', icon:bigEmoji('🎾'), met:7.3, hasDistance:false },
+  padel: { label:'Pádel', icon:bigEmoji('🎾'), met:6.0, hasDistance:false },
+  voleibol: { label:'Voleibol', icon:bigEmoji('🏐'), met:4.0, hasDistance:false },
+  golf: { label:'Golf', icon:bigEmoji('⛳'), met:4.8, hasDistance:false },
+  esqui: { label:'Esquí', icon:bigEmoji('⛷️'), met:7.0, hasDistance:false },
+  surf: { label:'Surf', icon:bigEmoji('🏄'), met:5.0, hasDistance:false },
+  escalada: { label:'Escalada', icon:bigEmoji('🧗'), met:8.0, hasDistance:false },
+  patinaje: { label:'Patinaje', icon:bigEmoji('⛸️'), met:7.0, hasDistance:false },
+  otro: { label:'Otro', icon:bigEmoji('⚙️'), met:null, hasDistance:false }
 };
 
 function openExercisePicker(){
@@ -2196,7 +2200,7 @@ function selectExerciseType(type){
   const cfg = EXERCISE_TYPES[type];
   if(type === 'otro'){
     openActionOverlay(`
-      <h1 style="margin:0 0 14px 0;">⚙️ Otro ejercicio</h1>
+      <h1 style="margin:0 0 14px 0;">${bigEmoji('⚙️')} Otro ejercicio</h1>
       <div class="field"><label>Nombre</label><input id="ex-custom-name" placeholder="Natación, pádel, yoga..."></div>
       <div class="field"><label>Calorías quemadas</label><input id="ex-custom-cal" type="number" placeholder="200"></div>
       <button class="btn accent" onclick="submitCustomExercise()">Registrar</button>
@@ -2341,12 +2345,12 @@ function renderDatos(){
       <div class="section-title">📊 Calorías esta semana</div>
       <div class="panel">${buildCalorieBarChart()}</div>
 
-      <div class="section-title">⚖️ Progreso de peso</div>
+      <div class="section-title">${bigEmoji('⚖️')} Progreso de peso</div>
       ${buildProgressHTML()}
     `;
   } else {
     el.innerHTML = `
-      <div class="section-title">⚖️ Progreso de peso</div>
+      <div class="section-title">${bigEmoji('⚖️')} Progreso de peso</div>
       <div class="panel" style="text-align:center; padding:32px 20px;">
         <div style="font-size:32px; margin-bottom:8px;">${ICON.lock}</div>
         <div style="font-weight:700; font-size:15px; margin-bottom:6px;">Función Pro</div>
@@ -2404,7 +2408,7 @@ async function openDayDetail(date){
   const net = consumed - burned;
 
   const foodRows = log.foods.length ? log.foods.map(f=>`
-    <div class="row"><span class="rname">
+    <div class="row" style="cursor:pointer;" onclick="openFoodDetailForDate('${f.id}', '${date}')"><span class="rname">
       ${f.photo ? `<img src="${f.photo}" class="row-thumb">` : `<span class="row-thumb row-thumb-fallback">🍽️</span>`}
       ${f.name}</span><span class="rval">${f.cal} kcal</span></div>`).join('')
     : `<div class="empty">Sin comidas ese día</div>`;
@@ -2416,15 +2420,79 @@ async function openDayDetail(date){
     <div style="color:var(--muted); font-size:12px; margin-bottom:6px;">Resumen del día</div>
     <div class="ring-wrap" style="margin:0 0 8px 0; padding:10px 0;">${ringSvg(consumed, t.calorieTarget)}</div>
     <div class="macro-grid" style="margin-bottom:18px;">
-      <div class="macro-chip" style="background:var(--protein-soft);"><span>${ICON.protein}</span><b>${fmt1(protein)} g</b><small>Proteína</small></div>
-      <div class="macro-chip" style="background:var(--carbs-soft);"><span>${ICON.carbs}</span><b>${fmt1(carbs)} g</b><small>Carbohidratos</small></div>
-      <div class="macro-chip" style="background:var(--fat-soft);"><span>${ICON.water}</span><b>${fmt1(fat)} g</b><small>Grasas</small></div>
+      <div class="macro-chip" style="background:var(--protein-soft);"><span>${ICON.protein}</span><b>${Math.round(protein)} g</b><small>Proteína</small></div>
+      <div class="macro-chip" style="background:var(--carbs-soft);"><span>${ICON.carbs}</span><b>${Math.round(carbs)} g</b><small>Carbohidratos</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft);"><span>${ICON.water}</span><b>${Math.round(fat)} g</b><small>Grasas</small></div>
     </div>
     <div class="section-title">Comida</div>
     ${foodRows}
     ${exRows ? `<div class="section-title">Ejercicio</div>${exRows}` : ''}
   `;
   document.getElementById('food-detail').classList.remove('hide');
+}
+
+async function openFoodDetailForDate(id, date){
+  const log = date === todayStr() ? state.log : ((await safeGet('log:' + date)) || { foods: [] });
+  const f = log.foods.find(x => x.id === id);
+  if(!f) return;
+  window.__pastDayFoodBuffer = f;
+  const hs = f.healthScore;
+  const hsPct = hs ? Math.round((hs / 10) * 100) : 0;
+  const hsColor = !hs ? 'var(--line-strong)' : hs >= 7 ? 'var(--protein)' : hs >= 4 ? 'var(--burn)' : 'var(--warn)';
+
+  document.getElementById('food-detail-body').innerHTML = `
+    ${f.photo ? `<img src="${f.photo}" class="detail-photo">` : `<div class="detail-photo detail-photo-fallback">🍽️</div>`}
+
+    <div class="detail-title-row">
+      <h1>${f.name}</h1>
+      ${isPro() ? `<button class="qty-pill" onclick="saveFoodAsTemplateFromBuffer()" aria-label="Guardar como plantilla">⭐</button>` : ''}
+    </div>
+    <p class="sub" style="margin:2px 0 0 0;">${formatDateLabel(date)}</p>
+
+    <div class="hero-card" style="margin-top:14px;">
+      <div class="hero-top">
+        <div>
+          <div class="hero-number">${f.cal}</div>
+          <div class="hero-label">${ICON.fire} Calorías</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="macro-grid" style="margin-top:12px;">
+      <div class="macro-chip" style="background:var(--protein-soft);"><span>${ICON.protein}</span><b>${fmt1(f.protein)} g</b><small>Proteína</small></div>
+      <div class="macro-chip" style="background:var(--carbs-soft);"><span>${ICON.carbs}</span><b>${fmt1(f.carb)} g</b><small>Carbohidratos</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft);"><span>${ICON.water}</span><b>${fmt1(f.fat)} g</b><small>Grasas</small></div>
+    </div>
+
+    ${hs ? `
+    <div class="hero-card" style="margin-top:12px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <span style="font-size:13px; font-weight:700;">${bigEmoji('❤️')} Nota de salud</span>
+        <span style="font-size:13px; font-weight:700; color:${hsColor};">${hs}/10</span>
+      </div>
+      <div class="water-track"><div class="water-fill" style="width:${hsPct}%; background:${hsColor};"></div></div>
+    </div>` : ''}
+
+    ${f.ingredients && f.ingredients.length ? `
+    <div class="section-title">Ingredientes</div>
+    <div class="ingredient-chips">
+      ${f.ingredients.map(ing => `<span class="ingredient-chip">${ing}</span>`).join('')}
+    </div>` : ''}
+  `;
+  document.getElementById('food-detail').classList.remove('hide');
+}
+
+async function saveFoodAsTemplateFromBuffer(){
+  if(!isPro()){ showToast('Guardar plantillas es una función Pro', true); return; }
+  const f = window.__pastDayFoodBuffer;
+  if(!f) return;
+  const saved = (await safeGet('savedMeals')) || [];
+  saved.push({
+    id: Date.now().toString(), name: f.name, cal: f.cal, protein: f.protein,
+    carb: f.carb, fat: f.fat, photo: f.photo, healthScore: f.healthScore, ingredients: f.ingredients
+  });
+  await safeSet('savedMeals', saved);
+  showToast('Guardado como plantilla ⭐');
 }
 
 function sparkSvg(pointsKg, goalKg){
@@ -2497,9 +2565,9 @@ function renderProfile(){
       <div class="row"><span class="rname">TDEE estimado</span><span class="rval">${t.tdee} kcal</span></div>
       <div class="row"><span class="rname">Objetivo</span><span class="rval">${GOAL_LABELS[t.goalType]}${t.isCustom?' · manual':''}</span></div>
       <div class="row"><span class="rname">Calorías diarias</span><span class="rval">${t.calorieTarget} kcal</span></div>
-      <div class="row"><span class="rname">Proteína</span><span class="rval">${fmt1(t.proteinG)} g</span></div>
-      <div class="row"><span class="rname">Carbohidratos</span><span class="rval">${fmt1(t.carbG)} g</span></div>
-      <div class="row"><span class="rname">Grasas</span><span class="rval">${fmt1(t.fatG)} g</span></div>
+      <div class="row"><span class="rname">Proteína</span><span class="rval">${Math.round(t.proteinG)} g</span></div>
+      <div class="row"><span class="rname">Carbohidratos</span><span class="rval">${Math.round(t.carbG)} g</span></div>
+      <div class="row"><span class="rname">Grasas</span><span class="rval">${Math.round(t.fatG)} g</span></div>
       <div class="row"><span class="rname">Tiempo estimado</span><span class="rval">${t.weeksToGoal} sem</span></div>
     </div>
 
@@ -2509,7 +2577,7 @@ function renderProfile(){
         ${THEMES.map(th => `<button class="theme-dot ${p.theme===th.id?'selected':''}" style="background:${th.accent};" onclick="setTheme('${th.id}')" aria-label="${th.id}"></button>`).join('')}
       </div>
       <div class="row" style="margin-top:6px; border-top:1px solid var(--line); padding-top:16px;">
-        <span class="rname">🌙 ${tr('dark_mode')}</span>
+        <span class="rname">${bigEmoji('🌙')} ${tr('dark_mode')}</span>
         <label class="switch">
           <input type="checkbox" ${p.darkMode ? 'checked' : ''} onchange="toggleDarkMode()">
           <span class="switch-slider"></span>
@@ -2624,7 +2692,7 @@ function renderProfile(){
     </div>
 
     <details>
-      <summary>🔐 Copia de seguridad</summary>
+      <summary>${bigEmoji('🔐')} Copia de seguridad</summary>
       <div class="inner">
         <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">
           ${HAS_CLOUD ? 'Tu cuenta ya se guarda sola aquí. Usa este código como copia extra, o para llevarte tus datos a otro sitio.' : (HAS_LOCAL_STORAGE ? 'Tus datos ya se guardan en este navegador, así que no se resetean al cerrar la página. Usa este código como copia de seguridad extra, o para pasar tus datos a otro dispositivo.' : 'Este navegador no permite guardar datos de forma persistente: genera tu código y guárdalo para no perderlo al cerrar.')}
@@ -2733,7 +2801,7 @@ async function resetAccount(){
 function renderStaticMenus(){
   document.getElementById('add-menu-body').innerHTML = `
     <button class="fab-option" onclick="closeAddMenu(); openManualFoodForm();">
-      <span class="fab-option-icon">📝</span> Registrar comida
+      <span class="fab-option-icon">${bigEmoji('📝')}</span> Registrar comida
     </button>
     <button class="fab-option" onclick="closeAddMenu(); openScanChoice();">
       <span class="fab-option-icon">${ICON.camera}</span> Escanear comida
@@ -2742,7 +2810,7 @@ function renderStaticMenus(){
       <span class="fab-option-icon">${ICON.star}</span> Comida guardada
     </button>
     <button class="fab-option" onclick="closeAddMenu(); openExercisePicker();">
-      <span class="fab-option-icon">${ICON.run}</span> Registrar ejercicio
+      <span class="fab-option-icon">${bigEmoji('🏃')}</span> Registrar ejercicio
     </button>
   `;
   document.getElementById('scan-choice-body').innerHTML = `
