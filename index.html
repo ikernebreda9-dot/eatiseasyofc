@@ -199,12 +199,21 @@ details .inner{padding-top:10px;}
 .overlay-card h1{font-family:inherit; font-size:26px; font-weight:600; margin:6px 0 4px 0; letter-spacing:-.3px; color:var(--paper);}
 .overlay-card p.sub{color:var(--muted); font-size:13px; margin:0 0 24px 0; line-height:1.5;}
 .ob-progress{height:5px; background:var(--line-strong); border-radius:4px; overflow:hidden; margin-bottom:24px;}
+
+.wheel-picker{position:relative; height:168px;}
+.wheel-track{height:100%; overflow-y:scroll; scroll-snap-type:y mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
+.wheel-track::-webkit-scrollbar{display:none;}
+.wheel-pad{height:63px;}
+.wheel-item{height:42px; scroll-snap-align:center; display:flex; align-items:center; justify-content:center; font-size:17px; color:var(--muted); font-weight:600; transition:color .15s ease, font-size .15s ease;}
+.wheel-item.selected{color:var(--accent); font-size:24px; font-weight:800;}
+.wheel-highlight{position:absolute; top:50%; left:0; right:0; height:42px; transform:translateY(-50%); border-top:1.5px solid var(--line-strong); border-bottom:1.5px solid var(--line-strong); pointer-events:none;}
 .ob-progress-fill{height:100%; background:var(--accent); border-radius:4px; transition:width .35s ease;}
 .ob-loading-title{font-size:17px; font-weight:800; text-align:center; letter-spacing:-.2px;}
 
 .big-number{font-family:inherit; font-size:34px; font-weight:600; letter-spacing:-.5px; color:var(--paper);}
 .weight-row{display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-top:4px;}
 .spark{width:100%; height:auto; margin-top:20px;}
+.bar-grow{transition:height .55s cubic-bezier(.2,.8,.3,1), y .55s cubic-bezier(.2,.8,.3,1);}
 .plist .row .rval{font-weight:500;}
 
 .avatar-header{display:flex; flex-direction:column; align-items:center; gap:10px; padding:18px 0 8px 0;}
@@ -427,7 +436,7 @@ async function importBackupCode(code){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.12';
+const APP_VERSION = '0.18';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -616,6 +625,44 @@ const PRO_DISCOUNT_PRICE_LABEL = '3,99 €';
 const PRO_DISCOUNT_PAYMENT_LINK = '';
 let proDiscountApplied = false;
 
+// ======================================================================
+// LICENCIA PRO — atada a tu email de Google, sin necesidad de servidor.
+// El código de licencia se calcula con una firma (HMAC) a partir de tu
+// email + esta clave. Solo funciona en un dispositivo nuevo si inicias
+// sesión con la MISMA cuenta de Google y pegas tu código — así no es
+// transferible a otra persona, pero tú puedes cambiar de móvil sin pagar
+// otra vez. Ya lleva una clave aleatoria puesta, no hace falta que la toques.
+// ======================================================================
+const LICENSE_SECRET = '079fc7d2b1503a17e4aef1dc32b0d0a9b869d01bc1acec67df5bca402095b5d5';
+
+async function computeLicenseSig(email){
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(LICENSE_SECRET), { name:'HMAC', hash:'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(email.trim().toLowerCase()));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('').slice(0, 16);
+}
+async function generateLicenseCode(email){
+  const sig = await computeLicenseSig(email);
+  const encodedEmail = btoa(email.trim().toLowerCase()).replace(/=+$/,'');
+  return `${encodedEmail}.${sig}`;
+}
+async function verifyLicenseCode(code, email){
+  try{
+    const [encodedEmail, sig] = (code || '').trim().split('.');
+    if(!encodedEmail || !sig) return false;
+    const expectedEncoded = btoa(email.trim().toLowerCase()).replace(/=+$/,'');
+    if(encodedEmail !== expectedEncoded) return false;
+    const expectedSig = await computeLicenseSig(email);
+    return sig === expectedSig;
+  }catch(e){ return false; }
+}
+async function ensureLicenseCode(){
+  if(state.profile && state.profile.isPro && state.profile.email && !state.profile.licenseCode){
+    state.profile.licenseCode = await generateLicenseCode(state.profile.email);
+    await safeSet('profile', state.profile);
+  }
+}
+
 let state = { profile:null, tab:'today', log:{foods:[],exercises:[]}, weights:[], logDates:[], supplements:[], takenToday:{}, daySummaries:[], analyzing:false, pendingFood:null };
 
 function todayStr(){
@@ -710,6 +757,7 @@ async function init(){
   if(new URLSearchParams(location.search).get('pro') === '1' && !state.profile.isPro){
     state.profile.isPro = true;
     await safeSet('profile', state.profile);
+    await ensureLicenseCode();
     history.replaceState(null, '', location.pathname);
     showToast('¡eatiseasy Pro activado! 🎉');
   }
@@ -740,16 +788,75 @@ const OB_TOTAL_STEPS = 3;
 // secreto, los client IDs están hechos para ir en código público.
 const DEFAULT_GOOGLE_CLIENT_ID = '172112549058-i71mees906on0s7v1go5oq6vhrn5r5bq.apps.googleusercontent.com';
 
+// ======================================================================
+// SELECTOR DE NÚMEROS TIPO RUEDA (como los relojes de alarma de iPhone).
+// Reutilizable en cualquier campo numérico de la app.
+// ======================================================================
+const WHEEL_ITEM_H = 42;
+let wheelValues = {};
+let wheelTimers = {};
+
+function wheelRange(min, max, step){
+  const arr = [];
+  const n = Math.round((max - min) / step);
+  for(let i = 0; i <= n; i++) arr.push(+(min + i*step).toFixed(2));
+  return arr;
+}
+
+function buildWheelHTML(id, min, max, step, unit){
+  const values = wheelRange(min, max, step);
+  const itemsHtml = values.map(v => `<div class="wheel-item" data-value="${v}">${v}${unit ? ' '+unit : ''}</div>`).join('');
+  return `
+    <div class="wheel-picker">
+      <div class="wheel-track" id="${id}">
+        <div class="wheel-pad"></div>
+        ${itemsHtml}
+        <div class="wheel-pad"></div>
+      </div>
+      <div class="wheel-highlight"></div>
+    </div>`;
+}
+
+function initWheelPicker(id, initialValue){
+  const track = document.getElementById(id);
+  if(!track) return;
+  const items = Array.from(track.querySelectorAll('.wheel-item'));
+  let idx = items.findIndex(it => Math.abs(parseFloat(it.dataset.value) - initialValue) < 1e-6);
+  if(idx < 0) idx = Math.round(items.length / 2);
+  track.scrollTop = idx * WHEEL_ITEM_H;
+  updateWheelSelection(id);
+  track.addEventListener('scroll', () => {
+    clearTimeout(wheelTimers[id]);
+    wheelTimers[id] = setTimeout(() => updateWheelSelection(id), 90);
+  });
+}
+
+function updateWheelSelection(id){
+  const track = document.getElementById(id);
+  if(!track) return;
+  const items = track.querySelectorAll('.wheel-item');
+  const idx = Math.max(0, Math.min(items.length - 1, Math.round(track.scrollTop / WHEEL_ITEM_H)));
+  items.forEach(it => it.classList.remove('selected'));
+  if(items[idx]){
+    items[idx].classList.add('selected');
+    wheelValues[id] = parseFloat(items[idx].dataset.value);
+  }
+}
+
+function getWheelValue(id, fallback){
+  return wheelValues[id] != null ? wheelValues[id] : fallback;
+}
+
 function obSaveCurrentStepInputs(){
   const val = id => { const el = document.getElementById(id); return el ? el.value : null; };
   if(obStep === 1){
     obDraft.name = val('ob-name') || obDraft.name;
     obDraft.sex = val('ob-sex') || obDraft.sex;
   } else if(obStep === 2){
-    obDraft.age = parseFloat(val('ob-age')) || obDraft.age;
-    obDraft.heightCm = parseFloat(val('ob-height')) || obDraft.heightCm;
-    obDraft.currentWeight = parseFloat(val('ob-current')) || obDraft.currentWeight;
-    obDraft.goalWeight = parseFloat(val('ob-goal')) || obDraft.goalWeight;
+    obDraft.age = getWheelValue('ob-age', obDraft.age) || obDraft.age;
+    obDraft.heightCm = getWheelValue('ob-height', obDraft.heightCm) || obDraft.heightCm;
+    obDraft.currentWeight = getWheelValue('ob-current', obDraft.currentWeight) || obDraft.currentWeight;
+    obDraft.goalWeight = getWheelValue('ob-goal', obDraft.goalWeight) || obDraft.goalWeight;
   } else if(obStep === 3){
     obDraft.activityLevel = val('ob-activity') || obDraft.activityLevel;
     obDraft.goalType = val('ob-goaltype') || obDraft.goalType;
@@ -792,12 +899,12 @@ function renderOnboardStep(){
       <h1>Sobre ti</h1>
       <p class="sub">Para calcular tu metabolismo basal.</p>
       <div class="row2">
-        <div class="field"><label>Edad</label><input id="ob-age" type="number" placeholder="30" value="${d.age||''}"></div>
-        <div class="field"><label>Altura (cm)</label><input id="ob-height" type="number" placeholder="170" value="${d.heightCm||''}"></div>
+        <div class="field"><label>Edad</label>${buildWheelHTML('ob-age', 12, 90, 1, '')}</div>
+        <div class="field"><label>Altura (cm)</label>${buildWheelHTML('ob-height', 120, 220, 1, 'cm')}</div>
       </div>
       <div class="row2">
-        <div class="field"><label>Peso actual (kg)</label><input id="ob-current" type="number" step="0.1" placeholder="80" value="${d.currentWeight||''}"></div>
-        <div class="field"><label>Peso objetivo (kg)</label><input id="ob-goal" type="number" step="0.1" placeholder="72" value="${d.goalWeight||''}"></div>
+        <div class="field"><label>Peso actual (kg)</label>${buildWheelHTML('ob-current', 35, 200, 0.5, 'kg')}</div>
+        <div class="field"><label>Peso objetivo (kg)</label>${buildWheelHTML('ob-goal', 35, 200, 0.5, 'kg')}</div>
       </div>`;
   } else if(obStep === 3){
     const act = d.activityLevel || 'light';
@@ -856,18 +963,36 @@ function renderOnboardStep(){
   `;
 
   if(obStep === 1) renderGoogleButton();
+  if(obStep === 2){
+    initWheelPicker('ob-age', d.age || 30);
+    initWheelPicker('ob-height', d.heightCm || 170);
+    initWheelPicker('ob-current', d.currentWeight || 75);
+    initWheelPicker('ob-goal', d.goalWeight || 70);
+  }
+}
+
+function whenGoogleReady(renderFn, attemptsLeft){
+  attemptsLeft = attemptsLeft == null ? 24 : attemptsLeft;
+  if(window.google && window.google.accounts && window.google.accounts.id){
+    try{ renderFn(); }catch(e){ console.warn('Google sign-in render failed', e); }
+    return;
+  }
+  if(attemptsLeft <= 0){
+    console.warn('Google Identity Services no llegó a cargar a tiempo');
+    return;
+  }
+  setTimeout(() => whenGoogleReady(renderFn, attemptsLeft - 1), 250);
 }
 
 function renderGoogleButton(){
-  try{
-    if(!window.google || !google.accounts || !google.accounts.id) return;
+  whenGoogleReady(() => {
     google.accounts.id.initialize({ client_id: DEFAULT_GOOGLE_CLIENT_ID, callback: handleGoogleCredential });
     const container = document.getElementById('google-signin-btn');
     if(container){
       container.innerHTML = '';
       google.accounts.id.renderButton(container, { theme: 'outline', size: 'large', width: 280, text: 'continue_with', locale: 'es' });
     }
-  }catch(e){ console.warn('Google sign-in no disponible', e); }
+  });
 }
 
 function decodeJwt(token){
@@ -881,6 +1006,7 @@ function handleGoogleCredential(response){
     const payload = decodeJwt(response.credential);
     obDraft.name = payload.name || obDraft.name;
     obDraft.googleAvatarUrl = payload.picture || null;
+    obDraft.email = payload.email || null;
     showToast('Hola, ' + (payload.given_name || payload.name || '') + ' 👋');
     renderOnboardStep();
   }catch(e){
@@ -889,26 +1015,27 @@ function handleGoogleCredential(response){
 }
 
 function renderGoogleButtonProfile(){
-  try{
-    if(!window.google || !google.accounts || !google.accounts.id) return;
+  whenGoogleReady(() => {
     google.accounts.id.initialize({ client_id: DEFAULT_GOOGLE_CLIENT_ID, callback: handleGoogleCredentialProfile });
     const container = document.getElementById('google-signin-btn-profile');
     if(container){
       container.innerHTML = '';
       google.accounts.id.renderButton(container, { theme: 'outline', size: 'large', width: 280, text: 'continue_with', locale: 'es' });
     }
-  }catch(e){ console.warn('Google sign-in no disponible', e); }
+  });
 }
 
 async function handleGoogleCredentialProfile(response){
   try{
     const payload = decodeJwt(response.credential);
     state.profile.name = payload.name || state.profile.name;
+    state.profile.email = payload.email || state.profile.email;
     if(payload.picture){
       try{ state.profile.avatar = await fetchImageAsDataUrl(payload.picture, 200, 0.8); }
       catch(e){ /* si falla la foto, seguimos solo con el nombre */ }
     }
     await safeSet('profile', state.profile);
+    await ensureLicenseCode();
     showToast('Sesión iniciada con Google, ' + (payload.given_name || payload.name || ''));
     renderAll();
   }catch(e){
@@ -958,7 +1085,7 @@ async function finishOnboarding(){
     name, sex: obDraft.sex || 'female', age: obDraft.age, heightCm: obDraft.heightCm,
     currentWeight: obDraft.currentWeight, goalWeight: obDraft.goalWeight,
     activityLevel: obDraft.activityLevel || 'light', goalType: obDraft.goalType || 'auto',
-    paceKgWeek: obDraft.paceKgWeek || 0.5, dailyBurnGoal: 300,
+    paceKgWeek: obDraft.paceKgWeek || 0.5, dailyBurnGoal: 300, email: obDraft.email || null,
     customMode: false, darkMode: true, createdAt: new Date().toISOString()
   };
   await safeSet('profile', state.profile);
@@ -1078,6 +1205,7 @@ async function redeemPromoCode(){
   if(code === PRO_PROMO_CODE.toUpperCase()){
     state.profile.isPro = true;
     await safeSet('profile', state.profile);
+    await ensureLicenseCode();
     showToast('¡eatiseasy Pro activado! 🎉');
     if(document.getElementById('onboard') && !document.getElementById('onboard').classList.contains('hide')){
       await enterAppFromReveal();
@@ -1987,7 +2115,7 @@ async function analyzeFoodImage(base64, mediaType, correctionNote){
   const correctionPart = correctionNote
     ? ` Esta foto ya se había analizado antes y el usuario dice que el resultado estaba mal, con esta corrección: "${correctionNote}". Ten en cuenta esa corrección y vuelve a estimarlo bien.`
     : '';
-  const schemaPart = ' Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin backticks, exactamente con este formato: {"name":"nombre breve del plato en español","calories":numero_entero,"protein_g":numero_entero,"carbs_g":numero_entero,"fat_g":numero_entero,"health_score":numero_entero_del_1_al_10_donde_10_es_muy_saludable,"ingredients":["ingrediente1","ingrediente2"]} (la lista de ingredients debe tener como máximo 6 elementos breves, en español).';
+  const schemaPart = ' Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin backticks, exactamente con este formato: {"name":"nombre breve del plato en español","calories":numero_entero,"protein_g":numero_entero,"carbs_g":numero_entero,"fat_g":numero_entero,"health_score":numero_entero_del_1_al_10_donde_10_es_muy_saludable,"ingredients":[{"name":"ingrediente en español","grams":numero_entero_aproximado}]} (la lista de ingredients debe tener como máximo 6 elementos, con una estimación aproximada de gramos para cada uno).';
   const prompt = basePrompt + correctionPart + schemaPart;
 
   const requestBody = provider === 'gemini'
@@ -2041,8 +2169,40 @@ async function analyzeFoodImage(base64, mediaType, correctionNote){
     carb: round1(parsed.carbs_g) || 0,
     fat: round1(parsed.fat_g) || 0,
     healthScore: parsed.health_score != null ? Math.max(1, Math.min(10, Math.round(parsed.health_score))) : null,
-    ingredients: Array.isArray(parsed.ingredients) ? parsed.ingredients.slice(0,6) : []
+    ingredients: normalizeIngredients(parsed.ingredients)
   };
+}
+
+// Admite tanto el formato nuevo ({name, grams}) como el viejo (solo texto),
+// para no romper comidas guardadas antes de este cambio.
+function normalizeIngredients(list){
+  if(!Array.isArray(list)) return [];
+  return list.slice(0, 8).map(item => {
+    if(typeof item === 'string') return { name: item, grams: null };
+    return { name: item.name || String(item), grams: item.grams != null ? Math.round(item.grams) : null };
+  });
+}
+
+async function estimateIngredientGramsFromPhoto(photoDataUrl, ingredientName){
+  const base64 = (photoDataUrl || '').split(',')[1];
+  if(!base64) throw new Error('No hay foto de esta comida para estimar');
+  const { url, headers, mode, provider, apiKey } = await getPhotoEndpoint();
+  const prompt = `En esta foto de comida, estima cuántos gramos aproximados hay de "${ingredientName}". Responde ÚNICAMENTE con un objeto JSON válido, sin backticks, con este formato exacto: {"grams":numero_entero}`;
+  const requestBody = provider === 'gemini'
+    ? { contents: [{ parts: [ { inline_data: { mime_type: 'image/jpeg', data: base64 } }, { text: prompt } ] }] }
+    : { model: 'claude-sonnet-4-6', max_tokens: 100, messages: [{ role:'user', content: [ { type:'image', source:{ type:'base64', media_type:'image/jpeg', data: base64 } }, { type:'text', text: prompt } ] }] };
+  const resp = (provider === 'gemini' && apiKey)
+    ? await callGeminiWithFallback(url, apiKey, requestBody)
+    : await fetch(url, { method:'POST', headers, body: JSON.stringify(requestBody) });
+  if(!resp.ok) throw new Error('No se pudo estimar la cantidad');
+  const data = await resp.json();
+  if(data.error) throw new Error(data.error.message || 'Error de la API');
+  const text = provider === 'gemini'
+    ? ((data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || []).map(p=>p.text||'').join('').trim())
+    : ((data.content || []).map(b=>b.text || '').join('').trim());
+  const clean = text.replace(/```json|```/g, '').trim();
+  const parsed = JSON.parse(clean);
+  return Math.round(parsed.grams) || 0;
 }
 
 async function onPhotoSelected(evt){
@@ -2252,7 +2412,7 @@ async function submitCustomExercise(){
 
 function buildProgressHTML(){
   const p = state.profile;
-  const sorted = [...state.weights].sort((a,b)=> a.date.localeCompare(b.date));
+  const sorted = [...state.weights].sort((a,b)=> (a.time||a.date).localeCompare(b.time||b.date));
   const latest = sorted.length ? sorted[sorted.length-1].weight : p.currentWeight;
   const toGoalKg = (latest - p.goalWeight);
 
@@ -2261,45 +2421,109 @@ function buildProgressHTML(){
       <div class="weight-row">
         <div><div class="big-number">${fmtWeight(latest)}</div><div style="font-size:12px;color:var(--muted);">${fmt1(Math.abs(kgToDisplay(Math.abs(toGoalKg))))} ${weightUnit()} ${toGoalKg>0?'por perder':'por ganar'} · meta ${fmtWeight(p.goalWeight)}</div></div>
       </div>
-      <div class="field" style="margin-top:16px;"><label>Actualizar peso de hoy (${weightUnit()})</label>
+      <div class="field" style="margin-top:16px;"><label>Registrar peso ahora (${weightUnit()})</label>
         <div style="display:flex; gap:10px; align-items:center;">
           <input id="w-today" type="number" step="0.1" placeholder="${kgToDisplay(latest)}" style="flex:1;">
           <button class="btn accent small" onclick="logWeight()">Guardar</button>
         </div>
       </div>
       ${sorted.length >= 1 ? sparkSvg(sorted, p.goalWeight) : `<div class="empty">Registra tu peso para ver la gráfica</div>`}
+      <div id="reset-chart-wrap" style="margin-top:12px; text-align:center;">
+        <button class="btn ghost small" onclick="confirmResetWeightChart()" style="font-size:11px; padding:7px 12px;">↺ Restablecer gráfica</button>
+      </div>
     </div>
   `;
+}
+
+function confirmResetWeightChart(){
+  const wrap = document.getElementById('reset-chart-wrap');
+  if(!wrap) return;
+  wrap.innerHTML = `
+    <p style="font-size:11.5px; color:var(--warn); margin:0 0 8px 0;">Esto borra todo el historial de peso. ¿Seguro?</p>
+    <div style="display:flex; gap:8px; justify-content:center;">
+      <button class="btn" style="width:auto; padding:8px 14px; font-size:12px; background:var(--warn);" onclick="resetWeightChart()">Sí, borrar todo</button>
+      <button class="btn ghost small" onclick="renderDatos()">Cancelar</button>
+    </div>
+  `;
+}
+
+async function resetWeightChart(){
+  state.weights = [];
+  await safeSet('weights', state.weights);
+  showToast('Gráfica de peso restablecida');
+  renderDatos();
+}
+
+function getCurrentWeekDates(){
+  // Lunes a domingo de la semana en curso
+  const today = new Date();
+  const dow = today.getDay(); // 0=domingo ... 6=sábado
+  const mondayOffset = (dow === 0) ? -6 : (1 - dow);
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + mondayOffset);
+  const dates = [];
+  for(let i = 0; i < 7; i++){
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    dates.push(d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'));
+  }
+  return dates;
 }
 
 function buildCalorieBarChart(){
   const t = calcTargets(state.profile);
   const todayConsumed = state.log.foods.reduce((s,f)=>s+f.cal,0);
-  const pastDays = [...state.daySummaries].sort((a,b)=>a.date.localeCompare(b.date)).slice(-6);
-  const bars = [...pastDays, { date: todayStr(), consumed: todayConsumed }];
+  const summaryMap = Object.fromEntries((state.daySummaries || []).map(d => [d.date, d.consumed]));
+  const weekDates = getCurrentWeekDates();
+  const bars = weekDates.map(date => ({
+    date,
+    consumed: date === todayStr() ? todayConsumed : (summaryMap[date] || 0),
+    isFuture: date > todayStr()
+  }));
   return barChartSvg(bars, t.calorieTarget);
 }
 
 function barChartSvg(bars, target){
   const w = 340, h = 140, pad = 20, gap = 8;
-  const barW = (w - pad*2 - gap*(bars.length-1)) / bars.length;
+  const n = bars.length; // siempre 7 — el ancho de cada barra no cambia según pasan los días
+  const barW = (w - pad*2 - gap*(n-1)) / n;
   const maxVal = Math.max(target, ...bars.map(b=>b.consumed), 1) * 1.15;
   const scaleY = v => (h - pad*2) * Math.min(1, v / maxVal);
   const targetY = h - pad - scaleY(target);
   const barsHtml = bars.map((b,i)=>{
     const x = pad + i*(barW+gap);
-    const barH = scaleY(b.consumed);
+    const barH = b.isFuture ? 0 : Math.max(scaleY(b.consumed), b.consumed > 0 ? 2 : 0);
     const y = h - pad - barH;
     const over = b.consumed > target;
     const dt = new Date(b.date + 'T00:00:00');
     const label = dt.toLocaleDateString('es-ES', { weekday:'short' }).charAt(0).toUpperCase();
-    return `<rect x="${x}" y="${y}" width="${barW}" height="${Math.max(barH,2)}" rx="4" fill="${over ? 'var(--warn)' : 'var(--accent)'}"></rect>
-            <text x="${x+barW/2}" y="${h-4}" font-size="9" fill="var(--muted)" text-anchor="middle">${label}</text>`;
+    const isToday = b.date === todayStr();
+    return `<rect class="bar-grow" data-final-y="${y}" data-final-height="${barH}"
+              x="${x}" y="${h-pad}" width="${barW}" height="0" rx="4"
+              fill="${over ? 'var(--warn)' : 'var(--accent)'}"
+              style="transition-delay:${i*60}ms; cursor:${b.isFuture ? 'default' : 'pointer'};"
+              ${b.isFuture ? '' : `onclick="openDayDetail('${b.date}')"`}></rect>
+            <text x="${x+barW/2}" y="${h-4}" font-size="9" font-weight="${isToday?'700':'400'}" fill="${isToday?'var(--accent)':'var(--muted)'}" text-anchor="middle">${label}</text>`;
   }).join('');
-  return `<svg class="spark" viewBox="0 0 ${w} ${h}">
+  const svgId = 'barchart-' + Math.random().toString(36).slice(2,8);
+  setTimeout(() => animateBarChart(svgId), 30);
+  return `<svg id="${svgId}" class="spark" viewBox="0 0 ${w} ${h}">
     <line x1="${pad}" y1="${targetY}" x2="${w-pad}" y2="${targetY}" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="3 3"></line>
     ${barsHtml}
   </svg>`;
+}
+
+function animateBarChart(svgId){
+  const svg = document.getElementById(svgId);
+  if(!svg) return;
+  svg.querySelectorAll('.bar-grow').forEach(rect => {
+    const finalY = rect.getAttribute('data-final-y');
+    const finalH = rect.getAttribute('data-final-height');
+    requestAnimationFrame(() => {
+      rect.setAttribute('y', finalY);
+      rect.setAttribute('height', finalH);
+    });
+  });
 }
 
 function computeStreak(){
@@ -2377,8 +2601,55 @@ function renderProTab(){
       <h1 style="text-align:center;">Desbloquea eatiseasy Pro</h1>
       <p class="sub" style="text-align:center;">Lo mejor de eatiseasy, de un pago, para siempre.</p>
       ${buildProPitchHTML()}
+
+      <div class="panel" style="margin-top:22px;">
+        <p style="font-size:12px; font-weight:700; margin:0 0 6px 0;">¿Ya tienes Pro en otro dispositivo?</p>
+        <p style="font-size:11.5px; color:var(--muted); margin:0 0 12px 0;">Inicia sesión con la misma cuenta de Google que usaste al comprar, y pega tu código de licencia.</p>
+        <div id="google-signin-btn-restore" style="margin-bottom:12px;"></div>
+        <div class="field"><label>Código de licencia</label><input id="restore-license-input" placeholder="AbC123....xyz"></div>
+        <button class="btn ghost" onclick="restoreLicense()">Verificar y activar Pro</button>
+      </div>
     `;
+    renderGoogleButtonRestore();
   }
+}
+
+let restoreGoogleEmail = null;
+
+function renderGoogleButtonRestore(){
+  whenGoogleReady(() => {
+    google.accounts.id.initialize({ client_id: DEFAULT_GOOGLE_CLIENT_ID, callback: handleGoogleCredentialRestore });
+    const container = document.getElementById('google-signin-btn-restore');
+    if(container){
+      container.innerHTML = '';
+      google.accounts.id.renderButton(container, { theme:'outline', size:'large', width:280, text:'continue_with', locale:'es' });
+    }
+  });
+}
+
+function handleGoogleCredentialRestore(response){
+  try{
+    const payload = decodeJwt(response.credential);
+    restoreGoogleEmail = payload.email || null;
+    showToast(restoreGoogleEmail ? `Sesión iniciada como ${restoreGoogleEmail}` : 'No se pudo leer tu email de Google', !restoreGoogleEmail);
+  }catch(e){
+    console.error('google credential (restore) decode failed', e);
+    showToast('No se pudo iniciar sesión con Google', true);
+  }
+}
+
+async function restoreLicense(){
+  const code = document.getElementById('restore-license-input').value;
+  if(!restoreGoogleEmail){ showToast('Primero inicia sesión con Google', true); return; }
+  if(!code || !code.trim()){ showToast('Pega tu código de licencia', true); return; }
+  const valid = await verifyLicenseCode(code, restoreGoogleEmail);
+  if(!valid){ showToast('Ese código no coincide con esta cuenta de Google', true); return; }
+  state.profile.isPro = true;
+  state.profile.email = restoreGoogleEmail;
+  state.profile.licenseCode = code.trim();
+  await safeSet('profile', state.profile);
+  showToast('¡Pro recuperado! 🎉');
+  renderAll();
 }
 
 function formatDateLabel(d){
@@ -2405,12 +2676,46 @@ async function openDayDetail(date){
   const protein = log.foods.reduce((s,f)=>s+f.protein,0);
   const carbs = log.foods.reduce((s,f)=>s+f.carb,0);
   const fat = log.foods.reduce((s,f)=>s+f.fat,0);
-  const net = consumed - burned;
+
+  const scored = log.foods.filter(f => f.healthScore);
+  const avgHealth = scored.length ? Math.round(scored.reduce((s,f)=>s+f.healthScore,0) / scored.length) : null;
+  const avgHealthColor = avgHealth == null ? 'var(--muted)' : avgHealth >= 7 ? 'var(--protein)' : avgHealth >= 4 ? 'var(--burn)' : 'var(--warn)';
+
+  const budgetDiff = Math.round(t.calorieTarget - consumed);
+  const budgetLabel = budgetDiff >= 0 ? `${budgetDiff} kcal por debajo del objetivo` : `${Math.abs(budgetDiff)} kcal por encima del objetivo`;
+  const budgetColor = budgetDiff >= 0 ? 'var(--protein)' : 'var(--warn)';
+
+  const dayWeights = (state.weights || []).filter(w => w.date === date).sort((a,b)=> (a.time||'').localeCompare(b.time||''));
+  const weightEntry = dayWeights.length ? dayWeights[dayWeights.length-1] : null;
+
+  const takenRaw = (await safeGet('suppTaken:' + date)) || {};
+  const remindersCount = state.supplements.length;
+  const remindersDone = state.supplements.filter(s => {
+    const c = takenRaw[s.id] || 0;
+    return s.type === 'water' ? c >= (s.target || 8) : c > 0;
+  }).length;
+
+  const proteinPct = t.proteinG > 0 ? Math.round((protein / t.proteinG) * 100) : 0;
+  const carbPct = t.carbG > 0 ? Math.round((carbs / t.carbG) * 100) : 0;
+  const fatPct = t.fatG > 0 ? Math.round((fat / t.fatG) * 100) : 0;
+  const itemCount = log.foods.length + log.exercises.length;
+  const times = log.foods.map(f => new Date(f.time)).filter(d => !isNaN(d));
+  let timeRangeLabel = null;
+  if(times.length){
+    const fmtT = d => d.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+    const first = new Date(Math.min(...times));
+    const last = new Date(Math.max(...times));
+    timeRangeLabel = times.length > 1 ? `${fmtT(first)} – ${fmtT(last)}` : fmtT(first);
+  }
+
+  const healthBadge = (f) => f.healthScore
+    ? `<span style="font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; background:${f.healthScore>=7?'var(--protein-soft)':f.healthScore>=4?'rgba(255,138,61,.15)':'rgba(255,90,60,.12)'}; color:${f.healthScore>=7?'var(--protein)':f.healthScore>=4?'var(--burn)':'var(--warn)'}; margin-left:6px;">${f.healthScore}/10</span>`
+    : '';
 
   const foodRows = log.foods.length ? log.foods.map(f=>`
     <div class="row" style="cursor:pointer;" onclick="openFoodDetailForDate('${f.id}', '${date}')"><span class="rname">
       ${f.photo ? `<img src="${f.photo}" class="row-thumb">` : `<span class="row-thumb row-thumb-fallback">🍽️</span>`}
-      ${f.name}</span><span class="rval">${f.cal} kcal</span></div>`).join('')
+      ${f.name}${healthBadge(f)}</span><span class="rval">${f.cal} kcal</span></div>`).join('')
     : `<div class="empty">Sin comidas ese día</div>`;
   const exRows = log.exercises.map(e=>`
     <div class="row"><span class="rname">${ICON.fire} ${e.name}</span><span class="rval">${e.cal} kcal</span></div>`).join('');
@@ -2419,11 +2724,25 @@ async function openDayDetail(date){
     <h1 style="margin:0 0 2px 0;">${formatDateLabel(date)}</h1>
     <div style="color:var(--muted); font-size:12px; margin-bottom:6px;">Resumen del día</div>
     <div class="ring-wrap" style="margin:0 0 8px 0; padding:10px 0;">${ringSvg(consumed, t.calorieTarget)}</div>
-    <div class="macro-grid" style="margin-bottom:18px;">
+    <div class="macro-grid" style="margin-bottom:14px;">
       <div class="macro-chip" style="background:var(--protein-soft);"><span>${ICON.protein}</span><b>${Math.round(protein)} g</b><small>Proteína</small></div>
       <div class="macro-chip" style="background:var(--carbs-soft);"><span>${ICON.carbs}</span><b>${Math.round(carbs)} g</b><small>Carbohidratos</small></div>
       <div class="macro-chip" style="background:var(--fat-soft);"><span>${ICON.water}</span><b>${Math.round(fat)} g</b><small>Grasas</small></div>
     </div>
+
+    <div class="panel plist" style="margin-bottom:0;">
+      <div class="row"><span class="rname">Balance</span><span class="rval" style="color:${budgetColor};">${budgetLabel}</span></div>
+      <div class="row"><span class="rname">Quemadas (ejercicio)</span><span class="rval">${burned} kcal</span></div>
+      <div class="row"><span class="rname">${ICON.protein} Proteína vs objetivo</span><span class="rval">${proteinPct}%</span></div>
+      <div class="row"><span class="rname">${ICON.carbs} Carbohidratos vs objetivo</span><span class="rval">${carbPct}%</span></div>
+      <div class="row"><span class="rname">${ICON.water} Grasas vs objetivo</span><span class="rval">${fatPct}%</span></div>
+      ${avgHealth != null ? `<div class="row"><span class="rname">${bigEmoji('❤️')} Nota de salud media</span><span class="rval" style="color:${avgHealthColor};">${avgHealth}/10</span></div>` : ''}
+      ${weightEntry ? `<div class="row"><span class="rname">⚖️ Peso registrado</span><span class="rval">${fmtWeight(weightEntry.weight)}</span></div>` : ''}
+      ${remindersCount ? `<div class="row"><span class="rname">${ICON.bell} Recordatorios</span><span class="rval">${remindersDone}/${remindersCount} completados</span></div>` : ''}
+      ${timeRangeLabel ? `<div class="row"><span class="rname">🕐 Horario de comidas</span><span class="rval">${timeRangeLabel}</span></div>` : ''}
+      <div class="row"><span class="rname">Elementos registrados</span><span class="rval">${itemCount}</span></div>
+    </div>
+
     <div class="section-title">Comida</div>
     ${foodRows}
     ${exRows ? `<div class="section-title">Ejercicio</div>${exRows}` : ''}
@@ -2517,13 +2836,39 @@ function sparkSvg(pointsKg, goalKg){
   }
 
   const path = points.map((p,i)=> `${i===0?'M':'L'} ${pad + i*xStep} ${yFor(p.weight)}`).join(' ');
+  const fillPath = `${path} L ${pad+(points.length-1)*xStep} ${h-pad} L ${pad} ${h-pad} Z`;
+  const dots = points.map((p,i)=> `<circle class="weight-dot" cx="${pad+i*xStep}" cy="${yFor(p.weight)}" r="3.2" fill="var(--surface)" stroke="var(--accent)" stroke-width="2" style="transition-delay:${i*40}ms;"></circle>`).join('');
+  const gradId = 'wg-' + Math.random().toString(36).slice(2,8);
+  const pathId = 'wp-' + Math.random().toString(36).slice(2,8);
+  setTimeout(() => animateWeightLine(pathId), 30);
   return `
     <svg class="spark" viewBox="0 0 ${w} ${h}">
+      <defs>
+        <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.25"/>
+          <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
       <line x1="${pad}" y1="${goalY}" x2="${w-pad}" y2="${goalY}" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="3 3"></line>
       <text x="${w-pad}" y="${goalY-6}" font-size="9" fill="var(--muted)" text-anchor="end">meta</text>
-      <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+      <path d="${fillPath}" fill="url(#${gradId})" stroke="none"></path>
+      <path id="${pathId}" d="${path}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+      ${dots}
       <circle cx="${pad+(points.length-1)*xStep}" cy="${yFor(last.weight)}" r="4" fill="var(--accent)"></circle>
     </svg>`;
+}
+
+function animateWeightLine(pathId){
+  const path = document.getElementById(pathId);
+  if(!path) return;
+  const len = path.getTotalLength();
+  path.style.strokeDasharray = len;
+  path.style.strokeDashoffset = len;
+  path.style.transition = 'none';
+  requestAnimationFrame(() => {
+    path.style.transition = 'stroke-dashoffset .8s cubic-bezier(.2,.8,.3,1)';
+    path.style.strokeDashoffset = '0';
+  });
 }
 
 async function logWeight(){
@@ -2531,8 +2876,7 @@ async function logWeight(){
   if(!enteredVal){ showToast('Introduce un peso válido', true); return; }
   const val = displayToKg(enteredVal);
   const today = todayStr();
-  const idx = state.weights.findIndex(w=>w.date===today);
-  if(idx >= 0) state.weights[idx].weight = val; else state.weights.push({ date: today, weight: val });
+  state.weights.push({ date: today, weight: val, time: new Date().toISOString() });
   state.profile.currentWeight = val;
   await safeSet('weights', state.weights);
   await safeSet('profile', state.profile);
@@ -2545,6 +2889,7 @@ const GOAL_LABELS = { auto:'Automático', deficit:'Déficit calórico', maintain
 function renderProfile(){
   const p = state.profile;
   const t = calcTargets(p);
+  ensureLicenseCode(); // red de seguridad: si ya eres Pro y tienes email, genera el código si falta
   const actLabels = { sedentary:'Sedentario', light:'Ligero', moderate:'Moderado', active:'Activo', veryActive:'Muy activo' };
   document.getElementById('screen-profile').innerHTML = `
     <div class="avatar-header">
@@ -2689,26 +3034,46 @@ function renderProfile(){
     <div class="panel">
       <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">Vincula tu Google para usar tu nombre y foto de perfil automáticamente.</p>
       <div id="google-signin-btn-profile"></div>
-    </div>
 
-    <details>
-      <summary>${bigEmoji('🔐')} Copia de seguridad</summary>
-      <div class="inner">
-        <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">
-          ${HAS_CLOUD ? 'Tu cuenta ya se guarda sola aquí. Usa este código como copia extra, o para llevarte tus datos a otro sitio.' : (HAS_LOCAL_STORAGE ? 'Tus datos ya se guardan en este navegador, así que no se resetean al cerrar la página. Usa este código como copia de seguridad extra, o para pasar tus datos a otro dispositivo.' : 'Este navegador no permite guardar datos de forma persistente: genera tu código y guárdalo para no perderlo al cerrar.')}
-        </p>
-        <button class="btn" onclick="generateBackupCode()">Generar mi código</button>
-        <textarea id="backup-code-out" readonly rows="4" style="width:100%; margin-top:10px; border:1.5px solid var(--line); border-radius:8px; padding:8px; font-family:inherit; font-size:11px; display:none;"></textarea>
-        <button id="backup-copy-btn" class="btn ghost small" style="margin-top:8px; display:none;" onclick="copyBackupCode()">Copiar código</button>
-
-        <div style="margin-top:18px; border-top:1px dashed var(--line); padding-top:14px;">
-          <div class="field"><label>Restaurar desde un código</label>
-            <textarea id="restore-code-in" rows="4" style="width:100%; border:1.5px solid var(--line); border-radius:8px; padding:8px; font-family:inherit; font-size:12px;"></textarea>
-          </div>
-          <button class="btn ghost" onclick="restoreFromProfile()">Restaurar</button>
-        </div>
+      ${isPro() ? `
+      <div style="margin-top:18px; border-top:1px dashed var(--line); padding-top:16px;">
+        <button class="btn accent" onclick="openTransferGuide()">🔄 Transferir cuenta Pro a otro dispositivo</button>
       </div>
-    </details>
+      ` : ''}
+
+      ${isPro() ? `
+      <details style="margin-top:14px;">
+        <summary>${bigEmoji('🔐')} Copia de seguridad de tus datos</summary>
+        <div class="inner">
+          <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">
+            ${HAS_CLOUD ? 'Tu cuenta ya se guarda sola aquí. Usa este código como copia extra, o para llevarte tus datos a otro sitio.' : (HAS_LOCAL_STORAGE ? 'Tus datos ya se guardan en este navegador, así que no se resetean al cerrar la página. Usa este código como copia de seguridad extra, o para pasar tus datos a otro dispositivo.' : 'Este navegador no permite guardar datos de forma persistente: genera tu código y guárdalo para no perderlo al cerrar.')}
+          </p>
+          <button class="btn" onclick="generateBackupCode()">Generar mi código</button>
+          <textarea id="backup-code-out" readonly rows="4" style="width:100%; margin-top:10px; border:1.5px solid var(--line); border-radius:8px; padding:8px; font-family:inherit; font-size:11px; display:none;"></textarea>
+          <button id="backup-copy-btn" class="btn ghost small" style="margin-top:8px; display:none;" onclick="copyBackupCode()">Copiar código</button>
+
+          <div style="margin-top:18px; border-top:1px dashed var(--line); padding-top:14px;">
+            <div class="field"><label>Restaurar desde un código</label>
+              <textarea id="restore-code-in" rows="4" style="width:100%; border:1.5px solid var(--line); border-radius:8px; padding:8px; font-family:inherit; font-size:12px;"></textarea>
+            </div>
+            <button class="btn ghost" onclick="restoreFromProfile()">Restaurar</button>
+          </div>
+        </div>
+      </details>
+      ` : `
+      <details style="margin-top:14px;">
+        <summary>${bigEmoji('🔐')} Copia de seguridad de tus datos</summary>
+        <div class="inner">
+          <div class="panel" style="text-align:center; padding:22px 18px; margin-top:0;">
+            <div style="font-size:26px; margin-bottom:6px;">🔒</div>
+            <div style="font-weight:700; font-size:14px; margin-bottom:4px;">Función Pro</div>
+            <p class="sub" style="margin:0 0 14px 0;">Guardar y restaurar tu cuenta con un código es parte de eatiseasy Pro.</p>
+            <button class="btn accent" onclick="setTab('pro')">Desbloquear con Pro</button>
+          </div>
+        </div>
+      </details>
+      `}
+    </div>
 
     <details>
       <summary style="color:var(--warn);">Borrar cuenta</summary>
@@ -2737,6 +3102,48 @@ function copyBackupCode(){
     showToast('Código copiado');
   }).catch(()=>{ document.execCommand('copy'); showToast('Código copiado'); });
 }
+function copyLicenseCode(){
+  if(!state.profile.licenseCode) return;
+  navigator.clipboard && navigator.clipboard.writeText(state.profile.licenseCode).then(()=>{
+    showToast('Código de licencia copiado');
+  }).catch(()=>{ showToast('No se pudo copiar, selecciona el texto a mano', true); });
+}
+
+async function openTransferGuide(){
+  const p = state.profile;
+  if(!p.email){
+    openActionOverlay(`
+      <h1 style="margin:0 0 10px 0;">🔄 Transferir cuenta Pro</h1>
+      <div class="panel" style="text-align:center; padding:22px 18px; margin-top:0;">
+        <div style="font-size:26px; margin-bottom:6px;">🔗</div>
+        <p class="sub" style="margin:0;">Primero vincula tu Google aquí en Perfil — así podemos generar tu código de licencia.</p>
+      </div>
+    `);
+    return;
+  }
+  await ensureLicenseCode();
+  openActionOverlay(`
+    <h1 style="margin:0 0 4px 0;">🔄 Transferir cuenta Pro</h1>
+    <p class="sub" style="margin:0 0 16px 0;">Así llevas tu Pro a un móvil u ordenador nuevo, sin pagar otra vez.</p>
+
+    <div class="panel" style="margin-top:0;">
+      <label style="display:block; font-size:11px; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:.5px;">Tu código de licencia</label>
+      <textarea readonly rows="2" style="width:100%; border:1.5px solid var(--line); border-radius:8px; padding:8px; font-family:inherit; font-size:11px;" onclick="this.select();">${state.profile.licenseCode || ''}</textarea>
+      <button class="btn ghost small" style="margin-top:8px;" onclick="copyLicenseCode()">Copiar código</button>
+    </div>
+
+    <div class="section-title">Pasos en el dispositivo nuevo</div>
+    <div class="panel plist">
+      <div class="row"><span class="rname">1. Abre eatiseasy</span><span class="rval">ahí</span></div>
+      <div class="row"><span class="rname">2. Ve a la pestaña "Pro"</span></div>
+      <div class="row"><span class="rname">3. Baja a "¿Ya tienes Pro en otro dispositivo?"</span></div>
+      <div class="row"><span class="rname">4. Inicia sesión con <b>${p.email}</b></span></div>
+      <div class="row"><span class="rname">5. Pega tu código y pulsa "Verificar y activar Pro"</span></div>
+    </div>
+    <p class="sub" style="margin-top:12px;">Importante: tiene que ser exactamente esta misma cuenta de Google (${p.email}) — con otra cuenta, el código no funcionará.</p>
+  `);
+}
+
 async function restoreFromProfile(){
   const code = document.getElementById('restore-code-in').value;
   if(!code.trim()){ showToast('Pega tu código primero', true); return; }
