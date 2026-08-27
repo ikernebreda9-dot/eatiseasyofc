@@ -157,7 +157,8 @@ details .inner{padding-top:10px;}
 .fab-option{display:flex; align-items:center; gap:12px; background:var(--surface); color:var(--paper); border:1px solid var(--line-strong); border-radius:16px; padding:15px 18px; font-family:inherit; font-size:14.5px; font-weight:700; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.25); animation:fabIn .25s ease both;}
 .fab-option-icon{font-size:19px;}
 
-.exercise-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px;}
+.exercise-search{width:100%; border:1.5px solid var(--line-strong); border-radius:12px; padding:10px 14px; font-family:inherit; font-size:14px; margin-top:12px; background:var(--surface-2); color:var(--paper);}
+.exercise-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px; max-height:52vh; overflow-y:auto; padding-bottom:4px;}
 .exercise-type-btn{display:flex; flex-direction:column; align-items:center; gap:6px; background:var(--surface); border:1px solid var(--line-strong); border-radius:14px; padding:16px 8px; font-family:inherit; font-weight:700; font-size:12px; color:var(--paper); cursor:pointer;}
 .exercise-type-btn span{font-size:26px;}
 @keyframes fabIn{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
@@ -183,6 +184,18 @@ details .inner{padding-top:10px;}
 
 .overlay{position:fixed; inset:0; background:var(--void); z-index:100; overflow-y:auto; display:flex; justify-content:center;}
 .overlay-card{max-width:480px; width:100%; padding:32px 20px calc(28px + env(safe-area-inset-bottom)) 20px;}
+
+#action-overlay.fullbleed{align-items:stretch;}
+#action-overlay.fullbleed .overlay-card{padding:0; max-width:100%; height:100dvh;}
+#action-overlay.fullbleed #action-overlay-close{background:rgba(255,255,255,.9); color:#111;}
+.camera-view{position:relative; width:100%; height:100dvh; background:#000; display:flex; flex-direction:column;}
+.camera-view video{flex:1; width:100%; min-height:0; object-fit:cover; background:#000;}
+.camera-controls{flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:18px 34px calc(22px + env(safe-area-inset-bottom)) 34px; background:#000;}
+.camera-shutter{width:66px; height:66px; border-radius:50%; background:#fff; border:4px solid rgba(255,255,255,.45); cursor:pointer; padding:0;}
+.camera-gallery-btn{width:44px; height:44px; border-radius:10px; background:rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center; font-size:20px; color:#fff; cursor:pointer;}
+
+.barcode-shutter-row{display:flex; justify-content:center; margin-top:16px;}
+.barcode-shutter{width:60px; height:60px; border-radius:50%; background:var(--accent); border:4px solid var(--accent-soft); cursor:pointer; padding:0;}
 .overlay-card h1{font-family:inherit; font-size:26px; font-weight:600; margin:6px 0 4px 0; letter-spacing:-.3px; color:var(--paper);}
 .overlay-card p.sub{color:var(--muted); font-size:13px; margin:0 0 24px 0; line-height:1.5;}
 .ob-progress{height:5px; background:var(--line-strong); border-radius:4px; overflow:hidden; margin-bottom:24px;}
@@ -236,6 +249,7 @@ details .inner{padding-top:10px;}
 .macro-grid{display:flex; gap:10px;}
 .macro-chip{flex:1; border-radius:12px; padding:14px 8px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:5px; border:1px solid var(--line);}
 .macro-chip span{font-size:20px;}
+.icon-svg{width:1em; height:1em; display:inline-block; vertical-align:-0.15em; color:currentColor;}
 .macro-chip b{font-family:inherit; font-size:14px; color:var(--paper);}
 .macro-chip small{font-family:inherit; font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px;}
 
@@ -307,37 +321,16 @@ details .inner{padding-top:10px;}
 </div>
 
 <div id="add-menu-overlay" class="dim-overlay hide" onclick="if(event.target===this) closeAddMenu()">
-  <div class="fab-menu">
-    <button class="fab-option" onclick="closeAddMenu(); openManualFoodForm();">
-      <span class="fab-option-icon">📝</span> Registrar comida
-    </button>
-    <button class="fab-option" onclick="closeAddMenu(); openScanChoice();">
-      <span class="fab-option-icon">📷</span> Escanear comida
-    </button>
-    <button class="fab-option" onclick="closeAddMenu(); openSavedMeals();">
-      <span class="fab-option-icon">⭐</span> Comida guardada
-    </button>
-    <button class="fab-option" onclick="closeAddMenu(); openExercisePicker();">
-      <span class="fab-option-icon">🏃</span> Registrar ejercicio
-    </button>
-  </div>
+  <div class="fab-menu" id="add-menu-body"></div>
 </div>
 
 <div id="scan-choice-overlay" class="dim-overlay hide" onclick="if(event.target===this) closeScanChoice()">
-  <div class="fab-menu">
-    <label class="fab-option" for="photo-input-menu">
-      <span class="fab-option-icon">📷</span> Hacer foto a la comida
-    </label>
-    <input id="photo-input-menu" type="file" accept="image/*" class="visually-hidden-file" onchange="closeScanChoice(); onPhotoSelected(event);">
-    <button class="fab-option" onclick="closeScanChoice(); openBarcodeScanner();">
-      <span class="fab-option-icon">📊</span> Escanear código de barras
-    </button>
-  </div>
+  <div class="fab-menu" id="scan-choice-body"></div>
 </div>
 
 <div id="action-overlay" class="overlay hide" onclick="if(event.target===this) closeActionOverlay()">
   <div class="overlay-card" style="position:relative;">
-    <button onclick="closeActionOverlay()" style="position:absolute; top:18px; right:18px; background:var(--surface); border:1px solid var(--line); border-radius:50%; width:32px; height:32px; font-size:14px; cursor:pointer;">✕</button>
+    <button id="action-overlay-close" onclick="closeActionOverlay()" style="position:absolute; top:18px; right:18px; background:var(--surface); border:1px solid var(--line); border-radius:50%; width:32px; height:32px; font-size:14px; cursor:pointer; z-index:5;">✕</button>
     <div id="action-overlay-body"></div>
   </div>
 </div>
@@ -431,7 +424,7 @@ async function importBackupCode(code){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.04';
+const APP_VERSION = '0.05';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -483,6 +476,38 @@ function tr(key){
 // FRASES MOTIVADORAS — una al azar cada vez que se abre la app (con
 // cuenta ya creada), en una intro animada de menos de 2 segundos.
 // ======================================================================
+// ======================================================================
+// ICONOS PROPIOS — set de iconos dibujados a mano (SVG en línea) para
+// que la app tenga una identidad propia en vez de emoji genéricos.
+// Uso: ICON.nombre devuelve el SVG como string, listo para insertar.
+// ======================================================================
+function svgIcon(paths, viewBox, extra){
+  return `<svg class="icon-svg ${extra||''}" viewBox="${viewBox||'0 0 24 24'}" fill="none" xmlns="http://www.w3.org/2000/svg">${paths}</svg>`;
+}
+const ICON = {
+  fire: svgIcon(`<path d="M12 2c-1 3-4 4.5-4 8.5A4.5 4.5 0 0 0 12.5 15c2.5 0 4.5-2 4.5-4.5 0 2 1 3 1 5a6 6 0 0 1-12 0c0-4 2-6 3-7 .3 1.5 1 2 1 2-.5-3 1.5-5.5 2-8.5z" fill="currentColor"/>`),
+  protein: svgIcon(`<path d="M15.5 3.5c1.8-1.8 4.7-1.8 6.4 0 1.8 1.8 1.8 4.6.1 6.4l-1.1 1.1c-.6.6-1.5.9-2.3.7-1-.2-2 .1-2.7.8L8.3 20.1c-1.2 1.2-3.2 1.2-4.4 0-1.2-1.2-1.2-3.2 0-4.4l7.6-7.6c.7-.7 1-1.7.8-2.7-.2-.8.1-1.7.7-2.3l1.1-1.1c.4-.4.9-.7 1.4-.9z" fill="currentColor"/>`),
+  carbs: svgIcon(`<path d="M12 21c-4-1-8-5-8-10a8 8 0 0 1 8-8 3 3 0 0 1 3 3c0 1-.4 1.7-1 2.3 1 .1 2 .6 2 2 1 0 2 1 2 2.5 0 3-2 5-3 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 21V9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`),
+  fat: svgIcon(`<path d="M12 2C9 6.5 6 10 6 14a6 6 0 0 0 12 0c0-4-3-7.5-6-12z" fill="currentColor"/>`),
+  water: svgIcon(`<path d="M12 2c3.5 4.5 7 8.6 7 12.5A7 7 0 0 1 5 14.5C5 10.6 8.5 6.5 12 2z" fill="currentColor"/>`),
+  star: svgIcon(`<path d="M12 2.5l2.7 5.9 6.3.7-4.7 4.5 1.2 6.4L12 17l-5.5 3 1.2-6.4-4.7-4.5 6.3-.7z" fill="currentColor"/>`),
+  lock: svgIcon(`<rect x="5" y="10.5" width="14" height="10" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>`),
+  camera: svgIcon(`<rect x="3" y="7" width="18" height="13" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M8 7l1.6-2.5h4.8L16 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="13.5" r="3.4" stroke="currentColor" stroke-width="1.7"/>`),
+  barcode: svgIcon(`<path d="M4 5v14M8 5v14M11 5v14M15 5v14M18 5v14M21 5v14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`),
+  check: svgIcon(`<path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>`),
+  gallery: svgIcon(`<rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="8.5" cy="9.5" r="1.8" fill="currentColor"/><path d="M4 16l5-4.5 3.5 3 3-4L21 16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`),
+  bell: svgIcon(`<path d="M6 10a6 6 0 0 1 12 0c0 4 1.2 5.5 2 6.5H4c.8-1 2-2.5 2-6.5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.5 19a2.5 2.5 0 0 0 5 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>`),
+  pill: svgIcon(`<rect x="4" y="10.3" width="16" height="7.4" rx="3.7" transform="rotate(-45 12 14)" stroke="currentColor" stroke-width="1.7"/><path d="M9 15l6-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>`),
+  run: svgIcon(`<circle cx="14" cy="4.5" r="1.8" fill="currentColor"/><path d="M8 21l2.5-4.5-1.5-3 3-2.5 2 3 3.5 1M9.5 13l2-4 3-1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`),
+  walk: svgIcon(`<circle cx="13" cy="4.5" r="1.8" fill="currentColor"/><path d="M11 21l1-5-2-2 .5-4 3.5-1.5 1.5 2.5 3 1M10.5 13.5l2.5-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`),
+  bike: svgIcon(`<circle cx="6" cy="17" r="3" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="17" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M6 17l4-8h4l4 8M10 9h4M8 17h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`),
+  dumbbell: svgIcon(`<path d="M4 10v4M20 10v4M2 12h2M20 12h2M6 8v8M18 8v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6 12h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>`),
+  swim: svgIcon(`<path d="M3 17c1.5 1.2 3 1.2 4.5 0s3-1.2 4.5 0 3 1.2 4.5 0 3-1.2 4.5 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="16" cy="6" r="1.7" fill="currentColor"/><path d="M4 13l6-2 2 2.5 5-1.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`),
+  yoga: svgIcon(`<circle cx="12" cy="4" r="1.8" fill="currentColor"/><path d="M12 6.5v5l-4 6M12 11.5l4 6M8 12.5h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`),
+  ball: svgIcon(`<circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 3.5v17M3.5 12h17M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>`),
+  other: svgIcon(`<circle cx="12" cy="12" r="2.4" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v3M12 18v3M21 12h-3M6 12H3M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1M18.4 18.4l-2.1-2.1M7.7 7.7L5.6 5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>`)
+};
+
 const MOTIVATIONAL_QUOTES = {
   es: [
     'Cada comida es una oportunidad para cuidarte.',
@@ -1007,9 +1032,9 @@ function buildProPitchHTML(){
       <div style="font-size:12px; color:var(--muted); margin-top:2px;">Pago único · para siempre, sin suscripción</div>
     </div>
     <div class="panel" style="text-align:left;">
-      <div class="row"><span class="rname">📷 Analizar comida por foto</span></div>
+      <div class="row"><span class="rname">${ICON.camera} Analizar comida por foto</span></div>
       <div class="row"><span class="rname">📈 Gráfica de evolución de peso</span></div>
-      <div class="row"><span class="rname">🔔 Recordatorios (suplementos y agua)</span></div>
+      <div class="row"><span class="rname">${ICON.bell} Recordatorios (suplementos y agua)</span></div>
     </div>
     <button class="btn accent" style="margin-top:16px;" onclick="buyPro()">Comprar eatiseasy Pro</button>
 
@@ -1114,7 +1139,7 @@ function updateStreakDisplay(){
   const el = document.getElementById('header-streak');
   if(!el) return;
   const s = computeStreak();
-  el.textContent = s > 0 ? `🔥 ${s} día${s === 1 ? '' : 's'}` : '';
+  el.innerHTML = s > 0 ? `${ICON.fire} ${s} día${s === 1 ? '' : 's'}` : '';
 }
 
 function renderAll(){
@@ -1162,7 +1187,7 @@ function ringSvg(net, target, mini){
     </svg>`;
 }
 
-function macroRingSvg(value, target, color, emoji){
+function macroRingSvg(value, target, color, iconMarkup){
   const R=80, C=2*Math.PI*R;
   const pct = target > 0 ? Math.min(100, (value/target)*100) : 0;
   const offset = C - (pct/100)*C;
@@ -1171,7 +1196,7 @@ function macroRingSvg(value, target, color, emoji){
       <circle cx="100" cy="100" r="${R}" fill="none" stroke="var(--line-strong)" stroke-width="16"></circle>
       <circle cx="100" cy="100" r="${R}" fill="none" stroke="${color}" stroke-width="16" stroke-linecap="round"
         stroke-dasharray="${C}" stroke-dashoffset="${offset}" transform="rotate(-90 100 100)"></circle>
-      <text x="100" y="128" font-size="72" text-anchor="middle">${emoji}</text>
+      <foreignObject x="62" y="62" width="76" height="76"><div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${color};font-size:36px;">${iconMarkup}</div></foreignObject>
     </svg>`;
 }
 
@@ -1243,7 +1268,7 @@ function renderToday(){
               <div class="log-photo">🏃</div>
               <div class="log-body">
                 <div class="log-top"><div class="log-title">${item.name}</div><div class="log-time">${timeLabel}</div><span class="del" onclick="event.stopPropagation(); removeExercise('${item.id}')">✕</span></div>
-                <div class="log-cal">🔥 <b>${item.cal}</b> calorías quemadas</div>
+                <div class="log-cal">${ICON.fire} <b>${item.cal}</b> calorías quemadas</div>
               </div>
             </div>`;
         }
@@ -1252,11 +1277,11 @@ function renderToday(){
             <div class="log-photo">${item.photo ? `<img src="${item.photo}">` : '🍽️'}</div>
             <div class="log-body">
               <div class="log-top"><div class="log-title">${item.name}</div><div class="log-time">${timeLabel}</div><span class="del" onclick="event.stopPropagation(); removeFood('${item.id}')">✕</span></div>
-              <div class="log-cal">🔥 <b>${item.cal}</b> calorías</div>
+              <div class="log-cal">${ICON.fire} <b>${item.cal}</b> calorías</div>
               <div class="log-macros">
                 <span>🍗 ${fmt1(item.protein)}g</span>
-                <span>🍞 ${fmt1(item.carb)}g</span>
-                <span>💧 ${fmt1(item.fat)}g</span>
+                <span>${ICON.carbs} ${fmt1(item.carb)}g</span>
+                <span>${ICON.water} ${fmt1(item.fat)}g</span>
               </div>
             </div>
           </div>`;
@@ -1271,7 +1296,7 @@ function renderToday(){
       const pct = target > 0 ? Math.min(100, Math.round((count/target)*100)) : 0;
       return `<div class="reminder-row">
         <div class="reminder-top">
-          <span class="rname">💧 ${s.name}</span>
+          <span class="rname">${ICON.water} ${s.name}</span>
           <div style="display:flex; align-items:center; gap:10px;">
             <span class="reminder-count">${count}/${target} vasos</span>
             ${done
@@ -1284,7 +1309,7 @@ function renderToday(){
     }
     const taken = count > 0;
     return `<div class="row">
-      <span class="rname">💊 ${s.name}</span>
+      <span class="rname">${ICON.pill} ${s.name}</span>
       <button class="supp-btn ${taken ? 'taken' : ''}" onclick="toggleSupplement('${s.id}')">${taken ? '✓ Tomado' : 'Marcar'}</button>
     </div>`;
   }).join('');
@@ -1307,21 +1332,21 @@ function renderToday(){
       <div class="macro-card">
         <div class="macro-card-num">${fmt1(proteinLeft)}g</div>
         <div class="macro-card-label">${tr('protein_left')}</div>
-        <div class="macro-ring-wrap">${macroRingSvg(protein, t.proteinG, 'var(--protein)', '🥩')}</div>
+        <div class="macro-ring-wrap">${macroRingSvg(protein, t.proteinG, 'var(--protein)', ICON.protein)}</div>
       </div>
       <div class="macro-card">
         <div class="macro-card-num">${fmt1(carbsLeft)}g</div>
         <div class="macro-card-label">${tr('carbs_left')}</div>
-        <div class="macro-ring-wrap">${macroRingSvg(carbs, t.carbG, 'var(--carbs)', '🍞')}</div>
+        <div class="macro-ring-wrap">${macroRingSvg(carbs, t.carbG, 'var(--carbs)', ICON.carbs)}</div>
       </div>
       <div class="macro-card">
         <div class="macro-card-num">${fmt1(fatLeft)}g</div>
         <div class="macro-card-label">${tr('fat_left')}</div>
-        <div class="macro-ring-wrap">${macroRingSvg(fat, t.fatG, 'var(--fat)', '💧')}</div>
+        <div class="macro-ring-wrap">${macroRingSvg(fat, t.fatG, 'var(--fat)', ICON.water)}</div>
       </div>
     </div>
 
-    ${(isPro() && state.supplements.length) ? `<div class="section-title">🔔 ${tr('reminders_today')}</div><div class="panel">${suppRows}</div>` : ''}
+    ${(isPro() && state.supplements.length) ? `<div class="section-title">${ICON.bell} ${tr('reminders_today')}</div><div class="panel">${suppRows}</div>` : ''}
 
     <div class="section-title">${tr('recently_logged')}</div>
     ${logRows}
@@ -1342,7 +1367,7 @@ function openFoodDetail(id){
     <div class="detail-title-row">
       <h1>${f.name}</h1>
       <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
-        ${isPro() ? `<button class="qty-pill" onclick="saveFoodAsTemplate('${f.id}')" aria-label="Guardar como plantilla">⭐</button>` : ''}
+        ${isPro() ? `<button class="qty-pill" onclick="saveFoodAsTemplate('${f.id}')" aria-label="Guardar como plantilla">${ICON.star}</button>` : ''}
         <div id="qty-pill-wrap">${qtyPillHTML(servings, f.id)}</div>
       </div>
     </div>
@@ -1351,15 +1376,15 @@ function openFoodDetail(id){
       <div class="hero-top">
         <div>
           <div class="hero-number">${f.cal}</div>
-          <div class="hero-label">🔥 Calorías</div>
+          <div class="hero-label">${ICON.fire} Calorías</div>
         </div>
       </div>
     </div>
 
     <div class="macro-grid" style="margin-top:12px;">
-      <div class="macro-chip" style="background:var(--protein-soft);"><span>🥩</span><b>${fmt1(f.protein)} g</b><small>Proteína</small></div>
-      <div class="macro-chip" style="background:var(--carbs-soft);"><span>🍞</span><b>${fmt1(f.carb)} g</b><small>Carbohidratos</small></div>
-      <div class="macro-chip" style="background:var(--fat-soft);"><span>💧</span><b>${fmt1(f.fat)} g</b><small>Grasas</small></div>
+      <div class="macro-chip" style="background:var(--protein-soft);"><span>${ICON.protein}</span><b>${fmt1(f.protein)} g</b><small>Proteína</small></div>
+      <div class="macro-chip" style="background:var(--carbs-soft);"><span>${ICON.carbs}</span><b>${fmt1(f.carb)} g</b><small>Carbohidratos</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft);"><span>${ICON.water}</span><b>${fmt1(f.fat)} g</b><small>Grasas</small></div>
     </div>
 
     ${hs ? `
@@ -1406,15 +1431,15 @@ function openPendingFoodDetail(){
       <div class="hero-top">
         <div>
           <div class="hero-number">${pf.cal}</div>
-          <div class="hero-label">🔥 Calorías</div>
+          <div class="hero-label">${ICON.fire} Calorías</div>
         </div>
       </div>
     </div>
 
     <div class="macro-grid" style="margin-top:12px;">
-      <div class="macro-chip" style="background:var(--protein-soft);"><span>🥩</span><b>${fmt1(pf.protein)} g</b><small>Proteína</small></div>
-      <div class="macro-chip" style="background:var(--carbs-soft);"><span>🍞</span><b>${fmt1(pf.carb)} g</b><small>Carbohidratos</small></div>
-      <div class="macro-chip" style="background:var(--fat-soft);"><span>💧</span><b>${fmt1(pf.fat)} g</b><small>Grasas</small></div>
+      <div class="macro-chip" style="background:var(--protein-soft);"><span>${ICON.protein}</span><b>${fmt1(pf.protein)} g</b><small>Proteína</small></div>
+      <div class="macro-chip" style="background:var(--carbs-soft);"><span>${ICON.carbs}</span><b>${fmt1(pf.carb)} g</b><small>Carbohidratos</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft);"><span>${ICON.water}</span><b>${fmt1(pf.fat)} g</b><small>Grasas</small></div>
     </div>
 
     ${hs ? `
@@ -1680,7 +1705,62 @@ function closeActionOverlay(){
     try{ window.__activeBarcodeScanner.stop(); }catch(e){}
     window.__activeBarcodeScanner = null;
   }
+  stopCameraStream();
+  document.getElementById('action-overlay').classList.remove('fullbleed');
   document.getElementById('action-overlay').classList.add('hide');
+}
+
+function stopCameraStream(){
+  if(window.__activeCameraStream){
+    window.__activeCameraStream.getTracks().forEach(track => track.stop());
+    window.__activeCameraStream = null;
+  }
+}
+
+async function openCameraCapture(){
+  if(!isPro()){ showToast('Analizar comida por foto es una función Pro', true); setTab('pro'); return; }
+  document.getElementById('action-overlay').classList.add('fullbleed');
+  openActionOverlay(`
+    <div class="camera-view">
+      <video id="camera-video" autoplay playsinline muted></video>
+      <div class="camera-controls">
+        <label class="camera-gallery-btn" for="gallery-fallback-input">${ICON.gallery}</label>
+        <input id="gallery-fallback-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onGalleryPhotoChosen(event)">
+        <button class="camera-shutter" onclick="captureCameraPhoto()" aria-label="Hacer foto"></button>
+        <div style="width:44px;"></div>
+      </div>
+    </div>
+  `);
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    window.__activeCameraStream = stream;
+    const video = document.getElementById('camera-video');
+    if(video) video.srcObject = stream;
+  }catch(e){
+    showToast('No se pudo acceder a la cámara: ' + e.message, true);
+    closeActionOverlay();
+  }
+}
+
+function captureCameraPhoto(){
+  const video = document.getElementById('camera-video');
+  if(!video || !video.videoWidth) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  canvas.toBlob(async (blob) => {
+    closeActionOverlay();
+    await processFoodImage(blob);
+  }, 'image/jpeg', 0.85);
+}
+
+function onGalleryPhotoChosen(evt){
+  const file = evt.target.files[0];
+  evt.target.value = '';
+  if(!file) return;
+  closeActionOverlay();
+  processFoodImage(file);
 }
 
 function loadScriptOnce(src){
@@ -1700,6 +1780,9 @@ async function openBarcodeScanner(){
     <h1 style="margin:0 0 10px 0;">Código de barras</h1>
     <p class="sub">Apunta a un código de barras del producto envasado.</p>
     <div id="barcode-reader" style="width:100%; border-radius:14px; overflow:hidden;"></div>
+    <div class="barcode-shutter-row">
+      <button id="barcode-shutter-btn" class="barcode-shutter" onclick="pulseBarcodeShutter()" aria-label="Buscar código"></button>
+    </div>
     <div id="barcode-status" class="empty" style="margin-top:10px;">Cargando cámara…</div>
   `);
   try{
@@ -1721,6 +1804,18 @@ async function openBarcodeScanner(){
   }catch(e){
     const statusEl = document.getElementById('barcode-status');
     if(statusEl) statusEl.textContent = 'No se pudo acceder a la cámara: ' + e.message;
+  }
+}
+
+function pulseBarcodeShutter(){
+  const btn = document.getElementById('barcode-shutter-btn');
+  const statusEl = document.getElementById('barcode-status');
+  if(btn){
+    btn.style.transform = 'scale(.85)';
+    setTimeout(() => { btn.style.transform = 'scale(1)'; }, 150);
+  }
+  if(statusEl && !statusEl.textContent.includes('Buscando producto')){
+    statusEl.textContent = 'Buscando código…';
   }
 }
 
@@ -1948,8 +2043,13 @@ async function analyzeFoodImage(base64, mediaType, correctionNote){
 
 async function onPhotoSelected(evt){
   const file = evt.target.files[0];
+  evt.target.value = '';
   if(!file) return;
-  if(!file.type || !file.type.startsWith('image/')){
+  await processFoodImage(file);
+}
+
+async function processFoodImage(file){
+  if(!file || !file.type || !file.type.startsWith('image/')){
     showToast('Elige un archivo de imagen', true);
     return;
   }
@@ -1970,7 +2070,6 @@ async function onPhotoSelected(evt){
     showToast('No se pudo analizar la foto: ' + e.message, true);
   }finally{
     state.analyzing = false;
-    evt.target.value = '';
     renderAdd();
   }
   if(succeeded) openPendingFoodDetail();
@@ -2006,10 +2105,10 @@ async function openSavedMeals(){
       <div class="log-photo">${s.photo ? `<img src="${s.photo}">` : '🍽️'}</div>
       <div class="log-body">
         <div class="log-top"><div class="log-title">${s.name}</div><span class="del" onclick="event.stopPropagation(); removeSavedMeal('${s.id}')">✕</span></div>
-        <div class="log-cal">🔥 <b>${s.cal}</b> calorías</div>
+        <div class="log-cal">${ICON.fire} <b>${s.cal}</b> calorías</div>
       </div>
-    </div>`).join('') : `<div class="empty">Aún no has guardado ninguna comida — abre una comida ya registrada y toca ⭐ para guardarla.</div>`;
-  openActionOverlay(`<h1 style="margin:0 0 6px 0;">⭐ Comida guardada</h1><p class="sub" style="margin:0 0 14px 0;">Toca una para añadirla a hoy.</p>${rows}`);
+    </div>`).join('') : `<div class="empty">Aún no has guardado ninguna comida — abre una comida ya registrada y toca ${ICON.star} para guardarla.</div>`;
+  openActionOverlay(`<h1 style="margin:0 0 6px 0;">${ICON.star} Comida guardada</h1><p class="sub" style="margin:0 0 14px 0;">Toca una para añadirla a hoy.</p>${rows}`);
 }
 
 async function useSavedMeal(id){
@@ -2042,23 +2141,55 @@ function addManualFood(){
 }
 
 const EXERCISE_TYPES = {
-  correr: { label:'Correr', icon:'🏃', met:9.8, hasDistance:true },
-  andar: { label:'Andar', icon:'🚶', met:3.5, hasDistance:true },
-  bici: { label:'Bici', icon:'🚴', met:7.5, hasDistance:true },
-  gimnasio: { label:'Gimnasio', icon:'🏋️', met:6.0, hasDistance:false },
-  otro: { label:'Otro', icon:'⚙️', met:null, hasDistance:false }
+  correr: { label:'Correr al aire libre', icon:ICON.run, met:9.8, hasDistance:true },
+  correr_cinta: { label:'Correr en cinta', icon:ICON.run, met:8.3, hasDistance:true },
+  andar: { label:'Andar', icon:ICON.walk, met:3.5, hasDistance:true },
+  senderismo: { label:'Senderismo', icon:ICON.walk, met:6.0, hasDistance:true },
+  bici: { label:'Bici al aire libre', icon:ICON.bike, met:7.5, hasDistance:true },
+  bici_estatica: { label:'Bici estática', icon:ICON.bike, met:6.8, hasDistance:false },
+  natacion: { label:'Natación', icon:ICON.swim, met:8.0, hasDistance:false },
+  eliptica: { label:'Elíptica', icon:ICON.run, met:5.0, hasDistance:false },
+  remo: { label:'Remo', icon:ICON.dumbbell, met:7.0, hasDistance:false },
+  escaladora: { label:'Escaladora', icon:ICON.walk, met:8.8, hasDistance:false },
+  hiit: { label:'HIIT', icon:ICON.fire, met:8.0, hasDistance:false },
+  funcional: { label:'Entrenamiento funcional', icon:ICON.dumbbell, met:6.0, hasDistance:false },
+  gimnasio: { label:'Pesas / Gimnasio', icon:ICON.dumbbell, met:5.0, hasDistance:false },
+  yoga: { label:'Yoga', icon:ICON.yoga, met:2.5, hasDistance:false },
+  pilates: { label:'Pilates', icon:ICON.yoga, met:3.0, hasDistance:false },
+  baile: { label:'Baile', icon:ICON.yoga, met:5.5, hasDistance:false },
+  boxeo: { label:'Boxeo', icon:ICON.dumbbell, met:7.8, hasDistance:false },
+  artes_marciales: { label:'Artes marciales', icon:ICON.dumbbell, met:10.3, hasDistance:false },
+  baloncesto: { label:'Baloncesto', icon:ICON.ball, met:6.5, hasDistance:false },
+  futbol: { label:'Fútbol', icon:ICON.ball, met:7.0, hasDistance:false },
+  tenis: { label:'Tenis', icon:ICON.ball, met:7.3, hasDistance:false },
+  padel: { label:'Pádel', icon:ICON.ball, met:6.0, hasDistance:false },
+  voleibol: { label:'Voleibol', icon:ICON.ball, met:4.0, hasDistance:false },
+  golf: { label:'Golf', icon:ICON.ball, met:4.8, hasDistance:false },
+  esqui: { label:'Esquí', icon:ICON.walk, met:7.0, hasDistance:false },
+  surf: { label:'Surf', icon:ICON.swim, met:5.0, hasDistance:false },
+  escalada: { label:'Escalada', icon:ICON.walk, met:8.0, hasDistance:false },
+  patinaje: { label:'Patinaje', icon:ICON.walk, met:7.0, hasDistance:false },
+  otro: { label:'Otro', icon:ICON.other, met:null, hasDistance:false }
 };
 
 function openExercisePicker(){
   openActionOverlay(`
     <h1 style="margin:0 0 4px 0;">Registrar ejercicio</h1>
     <p class="sub">¿Qué has hecho?</p>
-    <div class="exercise-grid">
+    <input id="exercise-search" class="exercise-search" placeholder="Buscar…" oninput="filterExerciseGrid()">
+    <div class="exercise-grid" id="exercise-grid">
       ${Object.entries(EXERCISE_TYPES).map(([key, cfg]) => `
-        <button class="exercise-type-btn" onclick="selectExerciseType('${key}')"><span>${cfg.icon}</span>${cfg.label}</button>
+        <button class="exercise-type-btn" data-label="${cfg.label.toLowerCase()}" onclick="selectExerciseType('${key}')"><span>${cfg.icon}</span>${cfg.label}</button>
       `).join('')}
     </div>
   `);
+}
+
+function filterExerciseGrid(){
+  const q = (document.getElementById('exercise-search').value || '').toLowerCase().trim();
+  document.querySelectorAll('#exercise-grid .exercise-type-btn').forEach(btn => {
+    btn.style.display = btn.dataset.label.includes(q) ? '' : 'none';
+  });
 }
 
 function selectExerciseType(type){
@@ -2195,7 +2326,7 @@ function renderDatos(){
     const streak = computeStreak();
     const avg = computeWeeklyAvg();
     el.innerHTML = `
-      <div class="section-title">🔥 Racha y media</div>
+      <div class="section-title">${ICON.fire} Racha y media</div>
       <div class="macro-row">
         <div class="macro-card">
           <div class="macro-card-num">${streak}</div>
@@ -2217,7 +2348,7 @@ function renderDatos(){
     el.innerHTML = `
       <div class="section-title">⚖️ Progreso de peso</div>
       <div class="panel" style="text-align:center; padding:32px 20px;">
-        <div style="font-size:32px; margin-bottom:8px;">🔒</div>
+        <div style="font-size:32px; margin-bottom:8px;">${ICON.lock}</div>
         <div style="font-weight:700; font-size:15px; margin-bottom:6px;">Función Pro</div>
         <p class="sub" style="margin:0 0 16px 0;">La gráfica de evolución de tu peso es parte de eatiseasy Pro.</p>
         <button class="btn accent" onclick="setTab('pro')">Desbloquear con Pro</button>
@@ -2278,16 +2409,16 @@ async function openDayDetail(date){
       ${f.name}</span><span class="rval">${f.cal} kcal</span></div>`).join('')
     : `<div class="empty">Sin comidas ese día</div>`;
   const exRows = log.exercises.map(e=>`
-    <div class="row"><span class="rname">🔥 ${e.name}</span><span class="rval">${e.cal} kcal</span></div>`).join('');
+    <div class="row"><span class="rname">${ICON.fire} ${e.name}</span><span class="rval">${e.cal} kcal</span></div>`).join('');
 
   document.getElementById('food-detail-body').innerHTML = `
     <h1 style="margin:0 0 2px 0;">${formatDateLabel(date)}</h1>
     <div style="color:var(--muted); font-size:12px; margin-bottom:6px;">Resumen del día</div>
     <div class="ring-wrap" style="margin:0 0 8px 0; padding:10px 0;">${ringSvg(consumed, t.calorieTarget)}</div>
     <div class="macro-grid" style="margin-bottom:18px;">
-      <div class="macro-chip" style="background:var(--protein-soft);"><span>🥩</span><b>${fmt1(protein)} g</b><small>Proteína</small></div>
-      <div class="macro-chip" style="background:var(--carbs-soft);"><span>🍞</span><b>${fmt1(carbs)} g</b><small>Carbohidratos</small></div>
-      <div class="macro-chip" style="background:var(--fat-soft);"><span>💧</span><b>${fmt1(fat)} g</b><small>Grasas</small></div>
+      <div class="macro-chip" style="background:var(--protein-soft);"><span>${ICON.protein}</span><b>${fmt1(protein)} g</b><small>Proteína</small></div>
+      <div class="macro-chip" style="background:var(--carbs-soft);"><span>${ICON.carbs}</span><b>${fmt1(carbs)} g</b><small>Carbohidratos</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft);"><span>${ICON.water}</span><b>${fmt1(fat)} g</b><small>Grasas</small></div>
     </div>
     <div class="section-title">Comida</div>
     ${foodRows}
@@ -2443,10 +2574,10 @@ function renderProfile(){
             <input id="pr-custom-cal" type="number" value="${p.customCalories || t.autoCalorieTarget}" oninput="recalcMacrosPreview()">
           </div>
           <div class="row2">
-            <div class="field"><label>🥩 Proteína (g)</label><input id="pr-custom-protein" type="number" value="${p.customProtein != null ? p.customProtein : t.autoProteinG}"></div>
-            <div class="field"><label>💧 Grasas (g)</label><input id="pr-custom-fat" type="number" value="${p.customFat != null ? p.customFat : t.autoFatG}"></div>
+            <div class="field"><label>${ICON.protein} Proteína (g)</label><input id="pr-custom-protein" type="number" value="${p.customProtein != null ? p.customProtein : t.autoProteinG}"></div>
+            <div class="field"><label>${ICON.water} Grasas (g)</label><input id="pr-custom-fat" type="number" value="${p.customFat != null ? p.customFat : t.autoFatG}"></div>
           </div>
-          <div class="field"><label>🍞 Carbohidratos (g)</label><input id="pr-custom-carb" type="number" value="${p.customCarb != null ? p.customCarb : t.autoCarbG}"></div>
+          <div class="field"><label>${ICON.carbs} Carbohidratos (g)</label><input id="pr-custom-carb" type="number" value="${p.customCarb != null ? p.customCarb : t.autoCarbG}"></div>
           <button type="button" class="btn ghost small" onclick="recalcMacrosPreview()">↻ Recalcular macros según estas calorías</button>
           <p style="font-size:11px; color:var(--muted); margin:10px 0 0 0;">Puedes tocar los gramos y dejarlos como quieras — el botón solo te da un punto de partida sugerido.</p>
         </div>
@@ -2458,19 +2589,19 @@ function renderProfile(){
     <div class="section-title">${tr('section_reminders')}</div>
     ${!isPro() ? `
     <div class="panel" style="text-align:center; padding:24px 20px;">
-      <div style="font-size:26px; margin-bottom:6px;">🔒</div>
+      <div style="font-size:26px; margin-bottom:6px;">${ICON.lock}</div>
       <div style="font-weight:700; font-size:14px; margin-bottom:4px;">Función Pro</div>
       <p class="sub" style="margin:0 0 14px 0;">Suplementos y recordatorios de agua son parte de eatiseasy Pro.</p>
       <button class="btn accent" onclick="setTab('pro')">Desbloquear con Pro</button>
     </div>
     ` : `
     <details>
-      <summary>🔔 Gestionar recordatorios</summary>
+      <summary>${ICON.bell} Gestionar recordatorios</summary>
       <div class="inner">
         <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">Se reinician cada día y aparecen en "Hoy" — suplementos para marcar como tomados, o agua para ir sumando vasos.</p>
         <div class="panel" style="margin-top:0;">
           ${state.supplements.length ? state.supplements.map(s=>`
-            <div class="row"><span class="rname">${s.type==='water' ? '💧' : '💊'} ${s.name}${s.type==='water' ? ` · ${s.target||8} vasos/día` : ''}</span><span class="del" onclick="removeSupplement('${s.id}')">✕</span></div>
+            <div class="row"><span class="rname">${s.type==='water' ? ICON.water : ICON.pill} ${s.name}${s.type==='water' ? ` · ${s.target||8} vasos/día` : ''}</span><span class="del" onclick="removeSupplement('${s.id}')">✕</span></div>
           `).join('') : `<div class="empty">Aún no has añadido recordatorios</div>`}
         </div>
         <div class="field" style="margin-top:14px;"><label>Tipo</label>
@@ -2599,6 +2730,32 @@ async function resetAccount(){
   await reloadApp();
 }
 
+function renderStaticMenus(){
+  document.getElementById('add-menu-body').innerHTML = `
+    <button class="fab-option" onclick="closeAddMenu(); openManualFoodForm();">
+      <span class="fab-option-icon">📝</span> Registrar comida
+    </button>
+    <button class="fab-option" onclick="closeAddMenu(); openScanChoice();">
+      <span class="fab-option-icon">${ICON.camera}</span> Escanear comida
+    </button>
+    <button class="fab-option" onclick="closeAddMenu(); openSavedMeals();">
+      <span class="fab-option-icon">${ICON.star}</span> Comida guardada
+    </button>
+    <button class="fab-option" onclick="closeAddMenu(); openExercisePicker();">
+      <span class="fab-option-icon">${ICON.run}</span> Registrar ejercicio
+    </button>
+  `;
+  document.getElementById('scan-choice-body').innerHTML = `
+    <button class="fab-option" onclick="closeScanChoice(); openCameraCapture();">
+      <span class="fab-option-icon">${ICON.camera}</span> Hacer foto a la comida
+    </button>
+    <button class="fab-option" onclick="closeScanChoice(); openBarcodeScanner();">
+      <span class="fab-option-icon">${ICON.barcode}</span> Escanear código de barras
+    </button>
+  `;
+}
+
+renderStaticMenus();
 init();
 </script>
 </body>
