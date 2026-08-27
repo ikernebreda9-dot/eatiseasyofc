@@ -165,9 +165,14 @@ details .inner{padding-top:10px;}
 
 .splash-screen{position:fixed; inset:0; background:var(--void); z-index:200; display:flex; align-items:center; justify-content:center; padding:40px; text-align:center; transition:opacity .3s ease;}
 .splash-screen.fade-out{opacity:0;}
-.splash-quote{font-size:21px; font-weight:800; line-height:1.35; color:var(--paper); letter-spacing:-.2px; opacity:0; transform:scale(.9) translateY(8px); transition:opacity .4s ease, transform .4s cubic-bezier(.2,.8,.3,1);}
-.splash-quote.show{opacity:1; transform:scale(1) translateY(0);}
-.splash-quote:before{content:'🍉'; display:block; font-size:34px; margin-bottom:14px;}
+.splash-inner{display:flex; flex-direction:column; align-items:center; gap:16px;}
+.splash-logo{font-size:30px; font-weight:800; letter-spacing:-.5px; color:var(--paper); opacity:0; transform:scale(.9); transition:opacity .4s ease, transform .4s cubic-bezier(.2,.8,.3,1);}
+.splash-logo.show{opacity:1; transform:scale(1);}
+.splash-logo .dot{color:var(--accent);}
+.splash-greeting{font-size:16px; font-weight:600; color:var(--muted); opacity:0; transition:opacity .4s ease .1s;}
+.splash-greeting.show{opacity:1;}
+.splash-progress-track{width:170px; height:5px; background:var(--line-strong); border-radius:4px; overflow:hidden; margin-top:6px;}
+.splash-progress-fill{height:100%; width:0%; background:var(--accent); border-radius:4px;}
 
 .toast{position:fixed; bottom:calc(88px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:var(--paper); color:var(--void); padding:10px 16px; border-radius:10px; font-size:12.5px; max-width:82%; text-align:center; z-index:60; font-weight:600;}
 .toast.err{background:var(--warn); color:#fff;}
@@ -246,7 +251,7 @@ details .inner{padding-top:10px;}
 
 .pending-photo{width:100%; max-height:220px; object-fit:cover; border-radius:12px; margin-bottom:14px; border:1px solid var(--line-strong);}
 
-.detail-photo{width:100%; height:280px; object-fit:cover; border-radius:16px; border:1px solid var(--line-strong);}
+.detail-photo{width:100%; height:320px; object-fit:cover; border-radius:16px; border:1px solid var(--line-strong);}
 .detail-title-row{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-top:14px;}
 .detail-title-row h1{font-size:20px; font-weight:800; margin:0; line-height:1.25; letter-spacing:-.3px;}
 .pending-name-input{width:100%; border:none; border-bottom:2px solid var(--accent); background:transparent; padding:6px 2px; font-size:19px; font-weight:800; color:var(--paper); font-family:inherit;}
@@ -254,6 +259,10 @@ details .inner{padding-top:10px;}
 .qty-pill{font-family:inherit; font-size:13px; font-weight:700; padding:7px 12px; border-radius:20px; border:1.5px solid var(--line-strong); background:var(--surface-2); color:var(--paper); cursor:pointer; white-space:nowrap; flex-shrink:0;}
 .ingredient-chips{display:flex; flex-wrap:wrap; gap:8px;}
 .ingredient-chip{font-size:12px; font-weight:600; padding:7px 12px; border-radius:20px; background:var(--surface-2); border:1px solid var(--line); color:var(--paper);}
+.ing-edit-row{display:flex; gap:8px; align-items:center; margin-bottom:8px;}
+.ing-edit-name{flex:1; min-width:0; border:1.5px solid var(--line-strong); border-radius:8px; padding:8px 10px; font-family:inherit; font-size:13px; background:var(--surface); color:var(--paper);}
+.ing-edit-grams{width:64px; border:1.5px solid var(--line-strong); border-radius:8px; padding:8px 6px; font-family:inherit; font-size:13px; text-align:center; background:var(--surface); color:var(--paper);}
+.ing-edit-del{width:30px; height:30px; flex-shrink:0; border-radius:50%; border:none; background:var(--surface-2); color:var(--muted); font-size:13px; cursor:pointer;}
 .detail-photo-fallback{display:flex; align-items:center; justify-content:center; background:var(--surface-2); font-size:52px; border-radius:14px; border:1px solid var(--line-strong);}
 .macro-grid{display:flex; gap:10px;}
 .macro-chip{flex:1; border-radius:12px; padding:14px 8px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:5px; border:1px solid var(--line);}
@@ -348,7 +357,11 @@ details .inner{padding-top:10px;}
 </div>
 
 <div id="splash-screen" class="splash-screen hide">
-  <div id="splash-quote" class="splash-quote"></div>
+  <div class="splash-inner">
+    <div class="splash-logo">eatis<span class="dot">•</span>easy</div>
+    <div id="splash-greeting" class="splash-greeting"></div>
+    <div class="splash-progress-track"><div id="splash-progress-fill" class="splash-progress-fill"></div></div>
+  </div>
 </div>
 
 <div id="toast" class="toast hide"></div>
@@ -436,7 +449,7 @@ async function importBackupCode(code){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.18';
+const APP_VERSION = '0.25';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -496,12 +509,12 @@ function tr(key){
 function svgIcon(paths, viewBox, extra){
   return `<svg class="icon-svg ${extra||''}" viewBox="${viewBox||'0 0 24 24'}" fill="none" xmlns="http://www.w3.org/2000/svg">${paths}</svg>`;
 }
-function bigEmoji(char){ return `<span class="app-emoji">${char}</span>`; }
+function bigEmoji(char, filterCss){ return `<span class="app-emoji" style="${filterCss ? `filter:${filterCss};` : ''}">${char}</span>`; }
 const ICON = {
   fire: bigEmoji('🔥'),
   protein: bigEmoji('🥩'),
   carbs: bigEmoji('🍞'),
-  fat: bigEmoji('💧'),
+  fat: bigEmoji('🧈'),
   water: bigEmoji('💧'),
   star: bigEmoji('⭐'),
   lock: svgIcon(`<rect x="5" y="10.5" width="14" height="10" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>`),
@@ -521,67 +534,31 @@ const ICON = {
   other: svgIcon(`<circle cx="12" cy="12" r="2.4" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v3M12 18v3M21 12h-3M6 12H3M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1M18.4 18.4l-2.1-2.1M7.7 7.7L5.6 5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>`)
 };
 
-const MOTIVATIONAL_QUOTES = {
-  es: [
-    'Cada comida es una oportunidad para cuidarte.',
-    'El progreso no es lineal, pero sí constante.',
-    'No cuentes los días, haz que los días cuenten.',
-    'Pequeños hábitos, grandes resultados.',
-    'Tu única competencia es quien fuiste ayer.',
-    'La disciplina de hoy es el resultado de mañana.',
-    'No busques la perfección, busca la constancia.',
-    'Un paso a la vez es más que ningún paso.',
-    'Tu cuerpo escucha todo lo que le dices, sé amable.',
-    'La motivación te arranca, el hábito te lleva a la meta.',
-    'Comer bien no es un castigo, es un acto de cariño.',
-    'Hoy es un buen día para empezar de nuevo.'
-  ],
-  en: [
-    'Every meal is a chance to take care of yourself.',
-    'Progress isn\'t linear, but it is constant.',
-    'Don\'t count the days, make the days count.',
-    'Small habits, big results.',
-    'Your only competition is who you were yesterday.',
-    'Today\'s discipline is tomorrow\'s result.',
-    'Don\'t chase perfection, chase consistency.',
-    'One step at a time beats no steps at all.',
-    'Your body hears everything you say — be kind.',
-    'Motivation gets you started, habit gets you there.',
-    'Eating well isn\'t punishment, it\'s self-care.',
-    'Today is a great day to start again.'
-  ],
-  eu: [
-    'Otordu bakoitza zeure burua zaintzeko aukera da.',
-    'Aurrerapena ez da lineala, baina etengabea da.',
-    'Ez zenbatu egunak, egin egunak balio izan dezaten.',
-    'Ohitura txikiak, emaitza handiak.',
-    'Zure lehia bakarra atzoko zeu zara.',
-    'Gaurko diziplina biharko emaitza da.',
-    'Ez bilatu perfekzioa, bilatu iraunkortasuna.',
-    'Urrats bat aldiz urratsik ez baino gehiago da.',
-    'Zure gorputzak entzuten du diozun guztia, izan atsegina.',
-    'Motibazioak hasarazten zaitu, ohiturak helmugara eramaten.',
-    'Ondo jatea ez da zigorra, zeure burua zaintzea da.',
-    'Gaur egun ona da berriro hasteko.'
-  ]
-};
-
 function showSplash(){
   return new Promise(resolve => {
     const overlay = document.getElementById('splash-screen');
-    const quoteEl = document.getElementById('splash-quote');
-    if(!overlay || !quoteEl){ resolve(); return; }
-    const lang = (state.profile && state.profile.lang) || 'es';
-    const list = MOTIVATIONAL_QUOTES[lang] || MOTIVATIONAL_QUOTES.es;
-    quoteEl.textContent = list[Math.floor(Math.random() * list.length)];
-    quoteEl.classList.remove('show');
+    const logoEl = overlay ? overlay.querySelector('.splash-logo') : null;
+    const greetEl = document.getElementById('splash-greeting');
+    const fillEl = document.getElementById('splash-progress-fill');
+    if(!overlay || !greetEl || !fillEl){ resolve(); return; }
+    const name = (state.profile && state.profile.name) ? state.profile.name.trim() : '';
+    greetEl.textContent = name ? `Hola, ${name}, bienvenido` : 'Hola, bienvenido';
+    logoEl.classList.remove('show');
+    greetEl.classList.remove('show');
+    fillEl.style.transition = 'none';
+    fillEl.style.width = '0%';
     overlay.classList.remove('fade-out');
     overlay.classList.remove('hide');
-    requestAnimationFrame(() => requestAnimationFrame(() => quoteEl.classList.add('show')));
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      logoEl.classList.add('show');
+      greetEl.classList.add('show');
+      fillEl.style.transition = 'width 2.5s linear';
+      fillEl.style.width = '100%';
+    }));
     setTimeout(() => {
       overlay.classList.add('fade-out');
       setTimeout(() => { overlay.classList.add('hide'); resolve(); }, 250);
-    }, 1500);
+    }, 2500);
   });
 }
 
@@ -1279,7 +1256,13 @@ function renderAll(){
   updateProTabVisibility();
   applyLanguage();
   updateStreakDisplay();
-  renderToday(); renderAdd(); renderDatos(); renderProfile(); renderProTab();
+  // Solo redibuja la pantalla que se está viendo ahora mismo — las demás
+  // se generan cuando el usuario navega a ellas (mucho más rápido).
+  if(state.tab === 'today') renderToday();
+  else if(state.tab === 'add') renderAdd();
+  else if(state.tab === 'datos') renderDatos();
+  else if(state.tab === 'profile') renderProfile();
+  else if(state.tab === 'pro') renderProTab();
 }
 
 function thinBar(label, value, target, color, unit, icon){
@@ -1499,7 +1482,9 @@ function openFoodDetail(id){
     <div class="detail-title-row">
       <h1>${f.name}</h1>
       <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
-        ${isPro() ? `<button class="qty-pill" onclick="saveFoodAsTemplate('${f.id}')" aria-label="Guardar como plantilla">${ICON.star}</button>` : ''}
+        ${isPro() ? (f.savedAsTemplate
+          ? `<button class="qty-pill" style="opacity:.55;" onclick="showToast('Esta comida ya está guardada')" aria-label="Ya guardada">✓ ${ICON.star}</button>`
+          : `<button class="qty-pill" onclick="saveFoodAsTemplate('${f.id}')" aria-label="Guardar como plantilla">${ICON.star}</button>`) : ''}
         <div id="qty-pill-wrap">${qtyPillHTML(servings, f.id)}</div>
       </div>
     </div>
@@ -1528,11 +1513,13 @@ function openFoodDetail(id){
       <div class="water-track"><div class="water-fill" style="width:${hsPct}%; background:${hsColor};"></div></div>
     </div>` : ''}
 
-    ${f.ingredients && f.ingredients.length ? `
-    <div class="section-title">Ingredientes</div>
-    <div class="ingredient-chips">
-      ${f.ingredients.map(ing => `<span class="ingredient-chip">${ing}</span>`).join('')}
-    </div>` : ''}
+    ${(f.photo || (f.ingredients && f.ingredients.length)) ? `
+    <div class="section-title" style="display:flex; align-items:center; justify-content:space-between;">
+      <span>Ingredientes</span>
+      ${f.photo ? `<button class="btn ghost small" style="padding:5px 12px; font-size:11px;" onclick="startEditIngredients('${f.id}')">✎ Editar</button>` : ''}
+    </div>
+    <div id="ingredients-wrap">${renderIngredientChips(f.ingredients)}</div>
+    ` : ''}
 
     <div id="fix-results-wrap" style="margin-top:18px;">
       ${f.photo ? `<button class="btn ghost" onclick="startFixResults('${f.id}')">${bigEmoji('✨')} Arreglar resultados</button>` : ''}
@@ -1585,9 +1572,7 @@ function openPendingFoodDetail(){
 
     ${pf.ingredients && pf.ingredients.length ? `
     <div class="section-title">Ingredientes</div>
-    <div class="ingredient-chips">
-      ${pf.ingredients.map(ing => `<span class="ingredient-chip">${ing}</span>`).join('')}
-    </div>` : ''}
+    ${renderIngredientChips(pf.ingredients)}` : ''}
 
     <div style="display:flex; gap:10px; margin-top:20px;">
       <button class="btn accent" onclick="confirmPendingFoodFromDetail()">Añadir a mi día</button>
@@ -2073,7 +2058,7 @@ function fileToCompressedBase64(file){
       URL.revokeObjectURL(objectUrl);
       try{
         const analysisUrl = resizeToDataUrl(img, 1024, 0.8);
-        const thumbnail = resizeToDataUrl(img, 720, 0.78);
+        const thumbnail = resizeToDataUrl(img, 900, 0.85);
         resolve({ base64: analysisUrl.split(',')[1], mediaType: 'image/jpeg', thumbnail });
       }catch(e){ reject(e); }
     };
@@ -2115,7 +2100,7 @@ async function analyzeFoodImage(base64, mediaType, correctionNote){
   const correctionPart = correctionNote
     ? ` Esta foto ya se había analizado antes y el usuario dice que el resultado estaba mal, con esta corrección: "${correctionNote}". Ten en cuenta esa corrección y vuelve a estimarlo bien.`
     : '';
-  const schemaPart = ' Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin backticks, exactamente con este formato: {"name":"nombre breve del plato en español","calories":numero_entero,"protein_g":numero_entero,"carbs_g":numero_entero,"fat_g":numero_entero,"health_score":numero_entero_del_1_al_10_donde_10_es_muy_saludable,"ingredients":[{"name":"ingrediente en español","grams":numero_entero_aproximado}]} (la lista de ingredients debe tener como máximo 6 elementos, con una estimación aproximada de gramos para cada uno).';
+  const schemaPart = ' Si algún ingrediente es líquido (leche, batido, zumo, sopa, caldo...), estima también sus gramos aproximados (aplica que 1 ml equivale a 1 gramo); no pongas nunca 0, da siempre tu mejor estimación aproximada. Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin backticks, exactamente con este formato: {"name":"nombre breve del plato en español","calories":numero_entero,"protein_g":numero_entero,"carbs_g":numero_entero,"fat_g":numero_entero,"health_score":numero_entero_del_1_al_10_donde_10_es_muy_saludable,"ingredients":[{"name":"ingrediente en español","grams":numero_entero_aproximado}]} (la lista de ingredients debe tener como máximo 6 elementos, con una estimación aproximada de gramos para cada uno, incluidos los líquidos).';
   const prompt = basePrompt + correctionPart + schemaPart;
 
   const requestBody = provider === 'gemini'
@@ -2183,11 +2168,79 @@ function normalizeIngredients(list){
   });
 }
 
+function renderIngredientChips(ingredients){
+  const list = normalizeIngredients(ingredients || []);
+  if(!list.length) return `<div class="empty">Sin ingredientes detectados</div>`;
+  return `<div class="ingredient-chips">${list.map(ing =>
+    `<span class="ingredient-chip">${ing.name}${ing.grams ? ` · ${ing.grams} g` : ''}</span>`
+  ).join('')}</div>`;
+}
+
+let ingEditBuffer = [];
+
+function startEditIngredients(foodId){
+  const f = state.log.foods.find(x => x.id === foodId);
+  if(!f) return;
+  ingEditBuffer = normalizeIngredients(f.ingredients || []);
+  renderIngredientEditRows(foodId);
+}
+
+function renderIngredientEditRows(foodId){
+  const wrap = document.getElementById('ingredients-wrap');
+  if(!wrap) return;
+  const rows = ingEditBuffer.map((ing, i) => `
+    <div class="ing-edit-row">
+      <input type="text" class="ing-edit-name" value="${ing.name}" placeholder="Ingrediente" oninput="ingEditBuffer[${i}].name=this.value">
+      <input type="number" class="ing-edit-grams" value="${ing.grams != null ? ing.grams : ''}" placeholder="g auto" oninput="ingEditBuffer[${i}].grams=this.value?parseFloat(this.value):null">
+      <button class="ing-edit-del" onclick="removeIngRow(${i}, '${foodId}')">✕</button>
+    </div>`).join('');
+  wrap.innerHTML = `
+    <div id="ing-edit-rows">${rows}</div>
+    <button class="btn ghost small" style="margin-top:10px;" onclick="addIngRow('${foodId}')">+ Añadir ingrediente</button>
+    <p class="sub" style="margin:8px 0 0 0;">Deja los gramos en blanco en uno nuevo y lo estimamos analizando la foto otra vez.</p>
+    <div style="display:flex; gap:10px; margin-top:14px;">
+      <button class="btn accent" onclick="saveIngredientEdits('${foodId}')">Guardar</button>
+      <button class="btn ghost small" onclick="openFoodDetail('${foodId}')">Cancelar</button>
+    </div>
+  `;
+}
+
+function addIngRow(foodId){
+  ingEditBuffer.push({ name:'', grams:null });
+  renderIngredientEditRows(foodId);
+}
+function removeIngRow(i, foodId){
+  ingEditBuffer.splice(i, 1);
+  renderIngredientEditRows(foodId);
+}
+
+async function saveIngredientEdits(foodId){
+  const f = state.log.foods.find(x => x.id === foodId);
+  if(!f) return;
+  const cleaned = ingEditBuffer.filter(ing => ing.name && ing.name.trim());
+  const toEstimate = cleaned.filter(ing => ing.grams == null || ing.grams === '');
+  if(toEstimate.length){
+    if(!f.photo){
+      toEstimate.forEach(ing => { ing.grams = 0; });
+    } else {
+      showToast('Estimando cantidades…');
+      for(const ing of toEstimate){
+        try{ ing.grams = await estimateIngredientGramsFromPhoto(f.photo, ing.name); }
+        catch(e){ ing.grams = 0; }
+      }
+    }
+  }
+  f.ingredients = cleaned.map(ing => ({ name: ing.name.trim(), grams: ing.grams || 0 }));
+  await saveLog();
+  showToast('Ingredientes actualizados');
+  openFoodDetail(foodId);
+}
+
 async function estimateIngredientGramsFromPhoto(photoDataUrl, ingredientName){
   const base64 = (photoDataUrl || '').split(',')[1];
   if(!base64) throw new Error('No hay foto de esta comida para estimar');
   const { url, headers, mode, provider, apiKey } = await getPhotoEndpoint();
-  const prompt = `En esta foto de comida, estima cuántos gramos aproximados hay de "${ingredientName}". Responde ÚNICAMENTE con un objeto JSON válido, sin backticks, con este formato exacto: {"grams":numero_entero}`;
+  const prompt = `En esta foto de comida, estima cuántos gramos aproximados hay de "${ingredientName}". Si es un ingrediente líquido (leche, batido, zumo, caldo...), aplica que 1 ml equivale a 1 gramo; da siempre tu mejor estimación aproximada, nunca respondas 0. Responde ÚNICAMENTE con un objeto JSON válido, sin backticks, con este formato exacto: {"grams":numero_entero}`;
   const requestBody = provider === 'gemini'
     ? { contents: [{ parts: [ { inline_data: { mime_type: 'image/jpeg', data: base64 } }, { text: prompt } ] }] }
     : { model: 'claude-sonnet-4-6', max_tokens: 100, messages: [{ role:'user', content: [ { type:'image', source:{ type:'base64', media_type:'image/jpeg', data: base64 } }, { type:'text', text: prompt } ] }] };
@@ -2252,13 +2305,18 @@ async function saveFoodAsTemplate(id){
   if(!isPro()){ showToast('Guardar plantillas es una función Pro', true); return; }
   const f = state.log.foods.find(x => x.id === id);
   if(!f) return;
+  if(f.savedAsTemplate){ showToast('Esta comida ya está guardada'); return; }
   const saved = (await safeGet('savedMeals')) || [];
   saved.push({
     id: Date.now().toString(), name: f.name, cal: f.cal, protein: f.protein,
-    carb: f.carb, fat: f.fat, photo: f.photo, healthScore: f.healthScore, ingredients: f.ingredients
+    carb: f.carb, fat: f.fat, photo: f.photo, healthScore: f.healthScore, ingredients: f.ingredients,
+    sourceFoodId: f.id, sourceDate: todayStr()
   });
   await safeSet('savedMeals', saved);
+  f.savedAsTemplate = true;
+  await saveLog();
   showToast('Guardado como plantilla ⭐');
+  openFoodDetail(id);
 }
 
 async function openSavedMeals(){
@@ -2289,8 +2347,22 @@ async function useSavedMeal(id){
 
 async function removeSavedMeal(id){
   let saved = (await safeGet('savedMeals')) || [];
+  const removed = saved.find(x => x.id === id);
   saved = saved.filter(x => x.id !== id);
   await safeSet('savedMeals', saved);
+
+  if(removed && removed.sourceFoodId && removed.sourceDate){
+    if(removed.sourceDate === todayStr()){
+      const f = state.log.foods.find(x => x.id === removed.sourceFoodId);
+      if(f){ f.savedAsTemplate = false; await saveLog(); }
+    } else {
+      const log = await safeGet('log:' + removed.sourceDate);
+      if(log){
+        const idx = log.foods.findIndex(x => x.id === removed.sourceFoodId);
+        if(idx >= 0){ log.foods[idx].savedAsTemplate = false; await safeSet('log:' + removed.sourceDate, log); }
+      }
+    }
+  }
   openSavedMeals();
 }
 
@@ -2755,6 +2827,7 @@ async function openFoodDetailForDate(id, date){
   const f = log.foods.find(x => x.id === id);
   if(!f) return;
   window.__pastDayFoodBuffer = f;
+  window.__pastDayFoodDate = date;
   const hs = f.healthScore;
   const hsPct = hs ? Math.round((hs / 10) * 100) : 0;
   const hsColor = !hs ? 'var(--line-strong)' : hs >= 7 ? 'var(--protein)' : hs >= 4 ? 'var(--burn)' : 'var(--warn)';
@@ -2764,7 +2837,9 @@ async function openFoodDetailForDate(id, date){
 
     <div class="detail-title-row">
       <h1>${f.name}</h1>
-      ${isPro() ? `<button class="qty-pill" onclick="saveFoodAsTemplateFromBuffer()" aria-label="Guardar como plantilla">⭐</button>` : ''}
+      ${isPro() ? (f.savedAsTemplate
+        ? `<button class="qty-pill" style="opacity:.55;" onclick="showToast('Esta comida ya está guardada')" aria-label="Ya guardada">✓ ⭐</button>`
+        : `<button class="qty-pill" onclick="saveFoodAsTemplateFromBuffer()" aria-label="Guardar como plantilla">⭐</button>`) : ''}
     </div>
     <p class="sub" style="margin:2px 0 0 0;">${formatDateLabel(date)}</p>
 
@@ -2794,9 +2869,7 @@ async function openFoodDetailForDate(id, date){
 
     ${f.ingredients && f.ingredients.length ? `
     <div class="section-title">Ingredientes</div>
-    <div class="ingredient-chips">
-      ${f.ingredients.map(ing => `<span class="ingredient-chip">${ing}</span>`).join('')}
-    </div>` : ''}
+    ${renderIngredientChips(f.ingredients)}` : ''}
   `;
   document.getElementById('food-detail').classList.remove('hide');
 }
@@ -2804,14 +2877,27 @@ async function openFoodDetailForDate(id, date){
 async function saveFoodAsTemplateFromBuffer(){
   if(!isPro()){ showToast('Guardar plantillas es una función Pro', true); return; }
   const f = window.__pastDayFoodBuffer;
+  const date = window.__pastDayFoodDate;
   if(!f) return;
+  if(f.savedAsTemplate){ showToast('Esta comida ya está guardada'); return; }
   const saved = (await safeGet('savedMeals')) || [];
   saved.push({
     id: Date.now().toString(), name: f.name, cal: f.cal, protein: f.protein,
-    carb: f.carb, fat: f.fat, photo: f.photo, healthScore: f.healthScore, ingredients: f.ingredients
+    carb: f.carb, fat: f.fat, photo: f.photo, healthScore: f.healthScore, ingredients: f.ingredients,
+    sourceFoodId: f.id, sourceDate: date || null
   });
   await safeSet('savedMeals', saved);
+  f.savedAsTemplate = true;
+  if(date){
+    const targetLog = date === todayStr() ? state.log : ((await safeGet('log:' + date)) || null);
+    if(targetLog){
+      const idx = targetLog.foods.findIndex(x => x.id === f.id);
+      if(idx >= 0) targetLog.foods[idx].savedAsTemplate = true;
+      if(date === todayStr()) await saveLog(); else await safeSet('log:' + date, targetLog);
+    }
+  }
   showToast('Guardado como plantilla ⭐');
+  if(date) openFoodDetailForDate(f.id, date);
 }
 
 function sparkSvg(pointsKg, goalKg){
