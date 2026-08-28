@@ -11,6 +11,7 @@
 :root{
   /* Watermelon palette — piel (rind), pulpa (flesh), pepitas (seeds) */
   --void:#FAFBF6; --surface:#FFFFFF; --surface-2:#F1F7ED; --paper:#182D1E; --muted:#84937F;
+  --void-rgb:250,251,246; --surface-rgb:255,255,255;
   --line:rgba(24,45,30,.08); --line-strong:rgba(24,45,30,.16);
   --accent:#FF4D6D; --accent-dark:#D6293F; --accent-soft:rgba(255,77,109,.12); --accent-rgb:255,77,109;
   --warn:#C8391F;
@@ -23,6 +24,7 @@
    tono cálido claro porque el negro se hunde en un fondo oscuro. */
 body.dark-mode{
   --void:#12201A; --surface:#1B2B22; --surface-2:#23362B; --paper:#F1EFE3; --muted:#8FA090;
+  --void-rgb:18,32,26; --surface-rgb:27,43,34;
   --line:rgba(241,239,227,.08); --line-strong:rgba(241,239,227,.16);
   --accent-dark:#FF7A93;
   --warn:#FF7A5C;
@@ -43,7 +45,7 @@ body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemF
 .serif{font-family:inherit;}
 .mono{font-family:inherit;}
 
-.topbar{padding:22px 20px 4px 20px; display:flex; align-items:baseline; justify-content:space-between;}
+.topbar{position:sticky; top:0; z-index:20; padding:22px 20px 16px 20px; display:flex; align-items:baseline; justify-content:space-between; background:rgba(var(--void-rgb),.72); backdrop-filter:blur(20px) saturate(180%); -webkit-backdrop-filter:blur(20px) saturate(180%); border-bottom:1px solid var(--line); margin-bottom:-12px;}
 .topbar .brand{font-family:inherit; font-size:19px; font-weight:600; letter-spacing:-.2px; color:var(--paper);}
 .topbar .brand .dot{color:var(--accent);}
 .topbar .date{font-family:inherit; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px;}
@@ -114,7 +116,7 @@ body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemF
 .row .rval{display:flex; align-items:center; gap:10px; font-family:inherit; font-variant-numeric:tabular-nums; color:var(--paper); font-size:13px;}
 .row .del{color:var(--muted); font-size:15px; line-height:1; cursor:pointer; padding:4px;}
 .empty{color:var(--muted); font-size:13px; padding:18px 0; text-align:center; font-style:italic; font-family:inherit;}
-.panel{background:var(--surface); border-radius:14px; padding:16px 18px; margin-top:14px; border:1px solid var(--line); box-shadow:0 1px 2px rgba(0,0,0,.2);}
+.panel{background:var(--surface); border-radius:14px; padding:16px 18px; margin-top:14px; border:1px solid var(--line); box-shadow:0 2px 10px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04); transition:box-shadow .2s ease, transform .15s ease;}
 
 .field{margin-bottom:14px;}
 .field label{display:block; font-family:inherit; font-size:10px; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:.8px;}
@@ -152,9 +154,10 @@ details .inner{padding-top:10px;}
 }
 .visually-hidden-file{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;}
 
-.dim-overlay{position:fixed; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(2px); z-index:150; display:flex; align-items:flex-end; justify-content:center; padding:0 20px calc(110px + env(safe-area-inset-bottom)) 20px;}
+.dim-overlay{position:fixed; inset:0; background:rgba(0,0,0,.45); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); z-index:150; display:flex; align-items:flex-end; justify-content:center; padding:0 20px calc(110px + env(safe-area-inset-bottom)) 20px;}
 .fab-menu{display:flex; flex-direction:column; gap:12px; width:100%; max-width:400px;}
-.fab-option{display:flex; align-items:center; gap:12px; background:var(--surface); color:var(--paper); border:1px solid var(--line-strong); border-radius:16px; padding:15px 18px; font-family:inherit; font-size:14.5px; font-weight:700; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.25); animation:fabIn .25s ease both;}
+.fab-option{display:flex; align-items:center; gap:12px; background:rgba(var(--surface-rgb),.78); backdrop-filter:blur(20px) saturate(180%); -webkit-backdrop-filter:blur(20px) saturate(180%); color:var(--paper); border:1px solid rgba(255,255,255,.14); border-radius:16px; padding:15px 18px; font-family:inherit; font-size:14.5px; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(0,0,0,.16), 0 1px 2px rgba(0,0,0,.08); animation:fabIn .25s ease both; transition:transform .12s ease, box-shadow .12s ease;}
+.fab-option:active{transform:scale(.97);}
 .fab-option-icon{font-size:19px;}
 
 .exercise-search{width:100%; border:1.5px solid var(--line-strong); border-radius:12px; padding:10px 14px; font-family:inherit; font-size:14px; margin-top:12px; background:var(--surface-2); color:var(--paper);}
@@ -285,6 +288,22 @@ details .inner{padding-top:10px;}
 .water-fill{height:100%; background:var(--accent); border-radius:4px; transition:width .4s ease;}
 .water-fill.is-done{background:var(--protein);}
 .supp-btn:disabled{opacity:1; cursor:default;}
+/* ===== Microinteracciones estilo Apple: pulsación suave en todo lo
+   interactivo, y un ligero resalte al pasar el ratón en escritorio. ===== */
+.macro-card, .log-card2, .exercise-type-btn, .theme-dot, .supp-btn,
+.tabbar button, .fab-item-btn, .qty-pill, .ingredient-chip {
+  transition: transform .15s cubic-bezier(.2,.8,.3,1), box-shadow .15s ease, opacity .15s ease, background-color .15s ease;
+}
+.macro-card:active, .log-card2:active, .exercise-type-btn:active,
+.theme-dot:active, .qty-pill:active { transform:scale(.96); }
+.tabbar button:active { transform:scale(.92); }
+@media (hover:hover) and (pointer:fine){
+  .macro-card:hover, .log-card2:hover, .exercise-type-btn:hover { box-shadow:0 6px 18px rgba(0,0,0,.1); transform:translateY(-1px); }
+  .btn:hover:not(:disabled){ filter:brightness(1.06); }
+  .fab:hover{ transform:scale(1.05); }
+  .fab-option:hover{ transform:translateY(-1px); box-shadow:0 10px 28px rgba(0,0,0,.2), 0 1px 2px rgba(0,0,0,.08); }
+  .tabbar button:hover{ color:var(--paper); }
+}
 </style>
 </head>
 <body>
@@ -449,7 +468,7 @@ async function importBackupCode(code){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.25';
+const APP_VERSION = '0.29';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -584,23 +603,15 @@ function fmtWeight(kg){ return `${fmt1(kgToDisplay(kg))} ${weightUnit()}`; }
 //   No es una seguridad real (está en el código público), pero para este
 //   uso es más que suficiente.
 // - PRO_PAYMENT_LINK: pégalo cuando crees tu "Payment Link" en Stripe
-//   (stripe.com → Payment Links → producto "eatiseasy Pro" → 7,99€ pago
-//   único). En el redirect de éxito del Payment Link, pon la URL de tu
-//   web + "?pro=1" (ej. https://tudominio.github.io/?pro=1) — así, al
-//   volver del pago, la app se desbloquea sola.
+//   (stripe.com → Payment Links → producto "eatiseasy Pro" → 2,99€/mes,
+//   tipo "Recurring - Monthly", no "One time"). En el redirect de éxito
+//   del Payment Link, pon la URL de tu web + "?pro=1" (ej.
+//   https://tudominio.github.io/?pro=1) — así, al volver del pago, la
+//   app se desbloquea sola.
 // ======================================================================
 const PRO_PROMO_CODE = 'SANDIA-FAM-K79X';
-const PRO_PRICE_LABEL = '7,99 €';
-const PRO_PAYMENT_LINK = '';
-
-// Código de descuento (NO desbloquea gratis, solo baja el precio mostrado
-// a 3,99€). Cuando montes el pago de verdad en Stripe, crea un segundo
-// Payment Link con ese precio y pégalo en PRO_DISCOUNT_PAYMENT_LINK — así,
-// quien meta este código compra por el precio reducido en vez de gratis.
-const PRO_DISCOUNT_CODE = 'SANDIA-399';
-const PRO_DISCOUNT_PRICE_LABEL = '3,99 €';
-const PRO_DISCOUNT_PAYMENT_LINK = '';
-let proDiscountApplied = false;
+const PRO_PRICE_LABEL = '2,99 €/mes';
+const PRO_PAYMENT_LINK = 'https://buy.stripe.com/8x200j1Zt95h7mcfHr6g800';
 
 // ======================================================================
 // LICENCIA PRO — atada a tu email de Google, sin necesidad de servidor.
@@ -1133,18 +1144,15 @@ async function enterAppFromReveal(){
 function buildProPitchHTML(){
   return `
     <div style="text-align:center; margin-bottom:18px;">
-      ${proDiscountApplied
-        ? `<div style="font-size:14px; color:var(--muted); text-decoration:line-through;">${PRO_PRICE_LABEL}</div>
-           <div style="font-size:34px; font-weight:800; letter-spacing:-.5px; color:var(--accent);">${PRO_DISCOUNT_PRICE_LABEL}</div>`
-        : `<div style="font-size:34px; font-weight:800; letter-spacing:-.5px;">${PRO_PRICE_LABEL}</div>`}
-      <div style="font-size:12px; color:var(--muted); margin-top:2px;">Pago único · para siempre, sin suscripción</div>
+      <div style="font-size:34px; font-weight:800; letter-spacing:-.5px;">${PRO_PRICE_LABEL}</div>
+      <div style="font-size:12px; color:var(--muted); margin-top:2px;">Suscripción mensual · cancela cuando quieras</div>
     </div>
     <div class="panel" style="text-align:left;">
       <div class="row"><span class="rname">${ICON.camera} Analizar comida por foto</span></div>
       <div class="row"><span class="rname">📈 Gráfica de evolución de peso</span></div>
       <div class="row"><span class="rname">${ICON.bell} Recordatorios (suplementos y agua)</span></div>
     </div>
-    <button class="btn accent" style="margin-top:16px;" onclick="buyPro()">Comprar eatiseasy Pro</button>
+    <button class="btn accent" style="margin-top:16px;" onclick="buyPro()">Suscribirme a eatiseasy Pro</button>
 
     <details style="margin-top:14px;">
       <summary>¿Tienes un código?</summary>
@@ -1159,19 +1167,43 @@ function buildProPitchHTML(){
 function showProPaywall(fromOnboarding){
   document.getElementById('onboard-content').innerHTML = `
     <h1 style="text-align:center;">Desbloquea eatiseasy Pro</h1>
-    <p class="sub" style="text-align:center;">Lo mejor de eatiseasy, de un pago, para siempre.</p>
+    <p class="sub" style="text-align:center;">Lo mejor de eatiseasy, mes a mes.</p>
     ${buildProPitchHTML()}
     ${fromOnboarding ? `<div style="text-align:center; margin-top:18px;"><button class="btn ghost" style="width:auto; font-size:12px; padding:8px 4px; background:none; border:none;" onclick="enterAppFromReveal()">Continuar gratis</button></div>` : ''}
   `;
 }
 
 function buyPro(){
-  const link = proDiscountApplied ? PRO_DISCOUNT_PAYMENT_LINK : PRO_PAYMENT_LINK;
-  if(!link){
+  if(!PRO_PAYMENT_LINK){
     showToast('El pago aún no está configurado — vuelve pronto', true);
     return;
   }
-  window.open(link, '_blank');
+  if(state.profile && state.profile.skipPurchaseDisclosure){
+    window.open(PRO_PAYMENT_LINK, '_blank');
+    return;
+  }
+  openActionOverlay(`
+    <div style="text-align:center; padding:10px 4px;">
+      <div style="font-size:30px; margin-bottom:10px;">🔗</div>
+      <h1 style="margin:0 0 10px 0;">Vas a salir de la app</h1>
+      <p class="sub" style="margin:0 0 20px 0;">El pago de eatiseasy Pro se procesa en un sitio externo (Stripe), gestionado por eatiseasy, no por Apple. Apple no puede ayudarte con reembolsos ni problemas de facturación de esta compra.</p>
+      <button class="btn accent" onclick="confirmBuyProDisclosure()">Continuar</button>
+      <button class="btn ghost small" style="margin-top:10px;" onclick="closeActionOverlay()">Cancelar</button>
+      <label style="display:flex; align-items:center; gap:8px; justify-content:center; margin-top:16px; font-size:12px; color:var(--muted);">
+        <input type="checkbox" id="skip-disclosure-check" style="width:auto;"> No volver a mostrar esto
+      </label>
+    </div>
+  `);
+}
+
+async function confirmBuyProDisclosure(){
+  const skip = document.getElementById('skip-disclosure-check');
+  if(skip && skip.checked && state.profile){
+    state.profile.skipPurchaseDisclosure = true;
+    await safeSet('profile', state.profile);
+  }
+  closeActionOverlay();
+  window.open(PRO_PAYMENT_LINK, '_blank');
 }
 
 async function redeemPromoCode(){
@@ -1188,17 +1220,6 @@ async function redeemPromoCode(){
       await enterAppFromReveal();
     } else {
       renderAll();
-    }
-    return;
-  }
-
-  if(code === PRO_DISCOUNT_CODE.toUpperCase()){
-    proDiscountApplied = true;
-    showToast('¡Cupón aplicado! Ahora ' + PRO_DISCOUNT_PRICE_LABEL);
-    if(document.getElementById('onboard') && !document.getElementById('onboard').classList.contains('hide')){
-      showProPaywall(true);
-    } else {
-      renderProTab();
     }
     return;
   }
