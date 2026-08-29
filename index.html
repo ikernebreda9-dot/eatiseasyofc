@@ -468,7 +468,7 @@ async function importBackupCode(code){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.29';
+const APP_VERSION = '0.31';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -613,6 +613,27 @@ const PRO_PROMO_CODE = 'SANDIA-FAM-K79X';
 const PRO_PRICE_LABEL = '2,99 €/mes';
 const PRO_PAYMENT_LINK = 'https://buy.stripe.com/8x200j1Zt95h7mcfHr6g800';
 
+// Pega aquí la URL de tu Worker eatiseasy-stripe-webhook + '/check-pro'
+// (ej. 'https://eatiseasy-stripe.tuusuario.workers.dev/check-pro').
+// Mientras esté vacío, el ?pro=1 no puede confirmarse de verdad y solo
+// se usa como aviso para pedir que inicies sesión.
+const PRO_VERIFY_ENDPOINT = 'https://valid-payments.ikernebreda9.workers.dev/check-pro';
+
+async function checkProStatus(email){
+  if(!PRO_VERIFY_ENDPOINT || !email) return false;
+  try{
+    const resp = await withTimeout(
+      fetch(`${PRO_VERIFY_ENDPOINT}?email=${encodeURIComponent(email.trim().toLowerCase())}`),
+      8000, 'La comprobación de pago ha tardado demasiado'
+    );
+    const data = await resp.json();
+    return !!data.isPro;
+  }catch(e){
+    console.error('checkProStatus failed', e);
+    return false;
+  }
+}
+
 // ======================================================================
 // LICENCIA PRO — atada a tu email de Google, sin necesidad de servidor.
 // El código de licencia se calcula con una firma (HMAC) a partir de tu
@@ -743,11 +764,21 @@ async function init(){
     return;
   }
   if(new URLSearchParams(location.search).get('pro') === '1' && !state.profile.isPro){
-    state.profile.isPro = true;
-    await safeSet('profile', state.profile);
-    await ensureLicenseCode();
     history.replaceState(null, '', location.pathname);
-    showToast('¡eatiseasy Pro activado! 🎉');
+    if(state.profile.email){
+      const verified = await checkProStatus(state.profile.email);
+      if(verified){
+        state.profile.isPro = true;
+        await safeSet('profile', state.profile);
+        await ensureLicenseCode();
+        showToast('¡eatiseasy Pro activado! 🎉');
+      } else {
+        showToast('Pago recibido — vincula tu Google (el mismo email de la compra) en Perfil para activarlo', true);
+      }
+    } else {
+      window.__pendingProCheck = true;
+      showToast('Pago recibido — vincula tu Google en Perfil (el mismo email de la compra) para activarlo');
+    }
   }
   if(state.profile.theme) applyTheme(state.profile.theme);
   applyDarkMode(state.profile.darkMode);
@@ -1024,7 +1055,18 @@ async function handleGoogleCredentialProfile(response){
     }
     await safeSet('profile', state.profile);
     await ensureLicenseCode();
-    showToast('Sesión iniciada con Google, ' + (payload.given_name || payload.name || ''));
+    let justActivatedPro = false;
+    if(!state.profile.isPro && state.profile.email){
+      const verified = await checkProStatus(state.profile.email);
+      if(verified){
+        state.profile.isPro = true;
+        await safeSet('profile', state.profile);
+        await ensureLicenseCode();
+        justActivatedPro = true;
+      }
+    }
+    window.__pendingProCheck = false;
+    showToast(justActivatedPro ? '¡eatiseasy Pro activado! 🎉' : ('Sesión iniciada con Google, ' + (payload.given_name || payload.name || '')));
     renderAll();
   }catch(e){
     console.error('google credential (perfil) decode failed', e);
