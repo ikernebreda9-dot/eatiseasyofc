@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>eatiseasy</title>
-<link rel="icon" type="image/png" href="icon.png">
+<link rel="icon" type="image/png" href="eie-st.png">
 <link rel="apple-touch-icon" href="eie-st.png">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
@@ -54,8 +54,9 @@ body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemF
 
 .ring-wrap{display:flex; justify-content:center; padding:22px 0 8px 0;}
 
-.week-strip{display:flex; justify-content:space-between; padding:16px 0 4px 0; gap:4px;}
-.week-cell{display:flex; flex-direction:column; align-items:center; gap:6px; padding:8px 0; border-radius:14px; flex:1; cursor:pointer;}
+.week-strip{display:flex; padding:16px 0 4px 0; gap:4px; overflow-x:auto; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
+.week-strip::-webkit-scrollbar{display:none;}
+.week-cell{display:flex; flex-direction:column; align-items:center; gap:6px; padding:8px 0; border-radius:14px; flex:0 0 58px; cursor:pointer; scroll-snap-align:end;}
 .week-cell.is-disabled{cursor:default; opacity:.4;}
 .week-letter{font-size:11px; color:var(--muted); font-weight:600;}
 .week-num{font-size:13px; font-weight:700; color:var(--paper); width:26px; height:26px; display:flex; align-items:center; justify-content:center; border-radius:50%;}
@@ -413,6 +414,7 @@ async function safeGet(key){
   return Object.prototype.hasOwnProperty.call(memoryStore, key) ? JSON.parse(JSON.stringify(memoryStore[key])) : null;
 }
 async function safeSet(key, value){
+  scheduleSync();
   if(HAS_CLOUD){
     try{ await window.storage.set(key, JSON.stringify(value), false); return true; }
     catch(e){ console.error('storage set failed', e); return false; }
@@ -444,19 +446,15 @@ async function saveLog(){
 }
 
 // ---------- backup code (export/import full account as text) ----------
-async function exportBackupCode(){
+async function gatherAllLocalData(){
   const logDates = (await safeGet('logDates')) || [];
   const logs = {};
   for(const d of logDates){ logs[d] = await safeGet('log:'+d); }
   const supplements = (await safeGet('supplements')) || [];
-  const payload = { v: 2, profile: state.profile, weights: state.weights, logs, supplements };
-  const json = JSON.stringify(payload);
-  return btoa(unescape(encodeURIComponent(json)));
+  const savedMeals = (await safeGet('savedMeals')) || [];
+  return { v: 3, profile: state.profile, weights: state.weights, logs, supplements, savedMeals };
 }
-async function importBackupCode(code){
-  const clean = code.replace(/\s+/g, '');
-  const json = decodeURIComponent(escape(atob(clean)));
-  const payload = JSON.parse(json);
+async function applyAllLocalData(payload){
   if(!payload || !payload.profile) throw new Error('formato inválido');
   await safeSet('profile', payload.profile);
   await safeSet('weights', payload.weights || []);
@@ -464,11 +462,95 @@ async function importBackupCode(code){
   for(const d of dates){ await safeSet('log:'+d, payload.logs[d]); }
   await safeSet('logDates', dates);
   await safeSet('supplements', payload.supplements || []);
+  await safeSet('savedMeals', payload.savedMeals || []);
+}
+
+// ---------- sincronización en la nube (atada a tu Google) ----------
+// Pega aquí la URL de tu Worker eatiseasy-sync (ej.
+// 'https://eatiseasy-sync.tuusuario.workers.dev'). Mientras esté vacío,
+// la app sigue funcionando solo en local, como hasta ahora.
+const SYNC_ENDPOINT = 'https://eatiseasyacounts.ikernebreda9.workers.dev';
+
+let googleIdToken = null;
+let syncTimer = null;
+
+function scheduleSync(){
+  if(!SYNC_ENDPOINT || !googleIdToken) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(pushToCloud, 2000);
+}
+
+async function pushToCloud(){
+  if(!SYNC_ENDPOINT || !googleIdToken) return;
+  try{
+    const data = await gatherAllLocalData();
+    await fetch(SYNC_ENDPOINT + '/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + googleIdToken },
+      body: JSON.stringify({ data })
+    });
+  }catch(e){
+    console.error('pushToCloud failed', e);
+  }
+}
+
+async function pullFromCloud(){
+  if(!SYNC_ENDPOINT || !googleIdToken) return null;
+  try{
+    const resp = await withTimeout(
+      fetch(SYNC_ENDPOINT + '/load', { headers: { 'Authorization': 'Bearer ' + googleIdToken } }),
+      8000, 'La nube ha tardado demasiado en responder'
+    );
+    const json = await resp.json();
+    return json.data || null;
+  }catch(e){
+    console.error('pullFromCloud failed', e);
+    return null;
+  }
+}
+
+// Se llama justo después de iniciar sesión con Google. Si hay datos
+// guardados en la nube, deja elegir entre recuperarlos o quedarse con
+// los de este dispositivo (para no pisar nada sin avisar).
+async function checkCloudAfterSignIn(){
+  if(!SYNC_ENDPOINT || !googleIdToken) return;
+  const cloud = await pullFromCloud();
+  const localHasData = state.log.foods.length > 0 || (state.logDates && state.logDates.length > 0);
+  if(cloud && cloud.data && (cloud.data.logs && Object.keys(cloud.data.logs).length)){
+    if(localHasData){
+      openActionOverlay(`
+        <h1 style="margin:0 0 10px 0;">☁️ Hay datos guardados en la nube</h1>
+        <p class="sub" style="margin:0 0 20px 0;">Esta cuenta de Google ya tiene datos de eatiseasy guardados de antes. ¿Qué quieres hacer?</p>
+        <button class="btn accent" onclick="restoreFromCloudChoice()">Recuperar de la nube (sustituye lo de este dispositivo)</button>
+        <button class="btn ghost" style="margin-top:10px;" onclick="keepLocalChoice()">Mantener este dispositivo (sube esto a la nube)</button>
+      `);
+    } else {
+      await applyAllLocalData(cloud.data);
+      await reloadApp();
+      showToast('Datos recuperados de la nube ☁️');
+    }
+  } else {
+    scheduleSync();
+  }
+}
+async function restoreFromCloudChoice(){
+  const cloud = await pullFromCloud();
+  if(cloud && cloud.data){
+    await applyAllLocalData(cloud.data);
+    await reloadApp();
+    showToast('Datos recuperados de la nube ☁️');
+  }
+  closeActionOverlay();
+}
+function keepLocalChoice(){
+  scheduleSync();
+  closeActionOverlay();
+  showToast('Subiendo este dispositivo a la nube…');
 }
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.31';
+const APP_VERSION = '0.39';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -534,6 +616,9 @@ const ICON = {
   protein: bigEmoji('🥩'),
   carbs: bigEmoji('🍞'),
   fat: bigEmoji('🧈'),
+  iosShare: svgIcon(`<path d="M12 3v12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7.5 7.5L12 3l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><rect x="5" y="10" width="14" height="11" rx="2.5" stroke="currentColor" stroke-width="1.8"/>`),
+  androidDots: svgIcon(`<circle cx="12" cy="5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="19" r="1.9" fill="currentColor"/>`),
+  homeAdd: svgIcon(`<path d="M4 11l8-7 8 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 12v6M9 15h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`),
   water: bigEmoji('💧'),
   star: bigEmoji('⭐'),
   lock: svgIcon(`<rect x="5" y="10.5" width="14" height="10" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>`),
@@ -969,16 +1054,6 @@ function renderOnboardStep(){
     <div class="ob-progress"><div class="ob-progress-fill" style="width:${pct}%;"></div></div>
     ${stepHtml}
     ${nav}
-    ${obStep === 1 ? `
-    <details style="margin-top:18px;">
-      <summary>¿Ya tienes una cuenta? Restaurar con código</summary>
-      <div class="inner">
-        <div class="field"><label>Pega aquí tu código de copia de seguridad</label>
-          <textarea id="ob-restore-code" rows="4" style="width:100%; border:1.5px solid var(--line); border-radius:8px; padding:8px; font-family:inherit; font-size:12px;"></textarea>
-        </div>
-        <button class="btn ghost" onclick="restoreFromOnboarding()">Restaurar mi cuenta</button>
-      </div>
-    </details>` : ''}
   `;
 
   if(obStep === 1) renderGoogleButton();
@@ -1020,17 +1095,48 @@ function decodeJwt(token){
   return JSON.parse(json);
 }
 
-function handleGoogleCredential(response){
+async function handleGoogleCredential(response){
   try{
+    googleIdToken = response.credential;
     const payload = decodeJwt(response.credential);
     obDraft.name = payload.name || obDraft.name;
     obDraft.googleAvatarUrl = payload.picture || null;
     obDraft.email = payload.email || null;
     showToast('Hola, ' + (payload.given_name || payload.name || '') + ' 👋');
     renderOnboardStep();
+    if(SYNC_ENDPOINT){
+      const cloud = await pullFromCloud();
+      if(cloud && cloud.data && cloud.data.profile){
+        openActionOverlay(`
+          <h1 style="margin:0 0 10px 0;">☁️ Ya tienes una cuenta</h1>
+          <p class="sub" style="margin:0 0 20px 0;">Encontramos datos guardados con esta cuenta de Google. ¿Recuperamos tu cuenta en vez de crear una nueva?</p>
+          <button class="btn accent" onclick="restoreFromCloudDuringOnboarding()">Recuperar mi cuenta</button>
+          <button class="btn ghost small" style="margin-top:10px;" onclick="closeActionOverlay()">No, seguir creando una nueva</button>
+        `);
+      }
+    }
   }catch(e){
     console.error('google credential decode failed', e);
   }
+}
+
+async function restoreFromCloudDuringOnboarding(){
+  const cloud = await pullFromCloud();
+  closeActionOverlay();
+  if(!cloud || !cloud.data){ showToast('No se pudo recuperar la cuenta', true); return; }
+  await applyAllLocalData(cloud.data);
+  document.getElementById('onboard').classList.add('hide');
+  const log = await safeGet(logKey());
+  state.log = log || { foods: [], exercises: [] };
+  const w = await safeGet('weights');
+  state.weights = w || [];
+  state.logDates = (await safeGet('logDates')) || [];
+  state.daySummaries = await loadDaySummaries();
+  state.supplements = (await safeGet('supplements')) || [];
+  if(state.profile.theme) applyTheme(state.profile.theme);
+  applyDarkMode(state.profile.darkMode);
+  renderAll();
+  showToast('¡Cuenta recuperada! 🎉');
 }
 
 function renderGoogleButtonProfile(){
@@ -1046,6 +1152,7 @@ function renderGoogleButtonProfile(){
 
 async function handleGoogleCredentialProfile(response){
   try{
+    googleIdToken = response.credential;
     const payload = decodeJwt(response.credential);
     state.profile.name = payload.name || state.profile.name;
     state.profile.email = payload.email || state.profile.email;
@@ -1068,6 +1175,7 @@ async function handleGoogleCredentialProfile(response){
     window.__pendingProCheck = false;
     showToast(justActivatedPro ? '¡eatiseasy Pro activado! 🎉' : ('Sesión iniciada con Google, ' + (payload.given_name || payload.name || '')));
     renderAll();
+    await checkCloudAfterSignIn();
   }catch(e){
     console.error('google credential (perfil) decode failed', e);
     showToast('No se pudo iniciar sesión con Google', true);
@@ -1269,18 +1377,6 @@ async function redeemPromoCode(){
   showToast('Ese código no es válido', true);
 }
 
-async function restoreFromOnboarding(){
-  const code = document.getElementById('ob-restore-code').value;
-  if(!code.trim()){ showToast('Pega tu código primero', true); return; }
-  try{
-    await importBackupCode(code);
-    showToast('Cuenta restaurada');
-    await reloadApp();
-  }catch(e){
-    showToast('Ese código no es válido', true);
-  }
-}
-
 function isPro(){ return !!(state.profile && state.profile.isPro); }
 
 function setTab(tab){
@@ -1400,23 +1496,33 @@ function weekdayLetterEs(dayIndex){
 function renderWeekStrip(){
   const today = new Date();
   today.setHours(0,0,0,0);
-  const sunday = new Date(today);
-  sunday.setDate(today.getDate() - today.getDay());
+
+  // Desde el primer domingo que incluye tu fecha de alta (o hace 84 días
+  // si no hay fecha, por si acaso) hasta hoy — así puedes deslizar hacia
+  // atrás y ver cualquier día desde que empezaste a usar la app.
+  let start = state.profile.createdAt ? new Date(state.profile.createdAt) : new Date(today);
+  start.setHours(0,0,0,0);
+  if(isNaN(start.getTime()) || start > today) start = new Date(today);
+  start.setDate(start.getDate() - start.getDay());
 
   let cells = '';
-  for(let i=0;i<7;i++){
-    const d = new Date(sunday);
-    d.setDate(sunday.getDate()+i);
+  const d = new Date(start);
+  while(d <= today){
     const dStr = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     const isToday = dStr === todayStr();
     const isPast = d < today;
     const clickable = isToday || (isPast && state.logDates.includes(dStr));
     cells += `
-      <div class="week-cell ${isToday ? 'is-today' : ''} ${clickable ? '' : 'is-disabled'}" ${clickable ? `onclick="openDayDetail('${dStr}')"` : ''}>
+      <div class="week-cell ${isToday ? 'is-today' : ''} ${clickable ? '' : 'is-disabled'}" ${isToday ? 'id="week-cell-today"' : ''} ${clickable ? `onclick="openDayDetail('${dStr}')"` : ''}>
         <span class="week-letter">${weekdayLetterEs(d.getDay())}</span>
         <span class="week-num">${d.getDate()}</span>
       </div>`;
+    d.setDate(d.getDate()+1);
   }
+  setTimeout(() => {
+    const todayCell = document.getElementById('week-cell-today');
+    if(todayCell) todayCell.scrollIntoView({ behavior:'instant', inline:'end', block:'nearest' });
+  }, 0);
   return `<div class="week-strip">${cells}</div>`;
 }
 
@@ -2590,12 +2696,15 @@ async function resetWeightChart(){
 }
 
 function getCurrentWeekDates(){
-  // Lunes a domingo de la semana en curso
-  const today = new Date();
-  const dow = today.getDay(); // 0=domingo ... 6=sábado
+  return getWeekDatesFor(todayStr());
+}
+function getWeekDatesFor(anchorDateStr){
+  // Lunes a domingo de la semana que contiene anchorDateStr
+  const anchor = new Date(anchorDateStr + 'T00:00:00');
+  const dow = anchor.getDay(); // 0=domingo ... 6=sábado
   const mondayOffset = (dow === 0) ? -6 : (1 - dow);
-  const monday = new Date(today);
-  monday.setDate(today.getDate() + mondayOffset);
+  const monday = new Date(anchor);
+  monday.setDate(anchor.getDate() + mondayOffset);
   const dates = [];
   for(let i = 0; i < 7; i++){
     const d = new Date(monday);
@@ -2603,6 +2712,38 @@ function getCurrentWeekDates(){
     dates.push(d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'));
   }
   return dates;
+}
+function listPastWeeks(){
+  // Lunes de cada semana anterior a la actual, desde tu fecha de alta
+  const weeks = [];
+  const created = state.profile.createdAt ? new Date(state.profile.createdAt) : null;
+  const currentMonday = new Date(getCurrentWeekDates()[0] + 'T00:00:00');
+  let cursor = new Date(currentMonday);
+  cursor.setDate(cursor.getDate() - 7);
+  const earliest = created ? new Date(created.getFullYear(), created.getMonth(), created.getDate()) : null;
+  let guard = 0;
+  while(guard++ < 260){ // tope de seguridad: 5 años
+    if(earliest && cursor < earliest) break;
+    if(!earliest && guard > 12) break; // sin fecha de alta, no te remontes al infinito
+    const mondayStr = cursor.getFullYear()+'-'+String(cursor.getMonth()+1).padStart(2,'0')+'-'+String(cursor.getDate()).padStart(2,'0');
+    weeks.push(mondayStr);
+    cursor.setDate(cursor.getDate() - 7);
+  }
+  return weeks;
+}
+async function fetchDayConsumed(date){
+  if(date === todayStr()) return state.log.foods.reduce((s,f)=>s+f.cal,0);
+  const summary = (state.daySummaries || []).find(d => d.date === date);
+  if(summary) return summary.consumed;
+  const log = await safeGet('log:' + date);
+  return log ? log.foods.reduce((s,f)=>s+f.cal,0) : 0;
+}
+async function fetchWeekConsumption(weekDates){
+  const bars = [];
+  for(const date of weekDates){
+    bars.push({ date, consumed: await fetchDayConsumed(date), isFuture: date > todayStr() });
+  }
+  return bars;
 }
 
 function buildCalorieBarChart(){
@@ -2616,6 +2757,37 @@ function buildCalorieBarChart(){
     isFuture: date > todayStr()
   }));
   return barChartSvg(bars, t.calorieTarget);
+}
+
+function openWeekPicker(){
+  const weeks = listPastWeeks();
+  const rows = weeks.length ? weeks.map(mondayStr => {
+    const monday = new Date(mondayStr + 'T00:00:00');
+    const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
+    const label = `${monday.getDate()} ${monday.toLocaleDateString('es-ES',{month:'short'})} – ${sunday.getDate()} ${sunday.toLocaleDateString('es-ES',{month:'short'})}`;
+    return `<div class="row" style="cursor:pointer;" onclick="openWeekChart('${mondayStr}')"><span class="rname">${label}</span></div>`;
+  }).join('') : `<div class="empty">No hay semanas anteriores registradas</div>`;
+  openActionOverlay(`
+    <h1 style="margin:0 0 4px 0;">📅 Otras semanas</h1>
+    <p class="sub" style="margin:0 0 16px 0;">Elige una semana para ver sus calorías.</p>
+    <div class="panel plist">${rows}</div>
+  `);
+}
+
+async function openWeekChart(mondayStr){
+  const monday = new Date(mondayStr + 'T00:00:00');
+  const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
+  const label = `${monday.getDate()} ${monday.toLocaleDateString('es-ES',{month:'short'})} – ${sunday.getDate()} ${sunday.toLocaleDateString('es-ES',{month:'short'})}`;
+  openActionOverlay(`
+    <h1 style="margin:0 0 4px 0;">📊 ${label}</h1>
+    <div class="panel" id="week-chart-wrap"><div class="empty">Cargando…</div></div>
+    <button class="btn ghost small" style="margin-top:14px;" onclick="openWeekPicker()">← Otras semanas</button>
+  `);
+  const t = calcTargets(state.profile);
+  const weekDates = getWeekDatesFor(mondayStr);
+  const bars = await fetchWeekConsumption(weekDates);
+  const wrap = document.getElementById('week-chart-wrap');
+  if(wrap) wrap.innerHTML = barChartSvg(bars, t.calorieTarget);
 }
 
 function barChartSvg(bars, target){
@@ -2701,7 +2873,10 @@ function renderDatos(){
         </div>
       </div>
 
-      <div class="section-title">📊 Calorías esta semana</div>
+      <div class="section-title" style="display:flex; align-items:center; justify-content:space-between;">
+        <span>📊 Calorías esta semana</span>
+        <button class="btn ghost small" style="padding:5px 12px; font-size:11px;" onclick="openWeekPicker()">📅 Otras semanas</button>
+      </div>
       <div class="panel">${buildCalorieBarChart()}</div>
 
       <div class="section-title">${bigEmoji('⚖️')} Progreso de peso</div>
@@ -3041,14 +3216,19 @@ function renderProfile(){
   ensureLicenseCode(); // red de seguridad: si ya eres Pro y tienes email, genera el código si falta
   const actLabels = { sedentary:'Sedentario', light:'Ligero', moderate:'Moderado', active:'Activo', veryActive:'Muy activo' };
   document.getElementById('screen-profile').innerHTML = `
-    <div class="avatar-header">
-      <label for="avatar-input" class="avatar-circle">
-        ${p.avatar ? `<img src="${p.avatar}">` : `<span>${(p.name||'?').trim().charAt(0).toUpperCase()}</span>`}
-        <span class="avatar-edit">✎</span>
-      </label>
-      <input id="avatar-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onAvatarSelected(event)">
-      <div class="avatar-name">${p.name}</div>
-      <div class="plan-badge ${isPro() ? 'is-pro' : ''}">${isPro() ? tr('plan_pro') : tr('plan_free')}</div>
+    <div style="position:relative;">
+      <button onclick="openInstallGuide()" style="position:absolute; top:18px; right:0; display:flex; align-items:center; gap:6px; background:var(--surface-2); border:1px solid var(--line-strong); border-radius:20px; padding:8px 12px; font-family:inherit; font-size:11px; font-weight:700; color:var(--paper); cursor:pointer; z-index:2;">
+        ${ICON.homeAdd} Instalar app
+      </button>
+      <div class="avatar-header">
+        <label for="avatar-input" class="avatar-circle">
+          ${p.avatar ? `<img src="${p.avatar}">` : `<span>${(p.name||'?').trim().charAt(0).toUpperCase()}</span>`}
+          <span class="avatar-edit">✎</span>
+        </label>
+        <input id="avatar-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onAvatarSelected(event)">
+        <div class="avatar-name">${p.name}</div>
+        <div class="plan-badge ${isPro() ? 'is-pro' : ''}">${isPro() ? tr('plan_pro') : tr('plan_free')}</div>
+      </div>
     </div>
 
     <div class="section-title">${tr('section_goal')}</div>
@@ -3189,39 +3369,6 @@ function renderProfile(){
         <button class="btn accent" onclick="openTransferGuide()">🔄 Transferir cuenta Pro a otro dispositivo</button>
       </div>
       ` : ''}
-
-      ${isPro() ? `
-      <details style="margin-top:14px;">
-        <summary>${bigEmoji('🔐')} Copia de seguridad de tus datos</summary>
-        <div class="inner">
-          <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">
-            ${HAS_CLOUD ? 'Tu cuenta ya se guarda sola aquí. Usa este código como copia extra, o para llevarte tus datos a otro sitio.' : (HAS_LOCAL_STORAGE ? 'Tus datos ya se guardan en este navegador, así que no se resetean al cerrar la página. Usa este código como copia de seguridad extra, o para pasar tus datos a otro dispositivo.' : 'Este navegador no permite guardar datos de forma persistente: genera tu código y guárdalo para no perderlo al cerrar.')}
-          </p>
-          <button class="btn" onclick="generateBackupCode()">Generar mi código</button>
-          <textarea id="backup-code-out" readonly rows="4" style="width:100%; margin-top:10px; border:1.5px solid var(--line); border-radius:8px; padding:8px; font-family:inherit; font-size:11px; display:none;"></textarea>
-          <button id="backup-copy-btn" class="btn ghost small" style="margin-top:8px; display:none;" onclick="copyBackupCode()">Copiar código</button>
-
-          <div style="margin-top:18px; border-top:1px dashed var(--line); padding-top:14px;">
-            <div class="field"><label>Restaurar desde un código</label>
-              <textarea id="restore-code-in" rows="4" style="width:100%; border:1.5px solid var(--line); border-radius:8px; padding:8px; font-family:inherit; font-size:12px;"></textarea>
-            </div>
-            <button class="btn ghost" onclick="restoreFromProfile()">Restaurar</button>
-          </div>
-        </div>
-      </details>
-      ` : `
-      <details style="margin-top:14px;">
-        <summary>${bigEmoji('🔐')} Copia de seguridad de tus datos</summary>
-        <div class="inner">
-          <div class="panel" style="text-align:center; padding:22px 18px; margin-top:0;">
-            <div style="font-size:26px; margin-bottom:6px;">🔒</div>
-            <div style="font-weight:700; font-size:14px; margin-bottom:4px;">Función Pro</div>
-            <p class="sub" style="margin:0 0 14px 0;">Guardar y restaurar tu cuenta con un código es parte de eatiseasy Pro.</p>
-            <button class="btn accent" onclick="setTab('pro')">Desbloquear con Pro</button>
-          </div>
-        </div>
-      </details>
-      `}
     </div>
 
     <details>
@@ -3236,26 +3383,33 @@ function renderProfile(){
   renderGoogleButtonProfile();
 }
 
-async function generateBackupCode(){
-  const code = await exportBackupCode();
-  const box = document.getElementById('backup-code-out');
-  box.value = code;
-  box.style.display = 'block';
-  document.getElementById('backup-copy-btn').style.display = 'block';
-  showToast('Código generado. Cópialo y guárdalo en un sitio seguro.');
-}
-function copyBackupCode(){
-  const box = document.getElementById('backup-code-out');
-  box.select();
-  navigator.clipboard && navigator.clipboard.writeText(box.value).then(()=>{
-    showToast('Código copiado');
-  }).catch(()=>{ document.execCommand('copy'); showToast('Código copiado'); });
-}
 function copyLicenseCode(){
   if(!state.profile.licenseCode) return;
   navigator.clipboard && navigator.clipboard.writeText(state.profile.licenseCode).then(()=>{
     showToast('Código de licencia copiado');
   }).catch(()=>{ showToast('No se pudo copiar, selecciona el texto a mano', true); });
+}
+
+function openInstallGuide(){
+  openActionOverlay(`
+    <h1 style="margin:0 0 4px 0;">📲 Instalar eatiseasy</h1>
+    <p class="sub" style="margin:0 0 20px 0;">Añádela a tu pantalla de inicio y se abrirá como una app normal, con su icono y sin la barra del navegador.</p>
+
+    <div class="section-title">🍏 En iPhone (Safari)</div>
+    <div class="panel plist">
+      <div class="row"><span class="rname" style="white-space:normal; max-width:100%;">1. Toca el icono ${ICON.iosShare} (Compartir) abajo en el navegador</span></div>
+      <div class="row"><span class="rname" style="white-space:normal; max-width:100%;">2. Baja y toca "Añadir a pantalla de inicio"</span></div>
+      <div class="row"><span class="rname" style="white-space:normal; max-width:100%;">3. Toca "Añadir" arriba a la derecha</span></div>
+    </div>
+    <p class="sub" style="margin:6px 0 0 0;">Importante: tiene que ser en <b>Safari</b> — en Chrome de iPhone no aparece esta opción.</p>
+
+    <div class="section-title" style="margin-top:22px;">🤖 En Android (Chrome)</div>
+    <div class="panel plist">
+      <div class="row"><span class="rname" style="white-space:normal; max-width:100%;">1. Toca los tres puntos ${ICON.androidDots} arriba a la derecha</span></div>
+      <div class="row"><span class="rname" style="white-space:normal; max-width:100%;">2. Toca "Añadir a pantalla de inicio" o "Instalar app"</span></div>
+      <div class="row"><span class="rname" style="white-space:normal; max-width:100%;">3. Confirma tocando "Añadir" o "Instalar"</span></div>
+    </div>
+  `);
 }
 
 async function openTransferGuide(){
@@ -3291,18 +3445,6 @@ async function openTransferGuide(){
     </div>
     <p class="sub" style="margin-top:12px;">Importante: tiene que ser exactamente esta misma cuenta de Google (${p.email}) — con otra cuenta, el código no funcionará.</p>
   `);
-}
-
-async function restoreFromProfile(){
-  const code = document.getElementById('restore-code-in').value;
-  if(!code.trim()){ showToast('Pega tu código primero', true); return; }
-  try{
-    await importBackupCode(code);
-    showToast('Cuenta restaurada');
-    await reloadApp();
-  }catch(e){
-    showToast('Ese código no es válido', true);
-  }
 }
 
 function toggleCustomFields(){
