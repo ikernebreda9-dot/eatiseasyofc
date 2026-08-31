@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>eatiseasy</title>
-<link rel="icon" type="image/png" href="eie-mini.png">
+<link rel="icon" type="image/png" href="eie-st.png">
 <link rel="apple-touch-icon" href="eie-st.png">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
@@ -574,7 +574,7 @@ function keepLocalChoice(){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.44';
+const APP_VERSION = '0.45';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -740,6 +740,24 @@ async function checkProStatus(email){
   }catch(e){
     console.error('checkProStatus failed', e);
     return false;
+  }
+}
+
+async function manualCheckPro(){
+  if(!state.profile.email){
+    showToast('Primero vincula tu Google en Perfil (el mismo email de la compra)', true);
+    return;
+  }
+  showToast('Comprobando…');
+  const verified = await checkProStatus(state.profile.email);
+  if(verified){
+    state.profile.isPro = true;
+    await safeSet('profile', state.profile);
+    await ensureLicenseCode();
+    showToast('¡eatiseasy Pro activado! 🎉');
+    renderAll();
+  } else {
+    showToast('Todavía no encontramos tu pago. Si acabas de pagar, espera un minuto y prueba otra vez.', true);
   }
 }
 
@@ -2993,6 +3011,11 @@ function renderProTab(){
       <h1 style="text-align:center;">Desbloquea eatiseasy Pro</h1>
       <p class="sub" style="text-align:center;">Lo mejor de eatiseasy, de un pago, para siempre.</p>
       ${buildProPitchHTML()}
+
+      <div class="panel" style="margin-top:14px; text-align:center;">
+        <p style="font-size:12px; color:var(--muted); margin:0 0 10px 0;">¿Ya has pagado y no se ha activado solo?</p>
+        <button class="btn ghost small" onclick="manualCheckPro()">Comprobar mi pago ahora</button>
+      </div>
 
       <div class="panel" style="margin-top:22px;">
         <p style="font-size:12px; font-weight:700; margin:0 0 6px 0;">¿Ya tienes Pro en otro dispositivo?</p>
