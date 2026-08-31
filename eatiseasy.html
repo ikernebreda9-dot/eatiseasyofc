@@ -46,7 +46,8 @@ body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemF
 .mono{font-family:inherit;}
 
 .topbar{position:sticky; top:0; z-index:20; padding:22px 20px 16px 20px; display:flex; align-items:baseline; justify-content:space-between; background:rgba(var(--void-rgb),.72); backdrop-filter:blur(20px) saturate(180%); -webkit-backdrop-filter:blur(20px) saturate(180%); border-bottom:1px solid var(--line); margin-bottom:-12px;}
-.topbar .brand{font-family:inherit; font-size:19px; font-weight:600; letter-spacing:-.2px; color:var(--paper);}
+.topbar .brand{font-family:inherit; font-size:19px; font-weight:600; letter-spacing:-.2px; color:var(--paper); display:flex; align-items:center; gap:8px;}
+.brand-icon{width:26px; height:26px; border-radius:50%; object-fit:cover;}
 .topbar .brand .dot{color:var(--accent);}
 .topbar .date{font-family:inherit; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px;}
 .header-streak{font-size:11px; font-weight:700; color:var(--accent); margin-top:3px;}
@@ -125,6 +126,17 @@ body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemF
 .field input::placeholder{color:var(--muted); opacity:.6;}
 .field input:focus, .field select:focus{outline:none; border-color:var(--accent);}
 .field select option{background:var(--surface); color:var(--paper);}
+
+.ob-hero-icon{width:64px; height:64px; border-radius:50%; background:var(--accent-soft); display:flex; align-items:center; justify-content:center; font-size:30px; margin:4px auto 18px auto; overflow:hidden;}
+.ob-hero-icon img{width:100%; height:100%; object-fit:cover;}
+.ob-divider{display:flex; align-items:center; gap:12px; color:var(--muted); font-size:11px; margin:6px 0 20px 0;}
+.ob-divider:before, .ob-divider:after{content:''; flex:1; height:1px; background:var(--line-strong);}
+.ob-name-input{width:100%; text-align:center; border:none; border-bottom:2px solid var(--accent); background:transparent; padding:10px 2px; font-size:23px; font-weight:700; color:var(--paper); font-family:inherit;}
+.ob-name-input::placeholder{color:var(--muted); opacity:.5; font-weight:600;}
+.ob-name-input:focus{outline:none;}
+.ob-sex-toggle{display:flex; gap:10px; margin-top:6px;}
+.ob-sex-btn{flex:1; padding:16px 0; border-radius:16px; border:1.5px solid var(--line-strong); background:var(--surface); font-family:inherit; font-weight:700; font-size:14px; color:var(--muted); cursor:pointer; transition:all .15s ease;}
+.ob-sex-btn.active{border-color:var(--accent); background:var(--accent-soft); color:var(--accent-dark);}
 .row2{display:flex; gap:16px;}
 .row2 .field{flex:1;}
 
@@ -197,14 +209,30 @@ details .inner{padding-top:10px;}
 #action-overlay.fullbleed{align-items:stretch;}
 #action-overlay.fullbleed .overlay-card{padding:0; max-width:100%; height:100dvh;}
 #action-overlay.fullbleed #action-overlay-close{background:rgba(255,255,255,.9); color:#111;}
-.camera-view{position:relative; width:100%; height:100dvh; background:#000; display:flex; flex-direction:column;}
-.camera-view video{flex:1; width:100%; min-height:0; object-fit:cover; background:#000;}
-.camera-controls{flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:18px 34px calc(22px + env(safe-area-inset-bottom)) 34px; background:#000;}
-.camera-shutter{width:66px; height:66px; border-radius:50%; background:var(--accent); border:4px solid rgba(var(--accent-rgb),.4); cursor:pointer; padding:0;}
-.camera-gallery-btn{width:44px; height:44px; border-radius:10px; background:rgba(var(--accent-rgb),.25); display:flex; align-items:center; justify-content:center; font-size:20px; color:var(--accent); cursor:pointer;}
+.camera-view{position:relative; width:100%; height:100dvh; background:#000; overflow:hidden;}
+.camera-view video{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#000;}
 
-.barcode-shutter-row{display:flex; justify-content:center; margin-top:16px;}
-.barcode-shutter{width:60px; height:60px; border-radius:50%; background:var(--accent); border:4px solid var(--accent-soft); cursor:pointer; padding:0;}
+.camera-viewfinder{position:absolute; top:22%; left:8%; right:8%; bottom:34%; pointer-events:none;}
+.vf-corner{position:absolute; width:26px; height:26px; border-color:rgba(255,255,255,.85); border-style:solid; border-width:0;}
+.vf-tl{top:0; left:0; border-top-width:3px; border-left-width:3px; border-radius:8px 0 0 0;}
+.vf-tr{top:0; right:0; border-top-width:3px; border-right-width:3px; border-radius:0 8px 0 0;}
+.vf-bl{bottom:0; left:0; border-bottom-width:3px; border-left-width:3px; border-radius:0 0 0 8px;}
+.vf-br{bottom:0; right:0; border-bottom-width:3px; border-right-width:3px; border-radius:0 0 8px 0;}
+
+.camera-top-row{position:absolute; top:calc(18px + env(safe-area-inset-top)); left:0; right:0; display:flex; justify-content:center; z-index:2;}
+.camera-badge{background:rgba(0,0,0,.55); backdrop-filter:blur(10px); color:#fff; font-family:inherit; font-weight:700; font-size:14px; padding:9px 18px; border-radius:30px;}
+.camera-badge .dot{color:var(--accent);}
+
+.camera-status-text{position:absolute; bottom:172px; left:0; right:0; text-align:center; color:#fff; font-size:13px; font-weight:600; text-shadow:0 1px 4px rgba(0,0,0,.6); z-index:2; min-height:18px;}
+
+.camera-mode-tabs{position:absolute; bottom:112px; left:0; right:0; display:flex; justify-content:center; gap:6px; z-index:2;}
+.cam-tab{font-family:inherit; font-size:12.5px; font-weight:700; padding:9px 16px; border-radius:20px; border:none; background:rgba(0,0,0,.45); backdrop-filter:blur(10px); color:rgba(255,255,255,.75); cursor:pointer;}
+.cam-tab.active{background:#fff; color:#111;}
+
+.camera-controls{position:absolute; bottom:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; padding:0 34px calc(26px + env(safe-area-inset-bottom)) 34px; z-index:2;}
+.camera-shutter{width:66px; height:66px; border-radius:50%; background:#fff; border:4px solid rgba(255,255,255,.35); cursor:pointer; padding:0;}
+.camera-gallery-btn{width:44px; height:44px; border-radius:10px; background:rgba(255,255,255,.18); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center; font-size:20px; color:#fff; cursor:pointer;}
+
 .overlay-card h1{font-family:inherit; font-size:26px; font-weight:600; margin:6px 0 4px 0; letter-spacing:-.3px; color:var(--paper);}
 .overlay-card p.sub{color:var(--muted); font-size:13px; margin:0 0 24px 0; line-height:1.5;}
 .ob-progress{height:5px; background:var(--line-strong); border-radius:4px; overflow:hidden; margin-bottom:24px;}
@@ -311,7 +339,7 @@ details .inner{padding-top:10px;}
 
 <div class="app">
   <div class="topbar">
-    <div class="brand">eatis<span class="dot">•</span>easy</div>
+    <div class="brand"><img src="eie-mini.png" alt="" class="brand-icon">eatis<span class="dot">•</span>easy</div>
     <div style="text-align:right;">
       <div class="date" id="header-date"></div>
       <div class="header-streak" id="header-streak"></div>
@@ -363,10 +391,6 @@ details .inner{padding-top:10px;}
 
 <div id="add-menu-overlay" class="dim-overlay hide" onclick="if(event.target===this) closeAddMenu()">
   <div class="fab-menu" id="add-menu-body"></div>
-</div>
-
-<div id="scan-choice-overlay" class="dim-overlay hide" onclick="if(event.target===this) closeScanChoice()">
-  <div class="fab-menu" id="scan-choice-body"></div>
 </div>
 
 <div id="action-overlay" class="overlay hide" onclick="if(event.target===this) closeActionOverlay()">
@@ -550,7 +574,7 @@ function keepLocalChoice(){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.39';
+const APP_VERSION = '0.44';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -968,6 +992,13 @@ function obSaveCurrentStepInputs(){
   }
 }
 
+function selectObSex(value){
+  document.getElementById('ob-sex').value = value;
+  document.querySelectorAll('.ob-sex-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.trim() === (value === 'male' ? 'Hombre' : 'Mujer'));
+  });
+}
+
 function obGoStep(next){
   obSaveCurrentStepInputs();
   if(next > obStep && obStep === 2){
@@ -987,16 +1018,21 @@ function renderOnboardStep(){
 
   if(obStep === 1){
     stepHtml = `
-      <h1>Hola ${bigEmoji('👋')}</h1>
-      <p class="sub">Empecemos por lo básico.</p>
-      <div id="google-signin-btn" style="margin-bottom:14px;"></div>
-      <div style="text-align:center; color:var(--muted); font-size:11px; margin:2px 0 18px 0;">— o rellena a mano —</div>
-      <div class="field"><label>Nombre</label><input id="ob-name" placeholder="Tu nombre" value="${d.name||''}"></div>
-      <div class="field"><label>Sexo</label>
-        <select id="ob-sex">
-          <option value="female" ${d.sex!=='male'?'selected':''}>Mujer</option>
-          <option value="male" ${d.sex==='male'?'selected':''}>Hombre</option>
-        </select>
+      <div class="ob-hero-icon"><img src="eie-mini.png" alt="eatiseasy"></div>
+      <h1 style="text-align:center;">¡Hola! ¿Cómo te llamas?</h1>
+      <p class="sub" style="text-align:center;">Vamos a conocerte un poco antes de calcular tu plan.</p>
+      <div id="google-signin-btn" style="margin:22px 0 6px 0; display:flex; justify-content:center;"></div>
+      <div class="ob-divider"><span>o rellena a mano</span></div>
+      <div class="field">
+        <input id="ob-name" class="ob-name-input" placeholder="Tu nombre" value="${d.name||''}">
+      </div>
+      <div class="field" style="margin-top:22px;">
+        <label style="text-align:center;">¿Cómo te identificas?</label>
+        <div class="ob-sex-toggle">
+          <button type="button" class="ob-sex-btn ${d.sex!=='male'?'active':''}" onclick="selectObSex('female')">Mujer</button>
+          <button type="button" class="ob-sex-btn ${d.sex==='male'?'active':''}" onclick="selectObSex('male')">Hombre</button>
+        </div>
+        <input type="hidden" id="ob-sex" value="${d.sex||'female'}">
       </div>`;
   } else if(obStep === 2){
     stepHtml = `
@@ -1609,7 +1645,7 @@ function renderToday(){
         </div>
         <div class="hero-ring">${ringSvg(consumed, t.calorieTarget, true)}</div>
       </div>
-      <div class="hero-sub">${tr('kcal_consumed')} ${Math.round(consumed)} kcal · ${tr('kcal_burned')} ${Math.round(burned)} kcal</div>
+      <div class="hero-sub">${tr('kcal_consumed')} ${Math.round(consumed)} kcal · ${tr('kcal_burned')} ${Math.round(burned)}/${t.burnGoal} kcal</div>
     </div>
 
     <div class="macro-row">
@@ -1974,23 +2010,13 @@ function openAddMenu(){
 function closeAddMenu(){
   document.getElementById('add-menu-overlay').classList.add('hide');
 }
-function openScanChoice(){
-  if(!isPro()){ showToast('Escanear comida es una función Pro', true); setTab('pro'); return; }
-  document.getElementById('scan-choice-overlay').classList.remove('hide');
-}
-function closeScanChoice(){
-  document.getElementById('scan-choice-overlay').classList.add('hide');
-}
 
 function openActionOverlay(html){
   document.getElementById('action-overlay-body').innerHTML = html;
   document.getElementById('action-overlay').classList.remove('hide');
 }
 function closeActionOverlay(){
-  if(window.__activeBarcodeScanner){
-    try{ window.__activeBarcodeScanner.stop(); }catch(e){}
-    window.__activeBarcodeScanner = null;
-  }
+  stopBarcodeDetection();
   stopCameraStream();
   document.getElementById('action-overlay').classList.remove('fullbleed');
   document.getElementById('action-overlay').classList.add('hide');
@@ -2003,16 +2029,38 @@ function stopCameraStream(){
   }
 }
 
-async function openCameraCapture(){
-  if(!isPro()){ showToast('Analizar comida por foto es una función Pro', true); setTab('pro'); return; }
+// ---------- cámara unificada (foto + código de barras, una sola pantalla) ----------
+let cameraMode = 'photo';
+let barcodeScanTimer = null;
+
+function openScanChoice(){
+  openScanCamera('photo');
+}
+
+async function openScanCamera(initialMode){
+  if(!isPro()){ showToast('Escanear comida es una función Pro', true); setTab('pro'); return; }
+  cameraMode = initialMode || 'photo';
   document.getElementById('action-overlay').classList.add('fullbleed');
   openActionOverlay(`
     <div class="camera-view">
       <video id="camera-video" autoplay playsinline muted></video>
+      <div class="camera-viewfinder">
+        <span class="vf-corner vf-tl"></span><span class="vf-corner vf-tr"></span>
+        <span class="vf-corner vf-bl"></span><span class="vf-corner vf-br"></span>
+      </div>
+      <div class="camera-top-row">
+        <div class="camera-badge">eatis<span class="dot">•</span>easy</div>
+      </div>
+      <div id="camera-status" class="camera-status-text"></div>
+      <div id="barcode-scan-target" style="display:none;"></div>
+      <div class="camera-mode-tabs">
+        <button class="cam-tab ${cameraMode==='photo'?'active':''}" id="cam-tab-photo" onclick="switchCameraMode('photo')">Escanear comida</button>
+        <button class="cam-tab ${cameraMode==='barcode'?'active':''}" id="cam-tab-barcode" onclick="switchCameraMode('barcode')">Código de barras</button>
+      </div>
       <div class="camera-controls">
         <label class="camera-gallery-btn" for="gallery-fallback-input">${ICON.gallery}</label>
         <input id="gallery-fallback-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onGalleryPhotoChosen(event)">
-        <button class="camera-shutter" onclick="captureCameraPhoto()" aria-label="Hacer foto"></button>
+        <button class="camera-shutter" onclick="cameraShutterAction()" aria-label="Capturar"></button>
         <div style="width:44px;"></div>
       </div>
     </div>
@@ -2022,9 +2070,31 @@ async function openCameraCapture(){
     window.__activeCameraStream = stream;
     const video = document.getElementById('camera-video');
     if(video) video.srcObject = stream;
+    if(cameraMode === 'barcode') startBarcodeDetection();
   }catch(e){
     showToast('No se pudo acceder a la cámara: ' + e.message, true);
     closeActionOverlay();
+  }
+}
+
+function switchCameraMode(mode){
+  cameraMode = mode;
+  const tabPhoto = document.getElementById('cam-tab-photo');
+  const tabBarcode = document.getElementById('cam-tab-barcode');
+  if(tabPhoto) tabPhoto.classList.toggle('active', mode === 'photo');
+  if(tabBarcode) tabBarcode.classList.toggle('active', mode === 'barcode');
+  const statusEl = document.getElementById('camera-status');
+  if(statusEl) statusEl.textContent = '';
+  if(mode === 'barcode') startBarcodeDetection();
+  else stopBarcodeDetection();
+}
+
+function cameraShutterAction(){
+  if(cameraMode === 'photo') captureCameraPhoto();
+  // en modo código de barras la lectura ya es automática; el botón solo confirma que sigue buscando
+  else{
+    const statusEl = document.getElementById('camera-status');
+    if(statusEl && !statusEl.textContent.includes('Buscando producto')) statusEl.textContent = 'Buscando código…';
   }
 }
 
@@ -2055,58 +2125,69 @@ function loadScriptOnce(src){
     const s = document.createElement('script');
     s.src = src;
     s.onload = () => resolve();
-    s.onerror = () => reject(new Error('No se pudo cargar el lector de códigos'));
+    s.onerror = () => reject(new Error('no se pudo cargar (revisa tu conexión)'));
     document.head.appendChild(s);
   });
 }
 
-async function openBarcodeScanner(){
-  if(!isPro()){ showToast('Escanear código de barras es una función Pro', true); setTab('pro'); return; }
-  openActionOverlay(`
-    <h1 style="margin:0 0 10px 0;">Código de barras</h1>
-    <p class="sub">Apunta a un código de barras del producto envasado.</p>
-    <div id="barcode-reader" style="width:100%; border-radius:14px; overflow:hidden;"></div>
-    <div class="barcode-shutter-row">
-      <button id="barcode-shutter-btn" class="barcode-shutter" onclick="pulseBarcodeShutter()" aria-label="Buscar código"></button>
-    </div>
-    <div id="barcode-status" class="empty" style="margin-top:10px;">Cargando cámara…</div>
-  `);
+// Escanea códigos de barras sobre la MISMA cámara que ya tenemos abierta,
+// tomando fotogramas sueltos y pasándoselos a la librería para decodificar
+// — más fiable que dejar que la librería intente controlar la cámara ella
+// sola, y con mensajes de estado claros en cada paso para saber qué falla.
+async function startBarcodeDetection(){
+  stopBarcodeDetection();
+  const statusEl = document.getElementById('camera-status');
+  const video = document.getElementById('camera-video');
+  if(!video) return;
+  if(statusEl) statusEl.textContent = 'Cargando lector de códigos…';
   try{
-    await loadScriptOnce('https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js');
-    const statusEl = document.getElementById('barcode-status');
-    if(statusEl) statusEl.textContent = 'Buscando código…';
-    const html5QrCode = new Html5Qrcode('barcode-reader');
-    window.__activeBarcodeScanner = html5QrCode;
-    await html5QrCode.start(
-      { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 250, height: 120 } },
-      async (decodedText) => {
-        try{ await html5QrCode.stop(); }catch(e){}
-        window.__activeBarcodeScanner = null;
-        await lookupBarcodeProduct(decodedText);
-      },
-      () => { /* fallo de lectura de un frame suelto, se ignora */ }
-    );
+    await loadScriptOnce('https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js');
   }catch(e){
-    const statusEl = document.getElementById('barcode-status');
-    if(statusEl) statusEl.textContent = 'No se pudo acceder a la cámara: ' + e.message;
+    if(statusEl) statusEl.textContent = 'No se pudo cargar el lector: ' + e.message;
+    return;
   }
+  if(typeof Html5Qrcode === 'undefined' || typeof Html5QrcodeSupportedFormats === 'undefined'){
+    if(statusEl) statusEl.textContent = 'El lector de códigos no se cargó correctamente.';
+    return;
+  }
+  if(statusEl) statusEl.textContent = 'Buscando código…';
+  const formats = [
+    Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
+    Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E,
+    Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39,
+    Html5QrcodeSupportedFormats.ITF, Html5QrcodeSupportedFormats.QR_CODE
+  ];
+  let scanner;
+  try{
+    scanner = new Html5Qrcode('barcode-scan-target', { formatsToSupport: formats, verbose: false });
+  }catch(e){
+    if(statusEl) statusEl.textContent = 'No se pudo iniciar el lector: ' + e.message;
+    return;
+  }
+  const canvas = document.createElement('canvas');
+  barcodeScanTimer = setInterval(async () => {
+    if(!video.videoWidth) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob(async (blob) => {
+      if(!blob || cameraMode !== 'barcode') return;
+      try{
+        const file = new File([blob], 'frame.jpg', { type: 'image/jpeg' });
+        const decodedText = await scanner.scanFile(file, false);
+        stopBarcodeDetection();
+        await lookupBarcodeProduct(decodedText);
+      }catch(e){ /* este fotograma no tenía ningún código legible, seguimos */ }
+    }, 'image/jpeg', 0.85);
+  }, 700);
 }
 
-function pulseBarcodeShutter(){
-  const btn = document.getElementById('barcode-shutter-btn');
-  const statusEl = document.getElementById('barcode-status');
-  if(btn){
-    btn.style.transform = 'scale(.85)';
-    setTimeout(() => { btn.style.transform = 'scale(1)'; }, 150);
-  }
-  if(statusEl && !statusEl.textContent.includes('Buscando producto')){
-    statusEl.textContent = 'Buscando código…';
-  }
+function stopBarcodeDetection(){
+  if(barcodeScanTimer){ clearInterval(barcodeScanTimer); barcodeScanTimer = null; }
 }
 
 async function lookupBarcodeProduct(barcode){
-  const statusEl = document.getElementById('barcode-status');
+  const statusEl = document.getElementById('camera-status');
   if(statusEl) statusEl.textContent = 'Buscando producto…';
   try{
     const resp = await withTimeout(
@@ -2127,6 +2208,7 @@ async function lookupBarcodeProduct(barcode){
     openFoodDetail(newId);
   }catch(e){
     if(statusEl) statusEl.textContent = 'No se encontró ese producto — añádelo a mano.';
+    setTimeout(() => { if(cameraMode === 'barcode') startBarcodeDetection(); }, 2000);
   }
 }
 
@@ -3509,14 +3591,6 @@ function renderStaticMenus(){
     </button>
     <button class="fab-option" onclick="closeAddMenu(); openExercisePicker();">
       <span class="fab-option-icon">${bigEmoji('🏃')}</span> Registrar ejercicio
-    </button>
-  `;
-  document.getElementById('scan-choice-body').innerHTML = `
-    <button class="fab-option" onclick="closeScanChoice(); openCameraCapture();">
-      <span class="fab-option-icon">${ICON.camera}</span> Hacer foto a la comida
-    </button>
-    <button class="fab-option" onclick="closeScanChoice(); openBarcodeScanner();">
-      <span class="fab-option-icon">${ICON.barcode}</span> Escanear código de barras
     </button>
   `;
 }
