@@ -339,7 +339,7 @@ details .inner{padding-top:10px;}
 
 <div class="app">
   <div class="topbar">
-    <div class="brand"><img src="eie-mini.png" alt="" class="brand-icon">eatis<span class="dot">•</span>easy</div>
+    <div class="brand"><img src="eie-mini.png" alt="" class="brand-icon"><span>eatis<span class="dot">•</span>easy</span></div>
     <div style="text-align:right;">
       <div class="date" id="header-date"></div>
       <div class="header-streak" id="header-streak"></div>
@@ -574,7 +574,7 @@ function keepLocalChoice(){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.45';
+const APP_VERSION = '0.49';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -721,6 +721,20 @@ function fmtWeight(kg){ return `${fmt1(kgToDisplay(kg))} ${weightUnit()}`; }
 const PRO_PROMO_CODE = 'SANDIA-FAM-K79X';
 const PRO_PRICE_LABEL = '2,99 €/mes';
 const PRO_PAYMENT_LINK = 'https://buy.stripe.com/8x200j1Zt95h7mcfHr6g800';
+
+// Enlace del "Portal de cliente" de Stripe — desde ahí puede cancelar su
+// suscripción él mismo, sin que tengamos que montar nada nuestro. Se
+// consigue en Stripe → Settings → Billing → Customer portal (modo Live).
+const STRIPE_CUSTOMER_PORTAL_LINK = 'https://billing.stripe.com/p/login/8x200j1Zt95h7mcfHr6g800';
+
+function openManageSubscription(){
+  if(!STRIPE_CUSTOMER_PORTAL_LINK){
+    showToast('La gestión de suscripción aún no está configurada', true);
+    return;
+  }
+  window.open(STRIPE_CUSTOMER_PORTAL_LINK, '_blank');
+}
+
 
 // Pega aquí la URL de tu Worker eatiseasy-stripe-webhook + '/check-pro'
 // (ej. 'https://eatiseasy-stripe.tuusuario.workers.dev/check-pro').
@@ -1559,9 +1573,15 @@ function renderWeekStrip(){
   if(isNaN(start.getTime()) || start > today) start = new Date(today);
   start.setDate(start.getDate() - start.getDay());
 
+  // Un poco de aire extra a cada lado (5 días vacíos antes y después),
+  // solo por estética, para que no se vea tan vacío al principio.
+  start.setDate(start.getDate() - 5);
+  const end = new Date(today);
+  end.setDate(end.getDate() + 5);
+
   let cells = '';
   const d = new Date(start);
-  while(d <= today){
+  while(d <= end){
     const dStr = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     const isToday = dStr === todayStr();
     const isPast = d < today;
@@ -3470,8 +3490,9 @@ function renderProfile(){
       <div id="google-signin-btn-profile"></div>
 
       ${isPro() ? `
-      <div style="margin-top:18px; border-top:1px dashed var(--line); padding-top:16px;">
+      <div style="margin-top:18px; border-top:1px dashed var(--line); padding-top:16px; display:flex; flex-direction:column; gap:10px;">
         <button class="btn accent" onclick="openTransferGuide()">🔄 Transferir cuenta Pro a otro dispositivo</button>
+        <button class="btn ghost" onclick="openManageSubscription()">⚙️ Gestionar suscripción</button>
       </div>
       ` : ''}
     </div>
