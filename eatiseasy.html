@@ -574,7 +574,7 @@ function keepLocalChoice(){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.49';
+const APP_VERSION = '0.51';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -741,6 +741,7 @@ function openManageSubscription(){
 // Mientras esté vacío, el ?pro=1 no puede confirmarse de verdad y solo
 // se usa como aviso para pedir que inicies sesión.
 const PRO_VERIFY_ENDPOINT = 'https://valid-payments.ikernebreda9.workers.dev/check-pro';
+const PRO_SESSION_ENDPOINT = 'https://valid-payments.ikernebreda9.workers.dev/verify-session';
 
 async function checkProStatus(email){
   if(!PRO_VERIFY_ENDPOINT || !email) return false;
@@ -757,13 +758,34 @@ async function checkProStatus(email){
   }
 }
 
+// Le pregunta a Stripe directamente si ESA sesión de pago concreta se
+// completó, sin depender de qué email se usó al pagar (Apple Pay, Link,
+// una tarjeta familiar...). Devuelve el email real de la compra si se
+// confirma, o null si no.
+async function verifyCheckoutSession(sessionId){
+  if(!PRO_SESSION_ENDPOINT || !sessionId) return { paid:false, email:null };
+  try{
+    const resp = await withTimeout(
+      fetch(`${PRO_SESSION_ENDPOINT}?session_id=${encodeURIComponent(sessionId)}`),
+      10000, 'La comprobación de pago ha tardado demasiado'
+    );
+    const data = await resp.json();
+    return { paid: !!data.paid, email: data.email || null };
+  }catch(e){
+    console.error('verifyCheckoutSession failed', e);
+    return { paid:false, email:null };
+  }
+}
+
 async function manualCheckPro(){
-  if(!state.profile.email){
-    showToast('Primero vincula tu Google en Perfil (el mismo email de la compra)', true);
+  const emailField = document.getElementById('manual-check-email');
+  const checkoutEmail = (emailField ? emailField.value : state.profile.email || '').trim();
+  if(!checkoutEmail){
+    showToast('Escribe el email que usaste al pagar', true);
     return;
   }
   showToast('Comprobando…');
-  const verified = await checkProStatus(state.profile.email);
+  const verified = await checkProStatus(checkoutEmail);
   if(verified){
     state.profile.isPro = true;
     await safeSet('profile', state.profile);
@@ -771,7 +793,7 @@ async function manualCheckPro(){
     showToast('¡eatiseasy Pro activado! 🎉');
     renderAll();
   } else {
-    showToast('Todavía no encontramos tu pago. Si acabas de pagar, espera un minuto y prueba otra vez.', true);
+    showToast('Todavía no encontramos ese pago. Si acabas de pagar, espera un minuto y prueba otra vez.', true);
   }
 }
 
@@ -904,7 +926,21 @@ async function init(){
     renderOnboardStep();
     return;
   }
-  if(new URLSearchParams(location.search).get('pro') === '1' && !state.profile.isPro){
+  const urlParams = new URLSearchParams(location.search);
+  const sessionId = urlParams.get('session_id');
+  if(sessionId && !state.profile.isPro){
+    history.replaceState(null, '', location.pathname);
+    const result = await verifyCheckoutSession(sessionId);
+    if(result.paid){
+      state.profile.isPro = true;
+      if(!state.profile.email && result.email) state.profile.email = result.email;
+      await safeSet('profile', state.profile);
+      await ensureLicenseCode();
+      showToast('¡eatiseasy Pro activado! 🎉');
+    } else {
+      showToast('No pudimos confirmar el pago automáticamente — usa "Comprobar mi pago ahora" en Pro', true);
+    }
+  } else if(urlParams.get('pro') === '1' && !state.profile.isPro){
     history.replaceState(null, '', location.pathname);
     if(state.profile.email){
       const verified = await checkProStatus(state.profile.email);
@@ -1391,13 +1427,18 @@ function showProPaywall(fromOnboarding){
   `;
 }
 
+function buildPaymentLinkUrl(){
+  if(!state.profile || !state.profile.email) return PRO_PAYMENT_LINK;
+  return PRO_PAYMENT_LINK + '?prefilled_email=' + encodeURIComponent(state.profile.email);
+}
+
 function buyPro(){
   if(!PRO_PAYMENT_LINK){
     showToast('El pago aún no está configurado — vuelve pronto', true);
     return;
   }
   if(state.profile && state.profile.skipPurchaseDisclosure){
-    window.open(PRO_PAYMENT_LINK, '_blank');
+    window.open(buildPaymentLinkUrl(), '_blank');
     return;
   }
   openActionOverlay(`
@@ -1405,6 +1446,7 @@ function buyPro(){
       <div style="font-size:30px; margin-bottom:10px;">🔗</div>
       <h1 style="margin:0 0 10px 0;">Vas a salir de la app</h1>
       <p class="sub" style="margin:0 0 20px 0;">El pago de eatiseasy Pro se procesa en un sitio externo (Stripe), gestionado por eatiseasy, no por Apple. Apple no puede ayudarte con reembolsos ni problemas de facturación de esta compra.</p>
+      ${state.profile && state.profile.email ? `<p class="sub" style="margin:0 0 20px 0; font-size:12px;">⚠️ Si pagas con Apple Pay u otra tarjeta, comprueba que el email de la compra sea <b>${state.profile.email}</b> — si usas uno distinto, luego tendrás que confirmarlo a mano.</p>` : ''}
       <button class="btn accent" onclick="confirmBuyProDisclosure()">Continuar</button>
       <button class="btn ghost small" style="margin-top:10px;" onclick="closeActionOverlay()">Cancelar</button>
       <label style="display:flex; align-items:center; gap:8px; justify-content:center; margin-top:16px; font-size:12px; color:var(--muted);">
@@ -1421,7 +1463,7 @@ async function confirmBuyProDisclosure(){
     await safeSet('profile', state.profile);
   }
   closeActionOverlay();
-  window.open(PRO_PAYMENT_LINK, '_blank');
+  window.open(buildPaymentLinkUrl(), '_blank');
 }
 
 async function redeemPromoCode(){
@@ -3034,6 +3076,10 @@ function renderProTab(){
 
       <div class="panel" style="margin-top:14px; text-align:center;">
         <p style="font-size:12px; color:var(--muted); margin:0 0 10px 0;">¿Ya has pagado y no se ha activado solo?</p>
+        <div class="field" style="text-align:left;"><label>Email que usaste al pagar</label>
+          <input id="manual-check-email" placeholder="tu@email.com" value="${(state.profile && state.profile.email) || ''}">
+        </div>
+        <p class="sub" style="margin:0 0 12px 0; font-size:11.5px;">Si pagaste con Apple Pay u otra tarjeta, puede ser distinto al de tu Google.</p>
         <button class="btn ghost small" onclick="manualCheckPro()">Comprobar mi pago ahora</button>
       </div>
 
