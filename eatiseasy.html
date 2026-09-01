@@ -135,6 +135,11 @@ body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemF
 .ob-name-input::placeholder{color:var(--muted); opacity:.5; font-weight:600;}
 .ob-name-input:focus{outline:none;}
 .ob-sex-toggle{display:flex; gap:10px; margin-top:6px;}
+
+.plan-toggle{display:flex; gap:8px; justify-content:center;}
+.plan-toggle-btn{padding:10px 16px; border-radius:14px; border:1.5px solid var(--line-strong); background:var(--surface); font-family:inherit; font-weight:700; font-size:13px; color:var(--muted); cursor:pointer; display:flex; align-items:center; gap:6px;}
+.plan-toggle-btn.active{border-color:var(--accent); background:var(--accent-soft); color:var(--accent-dark);}
+.plan-save-badge{background:var(--rind); color:#fff; font-size:9px; font-weight:800; padding:2px 6px; border-radius:8px;}
 .ob-sex-btn{flex:1; padding:16px 0; border-radius:16px; border:1.5px solid var(--line-strong); background:var(--surface); font-family:inherit; font-weight:700; font-size:14px; color:var(--muted); cursor:pointer; transition:all .15s ease;}
 .ob-sex-btn.active{border-color:var(--accent); background:var(--accent-soft); color:var(--accent-dark);}
 .row2{display:flex; gap:16px;}
@@ -223,15 +228,19 @@ details .inner{padding-top:10px;}
 .camera-badge{background:rgba(0,0,0,.55); backdrop-filter:blur(10px); color:#fff; font-family:inherit; font-weight:700; font-size:14px; padding:9px 18px; border-radius:30px;}
 .camera-badge .dot{color:var(--accent);}
 
-.camera-status-text{position:absolute; bottom:172px; left:0; right:0; text-align:center; color:#fff; font-size:13px; font-weight:600; text-shadow:0 1px 4px rgba(0,0,0,.6); z-index:2; min-height:18px;}
+.camera-bottom-panel{position:absolute; left:0; right:0; bottom:0; z-index:2; display:flex; flex-direction:column; align-items:center; gap:14px; padding:0 20px calc(22px + env(safe-area-inset-bottom)) 20px; background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0) 85%);}
+.camera-status-text{text-align:center; color:#fff; font-size:13px; font-weight:600; text-shadow:0 1px 4px rgba(0,0,0,.6); min-height:18px;}
 
-.camera-mode-tabs{position:absolute; bottom:112px; left:0; right:0; display:flex; justify-content:center; gap:6px; z-index:2;}
-.cam-tab{font-family:inherit; font-size:12.5px; font-weight:700; padding:9px 16px; border-radius:20px; border:none; background:rgba(0,0,0,.45); backdrop-filter:blur(10px); color:rgba(255,255,255,.75); cursor:pointer;}
-.cam-tab.active{background:#fff; color:#111;}
+.camera-mode-row{display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;}
+.cam-mode-pill{display:flex; align-items:center; gap:7px; font-family:inherit; font-size:13px; font-weight:700; padding:10px 18px; border-radius:24px; border:none; background:rgba(0,0,0,.45); backdrop-filter:blur(10px); color:rgba(255,255,255,.8); cursor:pointer;}
+.cam-mode-pill svg{width:16px; height:16px;}
+.cam-mode-pill.active{background:#fff; color:#111;}
+.cam-icon-btn{width:42px; height:42px; border-radius:50%; border:none; background:rgba(0,0,0,.45); backdrop-filter:blur(10px); color:rgba(255,255,255,.85); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;}
+.cam-icon-btn svg{width:17px; height:17px;}
+.cam-icon-btn.active{background:#fff; color:#111;}
 
-.camera-controls{position:absolute; bottom:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; padding:0 34px calc(26px + env(safe-area-inset-bottom)) 34px; z-index:2;}
+.camera-controls{display:flex; align-items:center; justify-content:center;}
 .camera-shutter{width:66px; height:66px; border-radius:50%; background:#fff; border:4px solid rgba(255,255,255,.35); cursor:pointer; padding:0;}
-.camera-gallery-btn{width:44px; height:44px; border-radius:10px; background:rgba(255,255,255,.18); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center; font-size:20px; color:#fff; cursor:pointer;}
 
 .overlay-card h1{font-family:inherit; font-size:26px; font-weight:600; margin:6px 0 4px 0; letter-spacing:-.3px; color:var(--paper);}
 .overlay-card p.sub{color:var(--muted); font-size:13px; margin:0 0 24px 0; line-height:1.5;}
@@ -574,7 +583,7 @@ function keepLocalChoice(){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.51';
+const APP_VERSION = '0.56';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -592,7 +601,17 @@ const I18N = {
     section_reminders:'Recordatorios', section_account:'Cuenta',
     weight_progress:'Progreso de peso', dark_mode:'Modo oscuro', language:'Idioma', units:'Unidades',
     save:'Guardar', add:'Añadir', cancel:'Cancelar', start:'Empezar', delete_account:'Borrar cuenta',
-    plan_free:'Plan Free', plan_pro:'★ Plan Pro'
+    plan_free:'Plan Free', plan_pro:'★ Plan Pro',
+    edit:'Editar', delete:'Borrar', confirm:'Confirmar', close:'Cerrar', back:'Volver', next:'Siguiente',
+    register_meal:'Registrar comida', scan_food:'Escanear comida', saved_meal:'Comida guardada', register_exercise:'Registrar ejercicio',
+    take_photo:'Hacer foto', choose_gallery:'Elegir de la galería', barcode:'Código de barras', manual_entry:'A mano',
+    servings:'Raciones', ingredients:'Ingredientes', health_score:'Puntuación de salud',
+    calories:'Calorías', protein:'Proteína', carbs:'Carbohidratos', fat:'Grasas',
+    minutes:'Minutos', distance:'Distancia', search:'Buscar', other:'Otro',
+    name:'Nombre', weight:'Peso', height:'Altura', age:'Edad', goal:'Objetivo',
+    today_summary:'Resumen de hoy', streak:'Racha', avg_weekly:'Media semanal',
+    upgrade_pro:'Desbloquear con Pro', already_pro:'Ya eres Pro',
+    yes:'Sí', no:'No', done:'Hecho', loading:'Cargando…'
   },
   en: {
     tab_today:'Today', tab_add:'Add', tab_datos:'Data', tab_profile:'Profile', tab_pro:'Pro',
@@ -603,7 +622,17 @@ const I18N = {
     section_reminders:'Reminders', section_account:'Account',
     weight_progress:'Weight progress', dark_mode:'Dark mode', language:'Language', units:'Units',
     save:'Save', add:'Add', cancel:'Cancel', start:'Start', delete_account:'Delete account',
-    plan_free:'Free plan', plan_pro:'★ Pro plan'
+    plan_free:'Free plan', plan_pro:'★ Pro plan',
+    edit:'Edit', delete:'Delete', confirm:'Confirm', close:'Close', back:'Back', next:'Next',
+    register_meal:'Log a meal', scan_food:'Scan food', saved_meal:'Saved meal', register_exercise:'Log exercise',
+    take_photo:'Take a photo', choose_gallery:'Choose from gallery', barcode:'Barcode', manual_entry:'By hand',
+    servings:'Servings', ingredients:'Ingredients', health_score:'Health score',
+    calories:'Calories', protein:'Protein', carbs:'Carbs', fat:'Fat',
+    minutes:'Minutes', distance:'Distance', search:'Search', other:'Other',
+    name:'Name', weight:'Weight', height:'Height', age:'Age', goal:'Goal',
+    today_summary:"Today's summary", streak:'Streak', avg_weekly:'Weekly average',
+    upgrade_pro:'Unlock with Pro', already_pro:"You're already Pro",
+    yes:'Yes', no:'No', done:'Done', loading:'Loading…'
   },
   eu: {
     tab_today:'Gaur', tab_add:'Gehitu', tab_datos:'Datuak', tab_profile:'Profila', tab_pro:'Pro',
@@ -614,7 +643,17 @@ const I18N = {
     section_reminders:'Oroigarriak', section_account:'Kontua',
     weight_progress:'Pisuaren bilakaera', dark_mode:'Modu iluna', language:'Hizkuntza', units:'Unitateak',
     save:'Gorde', add:'Gehitu', cancel:'Utzi', start:'Hasi', delete_account:'Kontua ezabatu',
-    plan_free:'Plan doakoa', plan_pro:'★ Plan Pro'
+    plan_free:'Plan doakoa', plan_pro:'★ Plan Pro',
+    edit:'Editatu', delete:'Ezabatu', confirm:'Berretsi', close:'Itxi', back:'Atzera', next:'Hurrengoa',
+    register_meal:'Otordua erregistratu', scan_food:'Janaria eskaneatu', saved_meal:'Gordetako otordua', register_exercise:'Ariketa erregistratu',
+    take_photo:'Argazkia atera', choose_gallery:'Galeriatik aukeratu', barcode:'Barra-kodea', manual_entry:'Eskuz',
+    servings:'Errazioak', ingredients:'Osagaiak', health_score:'Osasun-puntuazioa',
+    calories:'Kaloriak', protein:'Proteina', carbs:'Karbohidratoak', fat:'Gantzak',
+    minutes:'Minutuak', distance:'Distantzia', search:'Bilatu', other:'Beste bat',
+    name:'Izena', weight:'Pisua', height:'Altuera', age:'Adina', goal:'Helburua',
+    today_summary:'Gaurko laburpena', streak:'Segida', avg_weekly:'Asteko batez bestekoa',
+    upgrade_pro:'Pro-rekin desblokeatu', already_pro:'Jada Pro zara',
+    yes:'Bai', no:'Ez', done:'Eginda', loading:'Kargatzen…'
   }
 };
 function tr(key){
@@ -643,6 +682,8 @@ const ICON = {
   iosShare: svgIcon(`<path d="M12 3v12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7.5 7.5L12 3l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><rect x="5" y="10" width="14" height="11" rx="2.5" stroke="currentColor" stroke-width="1.8"/>`),
   androidDots: svgIcon(`<circle cx="12" cy="5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="19" r="1.9" fill="currentColor"/>`),
   homeAdd: svgIcon(`<path d="M4 11l8-7 8 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 12v6M9 15h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`),
+  barcodeIcon: svgIcon(`<path d="M4 5v14M8 5v14M11 5v14M15 5v14M17 5v14M21 5v14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>`),
+  pencilIcon: svgIcon(`<path d="M14.5 4.5l5 5L7 22H2v-5L14.5 4.5z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.5 6.5l5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>`),
   water: bigEmoji('💧'),
   star: bigEmoji('⭐'),
   lock: svgIcon(`<rect x="5" y="10.5" width="14" height="10" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>`),
@@ -719,8 +760,13 @@ function fmtWeight(kg){ return `${fmt1(kgToDisplay(kg))} ${weightUnit()}`; }
 //   app se desbloquea sola.
 // ======================================================================
 const PRO_PROMO_CODE = 'SANDIA-FAM-K79X';
-const PRO_PRICE_LABEL = '2,99 €/mes';
-const PRO_PAYMENT_LINK = 'https://buy.stripe.com/8x200j1Zt95h7mcfHr6g800';
+const PRO_PRICE_LABEL = '3,99 €/mes';
+const PRO_PAYMENT_LINK = 'https://buy.stripe.com/4gM8wP33xftFbCscvf6g802';
+
+const PRO_PRICE_LABEL_YEARLY = '39,90 €/año';
+// Pega aquí el Payment Link del precio anual cuando lo crees en Stripe.
+// Mientras esté vacío, no se muestra el selector Mensual/Anual.
+const PRO_PAYMENT_LINK_YEARLY = 'https://buy.stripe.com/7sYeVd1Zt6X9eOE8eZ6g801';
 
 // Enlace del "Portal de cliente" de Stripe — desde ahí puede cancelar su
 // suscripción él mismo, sin que tengamos que montar nada nuestro. Se
@@ -893,9 +939,16 @@ function calcTargets(p){
   const carbG = (isCustom && p.customCarb != null) ? round1(p.customCarb) : autoCarbG;
   const fatG = (isCustom && p.customFat != null) ? round1(p.customFat) : autoFatG;
 
+  // El objetivo de kcal a quemar con ejercicio tiene que tener sentido
+  // según el objetivo: en déficit ayuda a crear más margen; en superávit
+  // (ganar músculo/peso) pedir que quemes mucho va CONTRA el propio
+  // objetivo, así que baja bastante en vez de quedarse fijo siempre en lo mismo.
+  const autoBurnGoal = direction === 'deficit' ? 300 : (direction === 'maintain' ? 200 : 100);
+  const burnGoal = (isCustom && p.customBurnGoal != null) ? Math.round(p.customBurnGoal) : autoBurnGoal;
+
   return {
     bmr: Math.round(bmr), tdee: Math.round(tdee), calorieTarget,
-    proteinG, carbG, fatG, burnGoal: p.dailyBurnGoal || 300,
+    proteinG, carbG, fatG, burnGoal, autoBurnGoal,
     direction, goalType, isCustom,
     autoCalorieTarget, autoProteinG, autoCarbG, autoFatG,
     weeksToGoal: diff !== 0 ? Math.abs(diff / (p.paceKgWeek || 0.5)).toFixed(1) : '0'
@@ -1327,7 +1380,7 @@ async function finishOnboarding(){
     name, sex: obDraft.sex || 'female', age: obDraft.age, heightCm: obDraft.heightCm,
     currentWeight: obDraft.currentWeight, goalWeight: obDraft.goalWeight,
     activityLevel: obDraft.activityLevel || 'light', goalType: obDraft.goalType || 'auto',
-    paceKgWeek: obDraft.paceKgWeek || 0.5, dailyBurnGoal: 300, email: obDraft.email || null,
+    paceKgWeek: obDraft.paceKgWeek || 0.5, email: obDraft.email || null,
     customMode: false, darkMode: true, createdAt: new Date().toISOString()
   };
   await safeSet('profile', state.profile);
@@ -1395,13 +1448,34 @@ async function enterAppFromReveal(){
 }
 
 // ---------- eatiseasy Pro: paywall (onboarding) + pitch reutilizable ----------
+let selectedProPlan = 'monthly';
+
+function selectProPlan(plan){
+  selectedProPlan = plan;
+  document.querySelectorAll('.plan-toggle-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.plan === plan);
+  });
+  const priceEl = document.getElementById('pro-price-display');
+  const subEl = document.getElementById('pro-price-sub');
+  if(priceEl) priceEl.textContent = plan === 'yearly' ? PRO_PRICE_LABEL_YEARLY : PRO_PRICE_LABEL;
+  if(subEl) subEl.textContent = plan === 'yearly' ? 'Suscripción anual · cancela cuando quieras' : 'Suscripción mensual · cancela cuando quieras';
+}
+
 function buildProPitchHTML(){
   return `
-    <div style="text-align:center; margin-bottom:18px;">
-      <div style="font-size:34px; font-weight:800; letter-spacing:-.5px;">${PRO_PRICE_LABEL}</div>
-      <div style="font-size:12px; color:var(--muted); margin-top:2px;">Suscripción mensual · cancela cuando quieras</div>
+    <div style="text-align:center; margin-bottom:14px;">
+      <div id="pro-price-display" style="font-size:34px; font-weight:800; letter-spacing:-.5px;">${PRO_PRICE_LABEL}</div>
+      <div id="pro-price-sub" style="font-size:12px; color:var(--muted); margin-top:2px;">Suscripción mensual · cancela cuando quieras</div>
     </div>
-    <div class="panel" style="text-align:left;">
+
+    ${PRO_PAYMENT_LINK_YEARLY ? `
+    <div class="plan-toggle">
+      <button type="button" class="plan-toggle-btn active" data-plan="monthly" onclick="selectProPlan('monthly')">Mensual</button>
+      <button type="button" class="plan-toggle-btn" data-plan="yearly" onclick="selectProPlan('yearly')">Anual <span class="plan-save-badge">ahorra 17%</span></button>
+    </div>
+    ` : ''}
+
+    <div class="panel" style="text-align:left; margin-top:14px;">
       <div class="row"><span class="rname">${ICON.camera} Analizar comida por foto</span></div>
       <div class="row"><span class="rname">📈 Gráfica de evolución de peso</span></div>
       <div class="row"><span class="rname">${ICON.bell} Recordatorios (suplementos y agua)</span></div>
@@ -1428,12 +1502,14 @@ function showProPaywall(fromOnboarding){
 }
 
 function buildPaymentLinkUrl(){
-  if(!state.profile || !state.profile.email) return PRO_PAYMENT_LINK;
-  return PRO_PAYMENT_LINK + '?prefilled_email=' + encodeURIComponent(state.profile.email);
+  const link = (selectedProPlan === 'yearly' && PRO_PAYMENT_LINK_YEARLY) ? PRO_PAYMENT_LINK_YEARLY : PRO_PAYMENT_LINK;
+  if(!state.profile || !state.profile.email) return link;
+  return link + '?prefilled_email=' + encodeURIComponent(state.profile.email);
 }
 
 function buyPro(){
-  if(!PRO_PAYMENT_LINK){
+  const link = (selectedProPlan === 'yearly' && PRO_PAYMENT_LINK_YEARLY) ? PRO_PAYMENT_LINK_YEARLY : PRO_PAYMENT_LINK;
+  if(!link){
     showToast('El pago aún no está configurado — vuelve pronto', true);
     return;
   }
@@ -1511,6 +1587,7 @@ function applyLanguage(){
   set('tab-datos-label', 'tab_datos');
   set('tab-profile-label', 'tab_profile');
   set('tab-pro-label', 'tab_pro');
+  renderStaticMenus();
 }
 
 function updateStreakDisplay(){
@@ -1986,12 +2063,15 @@ async function removeSupplement(id){
   renderAll();
 }
 async function toggleSupplement(id){
+  const scrollY = window.scrollY;
   const current = state.takenToday[id] || 0;
   state.takenToday[id] = current > 0 ? 0 : 1;
   await safeSet('suppTaken:' + todayStr(), state.takenToday);
   renderAll();
+  requestAnimationFrame(() => window.scrollTo(0, scrollY));
 }
 async function incrementWater(id){
+  const scrollY = window.scrollY;
   const reminder = state.supplements.find(s => s.id === id);
   const target = (reminder && reminder.target) || 8;
   const current = state.takenToday[id] || 0;
@@ -1999,6 +2079,7 @@ async function incrementWater(id){
   state.takenToday[id] = current + 1;
   await safeSet('suppTaken:' + todayStr(), state.takenToday);
   renderAll();
+  requestAnimationFrame(() => window.scrollTo(0, scrollY));
 }
 
 async function loadDaySummaries(){
@@ -2056,6 +2137,26 @@ async function setWeightUnit(unit){
   state.profile.weightUnit = unit;
   await safeSet('profile', state.profile);
   renderAll();
+}
+
+function openEditName(){
+  openActionOverlay(`
+    <h1 style="margin:0 0 14px 0;">✎ Cambiar nombre</h1>
+    <div class="field"><label>Tu nombre</label>
+      <input id="edit-name-input" value="${state.profile.name || ''}" placeholder="Tu nombre">
+    </div>
+    <button class="btn accent" style="margin-top:10px;" onclick="saveEditedName()">Guardar</button>
+  `);
+}
+async function saveEditedName(){
+  const input = document.getElementById('edit-name-input');
+  const newName = (input.value || '').trim();
+  if(!newName){ showToast('Escribe un nombre', true); return; }
+  state.profile.name = newName;
+  await safeSet('profile', state.profile);
+  closeActionOverlay();
+  renderAll();
+  showToast('Nombre actualizado');
 }
 
 async function onAvatarSelected(evt){
@@ -2131,22 +2232,33 @@ async function openScanCamera(initialMode){
       <div class="camera-top-row">
         <div class="camera-badge">eatis<span class="dot">•</span>easy</div>
       </div>
-      <div id="camera-status" class="camera-status-text"></div>
+      <div class="camera-bottom-panel">
+        <div id="camera-status" class="camera-status-text"></div>
+        <div class="camera-mode-row">
+          <button class="cam-mode-pill ${cameraMode==='photo'?'active':''}" id="cam-tab-photo" onclick="switchCameraMode('photo')" aria-label="Escanear comida">
+            ${ICON.camera}<span>${tr('scan_food')}</span>
+          </button>
+          <button class="cam-icon-btn ${cameraMode==='barcode'?'active':''}" id="cam-tab-barcode" onclick="switchCameraMode('barcode')" aria-label="Código de barras">${ICON.barcodeIcon}</button>
+          <label class="cam-icon-btn" for="gallery-fallback-input" aria-label="Elegir de la galería">${ICON.gallery}</label>
+          <button class="cam-icon-btn" onclick="closeActionOverlay(); openSavedMeals();" aria-label="Comida guardada">${ICON.star}</button>
+          <button class="cam-icon-btn" onclick="closeActionOverlay(); openManualFoodForm();" aria-label="Registrar a mano">${ICON.pencilIcon}</button>
+        </div>
+        <div class="camera-controls">
+          <input id="gallery-fallback-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onGalleryPhotoChosen(event)">
+          <button class="camera-shutter" onclick="cameraShutterAction()" aria-label="Capturar"></button>
+        </div>
+      </div>
       <div id="barcode-scan-target" style="display:none;"></div>
-      <div class="camera-mode-tabs">
-        <button class="cam-tab ${cameraMode==='photo'?'active':''}" id="cam-tab-photo" onclick="switchCameraMode('photo')">Escanear comida</button>
-        <button class="cam-tab ${cameraMode==='barcode'?'active':''}" id="cam-tab-barcode" onclick="switchCameraMode('barcode')">Código de barras</button>
-      </div>
-      <div class="camera-controls">
-        <label class="camera-gallery-btn" for="gallery-fallback-input">${ICON.gallery}</label>
-        <input id="gallery-fallback-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onGalleryPhotoChosen(event)">
-        <button class="camera-shutter" onclick="cameraShutterAction()" aria-label="Capturar"></button>
-        <div style="width:44px;"></div>
-      </div>
     </div>
   `);
   try{
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'environment',
+        width: { ideal: 3840 }, height: { ideal: 2160 }
+      },
+      audio: false
+    });
     window.__activeCameraStream = stream;
     const video = document.getElementById('camera-video');
     if(video) video.srcObject = stream;
@@ -2181,10 +2293,16 @@ function cameraShutterAction(){
 function captureCameraPhoto(){
   const video = document.getElementById('camera-video');
   if(!video || !video.videoWidth) return;
+  const MAX_SIDE = 1600; // tope solo para la foto que se envía a analizar, no afecta a la vista en directo
+  let w = video.videoWidth, h = video.videoHeight;
+  if(Math.max(w,h) > MAX_SIDE){
+    const scale = MAX_SIDE / Math.max(w,h);
+    w = Math.round(w * scale); h = Math.round(h * scale);
+  }
   const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext('2d').drawImage(video, 0, 0, w, h);
   canvas.toBlob(async (blob) => {
     closeActionOverlay();
     await processFoodImage(blob);
@@ -3397,7 +3515,7 @@ function renderProfile(){
           <span class="avatar-edit">✎</span>
         </label>
         <input id="avatar-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onAvatarSelected(event)">
-        <div class="avatar-name">${p.name}</div>
+        <div class="avatar-name" onclick="openEditName()" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px;">${p.name} <span style="font-size:11px; opacity:.5;">✎</span></div>
         <div class="plan-badge ${isPro() ? 'is-pro' : ''}">${isPro() ? tr('plan_pro') : tr('plan_free')}</div>
       </div>
     </div>
@@ -3444,60 +3562,14 @@ function renderProfile(){
     </div>
 
     <div class="section-title">${tr('section_settings')}</div>
-    <details>
-      <summary>Editar datos y objetivos</summary>
-      <div class="inner">
-        <div class="row2">
-          <div class="field"><label>Peso actual (${weightUnit()})</label><input id="pr-current" type="number" step="0.1" value="${kgToDisplay(p.currentWeight)}"></div>
-          <div class="field"><label>Peso objetivo (${weightUnit()})</label><input id="pr-goal" type="number" step="0.1" value="${kgToDisplay(p.goalWeight)}"></div>
-        </div>
-        <div class="field"><label>Actividad</label>
-          <select id="pr-activity">
-            <option value="sedentary" ${p.activityLevel==='sedentary'?'selected':''}>Sedentario</option>
-            <option value="light" ${p.activityLevel==='light'?'selected':''}>Ligero</option>
-            <option value="moderate" ${p.activityLevel==='moderate'?'selected':''}>Moderado</option>
-            <option value="active" ${p.activityLevel==='active'?'selected':''}>Activo</option>
-            <option value="veryActive" ${p.activityLevel==='veryActive'?'selected':''}>Muy activo</option>
-          </select>
-        </div>
-        <div class="field"><label>Objetivo</label>
-          <select id="pr-goaltype">
-            <option value="auto" ${(p.goalType||'auto')==='auto'?'selected':''}>Automático (según tu peso objetivo)</option>
-            <option value="deficit" ${p.goalType==='deficit'?'selected':''}>Déficit — perder grasa</option>
-            <option value="maintain" ${p.goalType==='maintain'?'selected':''}>Mantenimiento</option>
-            <option value="surplus" ${p.goalType==='surplus'?'selected':''}>Superávit — ganar músculo</option>
-          </select>
-        </div>
-        <div class="field"><label>Ritmo (kg/semana)</label>
-          <select id="pr-pace">
-            <option value="0.25" ${p.paceKgWeek==0.25?'selected':''}>Suave · 0.25 kg</option>
-            <option value="0.5" ${p.paceKgWeek==0.5?'selected':''}>Moderado · 0.5 kg</option>
-            <option value="0.75" ${p.paceKgWeek==0.75?'selected':''}>Rápido · 0.75 kg</option>
-            <option value="1" ${p.paceKgWeek==1?'selected':''}>Intenso · 1 kg</option>
-          </select>
-        </div>
-        <div class="field"><label>Objetivo kcal quemadas/día (ejercicio)</label><input id="pr-burn" type="number" value="${p.dailyBurnGoal}"></div>
-
-        <div class="field" style="display:flex; align-items:center; gap:10px; margin-top:6px;">
-          <input type="checkbox" id="pr-custom-toggle" ${p.customMode?'checked':''} onchange="toggleCustomFields()" style="width:auto; accent-color:var(--accent);">
-          <label style="margin:0; font-size:13px; color:var(--ink);">Fijar yo mismo las calorías y macros diarios</label>
-        </div>
-        <div id="pr-custom-fields" style="${p.customMode?'':'display:none;'} background:var(--accent-soft); border-radius:12px; padding:14px; margin-top:8px;">
-          <div class="field"><label>Calorías objetivo al día</label>
-            <input id="pr-custom-cal" type="number" value="${p.customCalories || t.autoCalorieTarget}" oninput="recalcMacrosPreview()">
-          </div>
-          <div class="row2">
-            <div class="field"><label>${ICON.protein} Proteína (g)</label><input id="pr-custom-protein" type="number" value="${p.customProtein != null ? p.customProtein : t.autoProteinG}"></div>
-            <div class="field"><label>${ICON.water} Grasas (g)</label><input id="pr-custom-fat" type="number" value="${p.customFat != null ? p.customFat : t.autoFatG}"></div>
-          </div>
-          <div class="field"><label>${ICON.carbs} Carbohidratos (g)</label><input id="pr-custom-carb" type="number" value="${p.customCarb != null ? p.customCarb : t.autoCarbG}"></div>
-          <button type="button" class="btn ghost small" onclick="recalcMacrosPreview()">↻ Recalcular macros según estas calorías</button>
-          <p style="font-size:11px; color:var(--muted); margin:10px 0 0 0;">Puedes tocar los gramos y dejarlos como quieras — el botón solo te da un punto de partida sugerido.</p>
-        </div>
-
-        <button class="btn accent" style="margin-top:16px;" onclick="saveProfileEdit()">Guardar cambios</button>
+    <div class="panel plist">
+      <div class="row" style="cursor:pointer;" onclick="openRedoPlanFlow()">
+        <span class="rname">🔄 Rehacer mi plan</span>
       </div>
-    </details>
+      <div class="row" style="cursor:pointer;" onclick="openEditMacros()">
+        <span class="rname">✏️ Editar calorías y macros</span>
+      </div>
+    </div>
 
     <div class="section-title">${tr('section_reminders')}</div>
     ${!isPro() ? `
@@ -3619,11 +3691,108 @@ async function openTransferGuide(){
   `);
 }
 
+// ---------- Rehacer mi plan (como al crear la cuenta, sin perder datos) ----------
+function openRedoPlanFlow(){
+  const p = state.profile;
+  openActionOverlay(`
+    <h1 style="margin:0 0 4px 0;">🔄 Rehacer mi plan</h1>
+    <p class="sub" style="margin:0 0 18px 0;">Vuelve a poner tus datos y te recalculamos calorías, macros y cuánto deberías quemar — sin tocar tu historial de comidas ni tu peso registrado.</p>
+
+    <div class="row2">
+      <div class="field"><label>Edad</label><input id="rp-age" type="number" value="${p.age || ''}"></div>
+      <div class="field"><label>Altura (cm)</label><input id="rp-height" type="number" value="${p.heightCm || ''}"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Peso actual (${weightUnit()})</label><input id="rp-current" type="number" step="0.1" value="${kgToDisplay(p.currentWeight)}"></div>
+      <div class="field"><label>Peso objetivo (${weightUnit()})</label><input id="rp-goal" type="number" step="0.1" value="${kgToDisplay(p.goalWeight)}"></div>
+    </div>
+    <div class="field"><label>Actividad</label>
+      <select id="rp-activity">
+        <option value="sedentary" ${p.activityLevel==='sedentary'?'selected':''}>Sedentario</option>
+        <option value="light" ${p.activityLevel==='light'?'selected':''}>Ligero</option>
+        <option value="moderate" ${p.activityLevel==='moderate'?'selected':''}>Moderado</option>
+        <option value="active" ${p.activityLevel==='active'?'selected':''}>Activo</option>
+        <option value="veryActive" ${p.activityLevel==='veryActive'?'selected':''}>Muy activo</option>
+      </select>
+    </div>
+    <div class="field"><label>Objetivo</label>
+      <select id="rp-goaltype">
+        <option value="auto" ${(p.goalType||'auto')==='auto'?'selected':''}>Automático (según tu peso objetivo)</option>
+        <option value="deficit" ${p.goalType==='deficit'?'selected':''}>Déficit — perder grasa</option>
+        <option value="maintain" ${p.goalType==='maintain'?'selected':''}>Mantenimiento</option>
+        <option value="surplus" ${p.goalType==='surplus'?'selected':''}>Superávit — ganar músculo</option>
+      </select>
+    </div>
+    <div class="field"><label>Ritmo (kg/semana)</label>
+      <select id="rp-pace">
+        <option value="0.25" ${p.paceKgWeek==0.25?'selected':''}>Suave · 0.25 kg</option>
+        <option value="0.5" ${p.paceKgWeek==0.5?'selected':''}>Moderado · 0.5 kg</option>
+        <option value="0.75" ${p.paceKgWeek==0.75?'selected':''}>Rápido · 0.75 kg</option>
+        <option value="1" ${p.paceKgWeek==1?'selected':''}>Intenso · 1 kg</option>
+      </select>
+    </div>
+    <p class="sub" style="margin:8px 0 0 0; font-size:11.5px;">Esto vuelve a calcular tus calorías, macros y kcal a quemar automáticamente — si tenías valores fijados a mano, se sustituyen por los nuevos calculados.</p>
+    <button class="btn accent" style="margin-top:16px;" onclick="saveRedoPlan()">Recalcular mi plan</button>
+  `);
+}
+async function saveRedoPlan(){
+  const age = parseFloat(document.getElementById('rp-age').value);
+  const heightCm = parseFloat(document.getElementById('rp-height').value);
+  const current = parseFloat(document.getElementById('rp-current').value);
+  const goal = parseFloat(document.getElementById('rp-goal').value);
+  if(!age || !heightCm || !current || !goal){ showToast('Rellena todos los campos', true); return; }
+
+  state.profile.age = age;
+  state.profile.heightCm = heightCm;
+  state.profile.currentWeight = displayToKg(current);
+  state.profile.goalWeight = displayToKg(goal);
+  state.profile.activityLevel = document.getElementById('rp-activity').value;
+  state.profile.goalType = document.getElementById('rp-goaltype').value;
+  state.profile.paceKgWeek = parseFloat(document.getElementById('rp-pace').value);
+  // Al rehacer el plan entero, volvemos a los valores calculados
+  // automáticamente — si quieres fijarlos a mano, usa "Editar calorías y macros".
+  state.profile.customMode = false;
+
+  await safeSet('profile', state.profile);
+  closeActionOverlay();
+  renderAll();
+  showToast('¡Plan recalculado! 🎉');
+}
+
+// ---------- Editar calorías y macros a mano, sin rehacer el plan ----------
+function openEditMacros(){
+  const p = state.profile;
+  const t = calcTargets(p);
+  openActionOverlay(`
+    <h1 style="margin:0 0 4px 0;">✏️ Editar calorías y macros</h1>
+    <p class="sub" style="margin:0 0 18px 0;">Ajusta directamente tus números, sin tocar tu plan (edad, peso objetivo, ritmo...).</p>
+
+    <div class="field" style="display:flex; align-items:center; gap:10px;">
+      <input type="checkbox" id="pr-custom-toggle" ${p.customMode?'checked':''} onchange="toggleCustomFields()" style="width:auto; accent-color:var(--accent);">
+      <label style="margin:0; font-size:13px; color:var(--ink);">Fijar yo mismo las calorías y macros diarios</label>
+    </div>
+    <div id="pr-custom-fields" style="${p.customMode?'':'display:none;'} background:var(--accent-soft); border-radius:12px; padding:14px; margin-top:8px;">
+      <div class="field"><label>Calorías objetivo al día</label>
+        <input id="pr-custom-cal" type="number" value="${p.customCalories || t.autoCalorieTarget}" oninput="recalcMacrosPreview()">
+      </div>
+      <div class="row2">
+        <div class="field"><label>${ICON.protein} Proteína (g)</label><input id="pr-custom-protein" type="number" value="${p.customProtein != null ? p.customProtein : t.autoProteinG}"></div>
+        <div class="field"><label>${ICON.water} Grasas (g)</label><input id="pr-custom-fat" type="number" value="${p.customFat != null ? p.customFat : t.autoFatG}"></div>
+      </div>
+      <div class="field"><label>${ICON.carbs} Carbohidratos (g)</label><input id="pr-custom-carb" type="number" value="${p.customCarb != null ? p.customCarb : t.autoCarbG}"></div>
+      <div class="field"><label>Objetivo kcal quemadas/día (ejercicio)</label><input id="pr-custom-burn" type="number" value="${p.customBurnGoal != null ? p.customBurnGoal : t.autoBurnGoal}"></div>
+      <button type="button" class="btn ghost small" onclick="recalcMacrosPreview()">↻ Recalcular macros según estas calorías</button>
+      <p style="font-size:11px; color:var(--muted); margin:10px 0 0 0;">Puedes tocar los gramos y dejarlos como quieras — el botón solo te da un punto de partida sugerido.</p>
+    </div>
+    <p class="sub" style="margin:12px 0 0 0; font-size:11.5px;">Si desmarcas la casilla, volvemos a calcular tus calorías y macros automáticamente según tu plan actual.</p>
+
+    <button class="btn accent" style="margin-top:16px;" onclick="saveEditMacros()">Guardar cambios</button>
+  `);
+}
 function toggleCustomFields(){
   const checked = document.getElementById('pr-custom-toggle').checked;
   document.getElementById('pr-custom-fields').style.display = checked ? 'block' : 'none';
 }
-
 function recalcMacrosPreview(){
   const cal = parseFloat(document.getElementById('pr-custom-cal').value) || 0;
   const weight = state.profile.currentWeight;
@@ -3636,17 +3805,7 @@ function recalcMacrosPreview(){
   document.getElementById('pr-custom-carb').value = carbG;
   document.getElementById('pr-custom-fat').value = fatG;
 }
-
-async function saveProfileEdit(){
-  const enteredCurrent = parseFloat(document.getElementById('pr-current').value);
-  const enteredGoal = parseFloat(document.getElementById('pr-goal').value);
-  state.profile.currentWeight = enteredCurrent ? displayToKg(enteredCurrent) : state.profile.currentWeight;
-  state.profile.goalWeight = enteredGoal ? displayToKg(enteredGoal) : state.profile.goalWeight;
-  state.profile.activityLevel = document.getElementById('pr-activity').value;
-  state.profile.goalType = document.getElementById('pr-goaltype').value;
-  state.profile.paceKgWeek = parseFloat(document.getElementById('pr-pace').value);
-  state.profile.dailyBurnGoal = parseFloat(document.getElementById('pr-burn').value) || 300;
-
+async function saveEditMacros(){
   const customMode = document.getElementById('pr-custom-toggle').checked;
   state.profile.customMode = customMode;
   if(customMode){
@@ -3654,12 +3813,14 @@ async function saveProfileEdit(){
     state.profile.customProtein = parseFloat(document.getElementById('pr-custom-protein').value);
     state.profile.customCarb = parseFloat(document.getElementById('pr-custom-carb').value);
     state.profile.customFat = parseFloat(document.getElementById('pr-custom-fat').value);
+    state.profile.customBurnGoal = parseFloat(document.getElementById('pr-custom-burn').value);
   }
-
   await safeSet('profile', state.profile);
-  showToast('Perfil actualizado');
+  closeActionOverlay();
   renderAll();
+  showToast('Calorías y macros actualizados');
 }
+
 
 async function resetAccount(){
   await safeDelete('profile');
@@ -3671,16 +3832,16 @@ async function resetAccount(){
 function renderStaticMenus(){
   document.getElementById('add-menu-body').innerHTML = `
     <button class="fab-option" onclick="closeAddMenu(); openManualFoodForm();">
-      <span class="fab-option-icon">${bigEmoji('📝')}</span> Registrar comida
+      <span class="fab-option-icon">${bigEmoji('📝')}</span> ${tr('register_meal')}
     </button>
     <button class="fab-option" onclick="closeAddMenu(); openScanChoice();">
-      <span class="fab-option-icon">${ICON.camera}</span> Escanear comida
+      <span class="fab-option-icon">${ICON.camera}</span> ${tr('scan_food')}
     </button>
     <button class="fab-option" onclick="closeAddMenu(); openSavedMeals();">
-      <span class="fab-option-icon">${ICON.star}</span> Comida guardada
+      <span class="fab-option-icon">${ICON.star}</span> ${tr('saved_meal')}
     </button>
     <button class="fab-option" onclick="closeAddMenu(); openExercisePicker();">
-      <span class="fab-option-icon">${bigEmoji('🏃')}</span> Registrar ejercicio
+      <span class="fab-option-icon">${bigEmoji('🏃')}</span> ${tr('register_exercise')}
     </button>
   `;
 }
