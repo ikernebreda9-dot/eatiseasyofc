@@ -241,6 +241,13 @@ details .inner{padding-top:10px;}
 .cam-seg.active{background:var(--accent); color:#fff;}
 
 .qf-list{display:flex; flex-direction:column; gap:8px; margin-top:10px;}
+.portion-mode-row{display:flex; gap:8px;}
+.portion-mode-btn{flex:1; padding:11px 8px; border-radius:14px; border:1.5px solid var(--line-strong); background:var(--surface); font-family:inherit; font-weight:700; font-size:12.5px; color:var(--muted); cursor:pointer;}
+.portion-mode-btn.active{border-color:var(--accent); background:var(--accent-soft); color:var(--accent-dark);}
+.portion-size-row{display:flex; gap:8px;}
+.portion-size-btn{flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:14px 6px; border-radius:14px; border:1.5px solid var(--line-strong); background:var(--surface); font-family:inherit; font-weight:700; font-size:13px; color:var(--muted); cursor:pointer;}
+.portion-size-btn span{font-size:10.5px; font-weight:600; opacity:.7;}
+.portion-size-btn.active{border-color:var(--accent); background:var(--accent-soft); color:var(--accent-dark);}
 .qf-row{display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:10px 12px; cursor:pointer;}
 .qf-icon{font-size:22px; flex-shrink:0;}
 .qf-body{flex:1; min-width:0;}
@@ -600,7 +607,7 @@ function keepLocalChoice(){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.67';
+const APP_VERSION = '0.68';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -2097,19 +2104,19 @@ function openFoodDetail(id){
       </div>
     </div>
 
-    <div class="hero-card" style="margin-top:14px;">
+    <div class="hero-card" style="margin-top:14px; cursor:pointer;" onclick="editFoodField('${f.id}','cal')">
       <div class="hero-top">
         <div>
-          <div class="hero-number">${f.cal}</div>
+          <div class="hero-number">${f.cal} <span style="font-size:14px; opacity:.4;">✎</span></div>
           <div class="hero-label">${ICON.fire} Calorías</div>
         </div>
       </div>
     </div>
 
     <div class="macro-grid" style="margin-top:12px;">
-      <div class="macro-chip" style="background:var(--protein-soft);"><span>${ICON.protein}</span><b>${fmt1(f.protein)} g</b><small>Proteína</small></div>
-      <div class="macro-chip" style="background:var(--carbs-soft);"><span>${ICON.carbs}</span><b>${fmt1(f.carb)} g</b><small>Carbohidratos</small></div>
-      <div class="macro-chip" style="background:var(--fat-soft);"><span>${ICON.water}</span><b>${fmt1(f.fat)} g</b><small>Grasas</small></div>
+      <div class="macro-chip" style="background:var(--protein-soft); cursor:pointer;" onclick="editFoodField('${f.id}','protein')"><span>${ICON.protein}</span><b>${fmt1(f.protein)} g</b><small>Proteína ✎</small></div>
+      <div class="macro-chip" style="background:var(--carbs-soft); cursor:pointer;" onclick="editFoodField('${f.id}','carb')"><span>${ICON.carbs}</span><b>${fmt1(f.carb)} g</b><small>Carbohidratos ✎</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft); cursor:pointer;" onclick="editFoodField('${f.id}','fat')"><span>${ICON.water}</span><b>${fmt1(f.fat)} g</b><small>Grasas ✎</small></div>
     </div>
 
     ${hs ? `
@@ -2154,19 +2161,19 @@ function openPendingFoodDetail(){
       <input id="pending-name-input" value="${pf.name}" class="pending-name-input">
     </div>
 
-    <div class="hero-card">
+    <div class="hero-card" style="cursor:pointer;" onclick="editPendingField('cal')">
       <div class="hero-top">
         <div>
-          <div class="hero-number">${pf.cal}</div>
+          <div class="hero-number">${pf.cal} <span style="font-size:14px; opacity:.4;">✎</span></div>
           <div class="hero-label">${ICON.fire} Calorías</div>
         </div>
       </div>
     </div>
 
     <div class="macro-grid" style="margin-top:12px;">
-      <div class="macro-chip" style="background:var(--protein-soft);"><span>${ICON.protein}</span><b>${fmt1(pf.protein)} g</b><small>Proteína</small></div>
-      <div class="macro-chip" style="background:var(--carbs-soft);"><span>${ICON.carbs}</span><b>${fmt1(pf.carb)} g</b><small>Carbohidratos</small></div>
-      <div class="macro-chip" style="background:var(--fat-soft);"><span>${ICON.water}</span><b>${fmt1(pf.fat)} g</b><small>Grasas</small></div>
+      <div class="macro-chip" style="background:var(--protein-soft); cursor:pointer;" onclick="editPendingField('protein')"><span>${ICON.protein}</span><b>${fmt1(pf.protein)} g</b><small>Proteína ✎</small></div>
+      <div class="macro-chip" style="background:var(--carbs-soft); cursor:pointer;" onclick="editPendingField('carb')"><span>${ICON.carbs}</span><b>${fmt1(pf.carb)} g</b><small>Carbohidratos ✎</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft); cursor:pointer;" onclick="editPendingField('fat')"><span>${ICON.water}</span><b>${fmt1(pf.fat)} g</b><small>Grasas ✎</small></div>
     </div>
 
     ${hs ? `
@@ -2183,9 +2190,10 @@ function openPendingFoodDetail(){
     ${renderIngredientChips(pf.ingredients)}` : ''}
 
     <div style="display:flex; gap:10px; margin-top:20px;">
-      <button class="btn accent" onclick="confirmPendingFoodFromDetail()">Añadir a mi día</button>
-      <button class="btn ghost small" onclick="cancelPendingFoodFromDetail()">Cancelar</button>
+      ${pf.photo ? `<button class="btn ghost" onclick="startFixResultsPending()">${bigEmoji('✨')} Arreglar</button>` : ''}
+      <button class="btn accent" onclick="confirmPendingFoodFromDetail()">Guardar</button>
     </div>
+    <button class="btn ghost small" style="margin-top:10px;" onclick="cancelPendingFoodFromDetail()">Cancelar</button>
   `;
   document.getElementById('food-detail').classList.remove('hide');
 }
@@ -2217,7 +2225,7 @@ function startEditServings(id){
   if(!f) return;
   document.getElementById('qty-pill-wrap').innerHTML = `
     <div style="display:flex; align-items:center; gap:6px;">
-      <input id="servings-input" type="number" step="0.25" min="0.25" value="${f.servings || 1}" style="width:56px; border:1.5px solid var(--line-strong); border-radius:8px; padding:5px 6px; font-size:13px; text-align:center;">
+      <input id="servings-input" type="number" inputmode="decimal" step="0.25" min="0.25" value="${f.servings || 1}" style="width:56px; border:1.5px solid var(--line-strong); border-radius:8px; padding:5px 6px; font-size:13px; text-align:center;">
       <button class="btn accent small" onclick="confirmServings('${id}')" style="padding:6px 10px;">✓</button>
     </div>`;
 }
@@ -2237,6 +2245,89 @@ async function confirmServings(id){
   showToast('Cantidad actualizada');
   openFoodDetail(id);
   renderToday();
+}
+
+function editFoodField(id, field){
+  const f = state.log.foods.find(x => x.id === id);
+  if(!f) return;
+  const labels = { cal:'Calorías', protein:'Proteína (g)', carb:'Carbohidratos (g)', fat:'Grasas (g)' };
+  openActionOverlay(`
+    <h1 style="margin:0 0 14px 0;">✎ ${labels[field]}</h1>
+    <div class="field">
+      <input id="edit-food-field-input" type="number" inputmode="decimal" step="0.1" min="0" value="${f[field]}">
+    </div>
+    <button class="btn accent" style="margin-top:10px;" onclick="saveFoodField('${id}','${field}')">Guardar</button>
+  `);
+  setTimeout(() => { const el = document.getElementById('edit-food-field-input'); if(el){ el.focus(); el.select(); } }, 100);
+}
+async function saveFoodField(id, field){
+  const input = document.getElementById('edit-food-field-input');
+  const v = parseFloat(input.value);
+  if(isNaN(v) || v < 0){ showToast('Escribe un número válido', true); return; }
+  const f = state.log.foods.find(x => x.id === id);
+  if(!f) return;
+  f[field] = field === 'cal' ? Math.round(v) : round1(v);
+  await safeSet(logKey(), state.log);
+  closeActionOverlay();
+  renderAll();
+  openFoodDetail(id);
+  showToast('Actualizado');
+}
+
+function editPendingField(field){
+  const pf = state.pendingFood;
+  if(!pf) return;
+  const labels = { cal:'Calorías', protein:'Proteína (g)', carb:'Carbohidratos (g)', fat:'Grasas (g)' };
+  openActionOverlay(`
+    <h1 style="margin:0 0 14px 0;">✎ ${labels[field]}</h1>
+    <div class="field">
+      <input id="edit-field-input" type="number" inputmode="decimal" step="0.1" min="0" value="${pf[field]}">
+    </div>
+    <button class="btn accent" style="margin-top:10px;" onclick="savePendingField('${field}')">Guardar</button>
+  `);
+  setTimeout(() => { const el = document.getElementById('edit-field-input'); if(el){ el.focus(); el.select(); } }, 100);
+}
+function savePendingField(field){
+  const input = document.getElementById('edit-field-input');
+  const v = parseFloat(input.value);
+  if(isNaN(v) || v < 0){ showToast('Escribe un número válido', true); return; }
+  state.pendingFood[field] = field === 'cal' ? Math.round(v) : round1(v);
+  closeActionOverlay();
+  openPendingFoodDetail();
+}
+
+function startFixResultsPending(){
+  const pf = state.pendingFood;
+  if(!pf || !pf.photo) return;
+  openActionOverlay(`
+    <h1 style="margin:0 0 12px 0;">${bigEmoji('✨')} Arreglar resultados</h1>
+    <div class="field"><label>¿Qué está mal? (opcional)</label>
+      <textarea id="fix-note-pending" rows="3" placeholder="Ej: esto es pollo, no salmón / la ración es más pequeña..." style="width:100%; border:1.5px solid var(--line-strong); border-radius:10px; padding:8px; font-family:inherit; font-size:13px;"></textarea>
+    </div>
+    <button class="btn accent" onclick="submitFixResultsPending()">Volver a analizar</button>
+    <button class="btn ghost small" style="margin-top:10px;" onclick="closeActionOverlay(); openPendingFoodDetail();">Cancelar</button>
+  `);
+}
+async function submitFixResultsPending(){
+  const pf = state.pendingFood;
+  if(!pf || !pf.photo) return;
+  const note = document.getElementById('fix-note-pending').value.trim();
+  closeActionOverlay();
+  state.analyzing = true;
+  setTab('today');
+  startAnalyzingAnimation();
+  try{
+    const base64 = pf.photo.split(',')[1];
+    const result = await analyzeFoodImage(base64, 'image/jpeg', note || 'el resultado anterior no era correcto, corrígelo');
+    state.pendingFood = { ...result, photo: pf.photo };
+  }catch(e){
+    showToast('No se pudo volver a analizar: ' + e.message, true);
+  }finally{
+    stopAnalyzingAnimation();
+    state.analyzing = false;
+    renderAll();
+    openPendingFoodDetail();
+  }
 }
 
 function startFixResults(id){
@@ -2756,12 +2847,12 @@ function renderAdd(){
       <div class="inner">
         <div class="field"><label>Nombre</label><input id="mf-name" placeholder="Ensalada de pollo"></div>
         <div class="row2">
-          <div class="field"><label>Kcal</label><input id="mf-cal" type="number" placeholder="450"></div>
-          <div class="field"><label>Proteína (g)</label><input id="mf-protein" type="number" placeholder="30"></div>
+          <div class="field"><label>Kcal</label><input id="mf-cal" type="number" inputmode="decimal" placeholder="450"></div>
+          <div class="field"><label>Proteína (g)</label><input id="mf-protein" type="number" inputmode="decimal" placeholder="30"></div>
         </div>
         <div class="row2">
-          <div class="field"><label>Carbs (g)</label><input id="mf-carb" type="number" placeholder="40"></div>
-          <div class="field"><label>Grasas (g)</label><input id="mf-fat" type="number" placeholder="15"></div>
+          <div class="field"><label>Carbs (g)</label><input id="mf-carb" type="number" inputmode="decimal" placeholder="40"></div>
+          <div class="field"><label>Grasas (g)</label><input id="mf-fat" type="number" inputmode="decimal" placeholder="15"></div>
         </div>
         <button class="btn" onclick="addManualFood()">Añadir comida</button>
       </div>
@@ -2964,7 +3055,7 @@ function renderIngredientEditRows(foodId){
   const rows = ingEditBuffer.map((ing, i) => `
     <div class="ing-edit-row">
       <input type="text" class="ing-edit-name" value="${ing.name}" placeholder="Ingrediente" oninput="ingEditBuffer[${i}].name=this.value">
-      <input type="number" class="ing-edit-grams" value="${ing.grams != null ? ing.grams : ''}" placeholder="g auto" oninput="ingEditBuffer[${i}].grams=this.value?parseFloat(this.value):null">
+      <input type="number" inputmode="decimal" class="ing-edit-grams" value="${ing.grams != null ? ing.grams : ''}" placeholder="g auto" oninput="ingEditBuffer[${i}].grams=this.value?parseFloat(this.value):null">
       <button class="ing-edit-del" onclick="removeIngRow(${i}, '${foodId}')">✕</button>
     </div>`).join('');
   wrap.innerHTML = `
@@ -3084,62 +3175,227 @@ async function analyzeFoodText(query){
   };
 }
 
-// Alimentos comunes para añadir al instante, sin esperar a la IA —
-// valores aproximados de referencia nutricional estándar.
+// Base de datos de alimentos comunes. Todos los valores son POR 100g
+// (referencia nutricional estándar), más el peso típico de una unidad
+// y de cada tamaño, para poder calcular cualquier cantidad.
 const QUICK_FOODS = [
-  { emoji:'🍎', name:'Manzana', unit:'mediana', cal:95, protein:0.5, carb:25, fat:0.3 },
-  { emoji:'🍌', name:'Plátano', unit:'mediano', cal:105, protein:1.3, carb:27, fat:0.4 },
-  { emoji:'🥚', name:'Huevo', unit:'grande', cal:72, protein:6.3, carb:0.4, fat:5 },
-  { emoji:'🍞', name:'Pan blanco', unit:'rebanada', cal:79, protein:2.7, carb:15, fat:1 },
-  { emoji:'🍚', name:'Arroz cocido', unit:'100g', cal:130, protein:2.7, carb:28, fat:0.3 },
-  { emoji:'🍗', name:'Pechuga de pollo', unit:'100g', cal:165, protein:31, carb:0, fat:3.6 },
-  { emoji:'🐟', name:'Salmón', unit:'100g', cal:208, protein:20, carb:0, fat:13 },
-  { emoji:'🥛', name:'Leche entera', unit:'vaso (240ml)', cal:149, protein:8, carb:12, fat:8 },
-  { emoji:'🥑', name:'Aguacate', unit:'medio', cal:160, protein:2, carb:8.5, fat:15 },
-  { emoji:'🥜', name:'Mantequilla de cacahuete', unit:'cucharada', cal:94, protein:3.6, carb:3.1, fat:8 },
-  { emoji:'🫒', name:'Aceite de oliva', unit:'cucharada', cal:119, protein:0, carb:0, fat:13.5 },
-  { emoji:'🍅', name:'Tomate', unit:'mediano', cal:22, protein:1.1, carb:4.8, fat:0.2 },
-  { emoji:'🥦', name:'Brócoli', unit:'taza', cal:55, protein:3.7, carb:11, fat:0.6 },
-  { emoji:'🥬', name:'Espinacas', unit:'taza', cal:7, protein:0.9, carb:1.1, fat:0.1 },
-  { emoji:'🥔', name:'Patata', unit:'mediana', cal:161, protein:4.3, carb:37, fat:0.2 },
-  { emoji:'🧀', name:'Queso', unit:'30g', cal:113, protein:7, carb:0.9, fat:9 },
-  { emoji:'🥣', name:'Yogur natural', unit:'100g', cal:59, protein:3.5, carb:4.7, fat:3.3 },
-  { emoji:'🌰', name:'Almendras', unit:'28g (puñado)', cal:164, protein:6, carb:6, fat:14 },
+  { name:'Manzana', per100:{cal:52,protein:0.3,carb:14,fat:0.2}, unitG:180, sizes:{pequeño:130,mediano:180,grande:240} },
+  { name:'Plátano', per100:{cal:89,protein:1.1,carb:23,fat:0.3}, unitG:120, sizes:{pequeño:90,mediano:120,grande:150} },
+  { name:'Naranja', per100:{cal:47,protein:0.9,carb:12,fat:0.1}, unitG:150, sizes:{pequeño:110,mediano:150,grande:200} },
+  { name:'Pera', per100:{cal:57,protein:0.4,carb:15,fat:0.1}, unitG:170, sizes:{pequeño:130,mediano:170,grande:220} },
+  { name:'Fresas', per100:{cal:32,protein:0.7,carb:7.7,fat:0.3}, unitG:12 },
+  { name:'Uvas', per100:{cal:69,protein:0.7,carb:18,fat:0.2}, unitG:5 },
+  { name:'Sandía', per100:{cal:30,protein:0.6,carb:7.6,fat:0.2}, unitG:280 },
+  { name:'Melón', per100:{cal:34,protein:0.8,carb:8.2,fat:0.2}, unitG:250 },
+  { name:'Kiwi', per100:{cal:61,protein:1.1,carb:15,fat:0.5}, unitG:75 },
+  { name:'Aguacate', per100:{cal:160,protein:2,carb:8.5,fat:15}, unitG:200, sizes:{pequeño:140,mediano:200,grande:260} },
+  { name:'Huevo', per100:{cal:143,protein:12.6,carb:0.7,fat:9.9}, unitG:55, sizes:{pequeño:45,mediano:55,grande:68} },
+  { name:'Clara de huevo', per100:{cal:52,protein:11,carb:0.7,fat:0.2}, unitG:33 },
+  { name:'Pechuga de pollo', per100:{cal:165,protein:31,carb:0,fat:3.6}, unitG:150 },
+  { name:'Muslo de pollo', per100:{cal:209,protein:26,carb:0,fat:11}, unitG:120 },
+  { name:'Ternera magra', per100:{cal:217,protein:26,carb:0,fat:12}, unitG:150 },
+  { name:'Cerdo (lomo)', per100:{cal:242,protein:27,carb:0,fat:14}, unitG:150 },
+  { name:'Pavo', per100:{cal:135,protein:29,carb:0,fat:1.7}, unitG:150 },
+  { name:'Salmón', per100:{cal:208,protein:20,carb:0,fat:13}, unitG:150 },
+  { name:'Atún al natural', per100:{cal:116,protein:26,carb:0,fat:1}, unitG:80 },
+  { name:'Merluza', per100:{cal:90,protein:18,carb:0,fat:1.8}, unitG:150 },
+  { name:'Gambas', per100:{cal:99,protein:24,carb:0.2,fat:0.3}, unitG:12 },
+  { name:'Arroz blanco cocido', per100:{cal:130,protein:2.7,carb:28,fat:0.3}, unitG:150 },
+  { name:'Arroz integral cocido', per100:{cal:112,protein:2.6,carb:24,fat:0.9}, unitG:150 },
+  { name:'Pasta cocida', per100:{cal:131,protein:5,carb:25,fat:1.1}, unitG:180 },
+  { name:'Pan blanco', per100:{cal:265,protein:9,carb:49,fat:3.2}, unitG:30 },
+  { name:'Pan integral', per100:{cal:247,protein:13,carb:41,fat:3.4}, unitG:32 },
+  { name:'Patata cocida', per100:{cal:87,protein:2,carb:20,fat:0.1}, unitG:170, sizes:{pequeño:120,mediano:170,grande:230} },
+  { name:'Boniato', per100:{cal:86,protein:1.6,carb:20,fat:0.1}, unitG:160 },
+  { name:'Avena', per100:{cal:389,protein:17,carb:66,fat:7}, unitG:40 },
+  { name:'Lentejas cocidas', per100:{cal:116,protein:9,carb:20,fat:0.4}, unitG:180 },
+  { name:'Garbanzos cocidos', per100:{cal:164,protein:9,carb:27,fat:2.6}, unitG:180 },
+  { name:'Alubias cocidas', per100:{cal:127,protein:8.7,carb:23,fat:0.5}, unitG:180 },
+  { name:'Leche entera', per100:{cal:61,protein:3.2,carb:4.8,fat:3.3}, unitG:240 },
+  { name:'Leche desnatada', per100:{cal:34,protein:3.4,carb:5,fat:0.1}, unitG:240 },
+  { name:'Yogur natural', per100:{cal:59,protein:3.5,carb:4.7,fat:3.3}, unitG:125 },
+  { name:'Yogur griego', per100:{cal:97,protein:9,carb:3.6,fat:5}, unitG:150 },
+  { name:'Queso curado', per100:{cal:390,protein:25,carb:1.3,fat:32}, unitG:30 },
+  { name:'Queso fresco', per100:{cal:98,protein:11,carb:3.4,fat:4.3}, unitG:60 },
+  { name:'Requesón', per100:{cal:98,protein:11,carb:3.4,fat:4.3}, unitG:100 },
+  { name:'Tomate', per100:{cal:18,protein:0.9,carb:3.9,fat:0.2}, unitG:120, sizes:{pequeño:80,mediano:120,grande:180} },
+  { name:'Lechuga', per100:{cal:15,protein:1.4,carb:2.9,fat:0.2}, unitG:50 },
+  { name:'Espinacas', per100:{cal:23,protein:2.9,carb:3.6,fat:0.4}, unitG:30 },
+  { name:'Brócoli', per100:{cal:34,protein:2.8,carb:7,fat:0.4}, unitG:90 },
+  { name:'Zanahoria', per100:{cal:41,protein:0.9,carb:10,fat:0.2}, unitG:70 },
+  { name:'Pimiento', per100:{cal:31,protein:1,carb:6,fat:0.3}, unitG:120 },
+  { name:'Cebolla', per100:{cal:40,protein:1.1,carb:9.3,fat:0.1}, unitG:110 },
+  { name:'Calabacín', per100:{cal:17,protein:1.2,carb:3.1,fat:0.3}, unitG:200 },
+  { name:'Champiñones', per100:{cal:22,protein:3.1,carb:3.3,fat:0.3}, unitG:20 },
+  { name:'Aceite de oliva', per100:{cal:884,protein:0,carb:0,fat:100}, unitG:14 },
+  { name:'Almendras', per100:{cal:579,protein:21,carb:22,fat:50}, unitG:28 },
+  { name:'Nueces', per100:{cal:654,protein:15,carb:14,fat:65}, unitG:28 },
+  { name:'Mantequilla de cacahuete', per100:{cal:588,protein:25,carb:20,fat:50}, unitG:16 },
+  { name:'Chocolate negro', per100:{cal:546,protein:4.9,carb:61,fat:31}, unitG:25 },
+  { name:'Miel', per100:{cal:304,protein:0.3,carb:82,fat:0}, unitG:21 },
+  { name:'Proteína en polvo', per100:{cal:375,protein:80,carb:7,fat:4}, unitG:30 },
 ];
 
 function openFoodSearch(){
   if(!isPro()){ showToast('Buscar alimentos es una función Pro', true); setTab('pro'); return; }
-  const rows = QUICK_FOODS.map((f, i) => `
-    <div class="qf-row" onclick="addQuickFood(${i})">
-      <div class="qf-icon">${bigEmoji(f.emoji)}</div>
-      <div class="qf-body">
-        <div class="qf-name">${f.name}</div>
-        <div class="qf-sub">${ICON.fire} ${f.cal} cal · ${f.unit}</div>
-      </div>
-      <div class="qf-add">+</div>
-    </div>
-  `).join('');
   openActionOverlay(`
     <h1 style="margin:0 0 14px 0;">Buscar alimento</h1>
     <div class="field">
-      <input id="food-search-input" placeholder="Describe qué has comido" onkeydown="if(event.key==='Enter') runFoodSearch();">
+      <input id="food-search-input" placeholder="Describe qué has comido" oninput="filterQuickFoods()" onkeydown="if(event.key==='Enter') runFoodSearch();">
     </div>
     <button class="btn ghost" style="margin:10px 0 4px 0; border-radius:24px;" onclick="closeActionOverlay(); openManualFoodForm();">
       ✎ Registrar comida a mano
     </button>
     <div id="food-search-result"></div>
     <div class="section-title" style="margin-top:20px;">Sugerencias</div>
-    <div class="qf-list">${rows}</div>
+    <div class="qf-list" id="qf-list">${buildQuickFoodRows('')}</div>
   `);
   setTimeout(() => { const el = document.getElementById('food-search-input'); if(el) el.focus(); }, 100);
 }
 
-async function addQuickFood(index){
+function buildQuickFoodRows(filter){
+  const q = (filter || '').trim().toLowerCase();
+  const matches = QUICK_FOODS
+    .map((f, i) => ({ f, i }))
+    .filter(({f}) => !q || f.name.toLowerCase().includes(q));
+  if(!matches.length) return `<div class="empty">Ningún alimento coincide — pulsa Intro para buscarlo con IA.</div>`;
+  return matches.map(({f, i}) => {
+    const per = f.per100;
+    const refG = f.sizes ? f.sizes.mediano : f.unitG;
+    const cal = Math.round(per.cal * refG / 100);
+    return `
+      <div class="qf-row" onclick="openPortionPicker(${i})">
+        <div class="qf-body">
+          <div class="qf-name">${f.name}</div>
+          <div class="qf-sub">${ICON.fire} ${cal} cal · ${refG} g</div>
+        </div>
+        <div class="qf-add">›</div>
+      </div>`;
+  }).join('');
+}
+
+function filterQuickFoods(){
+  const input = document.getElementById('food-search-input');
+  const listEl = document.getElementById('qf-list');
+  if(listEl) listEl.innerHTML = buildQuickFoodRows(input ? input.value : '');
+}
+
+// ---------- Selector de cantidad de un alimento ----------
+let portionState = { index:null, mode:'size', grams:0, units:1, size:'mediano' };
+
+function openPortionPicker(index){
   const f = QUICK_FOODS[index];
   if(!f) return;
+  portionState = {
+    index,
+    mode: f.sizes ? 'size' : 'units',
+    grams: f.sizes ? f.sizes.mediano : f.unitG,
+    units: 1,
+    size: 'mediano'
+  };
+  renderPortionPicker();
+}
+
+function computePortionGrams(){
+  const f = QUICK_FOODS[portionState.index];
+  if(portionState.mode === 'grams') return portionState.grams || 0;
+  if(portionState.mode === 'units') return (portionState.units || 0) * f.unitG;
+  return (f.sizes && f.sizes[portionState.size]) || f.unitG;
+}
+
+function setPortionMode(mode){
+  portionState.mode = mode;
+  if(mode === 'grams' && !portionState.grams) portionState.grams = computePortionGrams();
+  renderPortionPicker();
+}
+function setPortionSize(size){
+  portionState.size = size;
+  renderPortionPicker();
+}
+function onPortionInput(field, value){
+  const n = parseFloat(value);
+  portionState[field] = isNaN(n) ? 0 : n;
+  updatePortionNumbers();
+}
+
+function portionMacros(){
+  const f = QUICK_FOODS[portionState.index];
+  const g = computePortionGrams();
+  const per = f.per100;
+  return {
+    grams: Math.round(g),
+    cal: Math.round(per.cal * g / 100),
+    protein: round1(per.protein * g / 100),
+    carb: round1(per.carb * g / 100),
+    fat: round1(per.fat * g / 100)
+  };
+}
+
+function updatePortionNumbers(){
+  const m = portionMacros();
+  const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+  set('portion-cal', m.cal);
+  set('portion-grams', m.grams + ' g');
+  set('portion-protein', m.protein + 'g');
+  set('portion-carb', m.carb + 'g');
+  set('portion-fat', m.fat + 'g');
+}
+
+function renderPortionPicker(){
+  const f = QUICK_FOODS[portionState.index];
+  const m = portionMacros();
+  const hasSizes = !!f.sizes;
+  openActionOverlay(`
+    <h1 style="margin:0 0 4px 0;">${f.name}</h1>
+    <p class="sub" style="margin:0 0 16px 0;">Elige la cantidad y calculamos sus valores.</p>
+
+    <div class="portion-mode-row">
+      ${hasSizes ? `<button class="portion-mode-btn ${portionState.mode==='size'?'active':''}" onclick="setPortionMode('size')">Tamaño</button>` : ''}
+      <button class="portion-mode-btn ${portionState.mode==='units'?'active':''}" onclick="setPortionMode('units')">Unidades</button>
+      <button class="portion-mode-btn ${portionState.mode==='grams'?'active':''}" onclick="setPortionMode('grams')">Gramos</button>
+    </div>
+
+    <div style="margin-top:14px;">
+      ${portionState.mode === 'size' ? `
+        <div class="portion-size-row">
+          ${['pequeño','mediano','grande'].map(s =>
+            `<button class="portion-size-btn ${portionState.size===s?'active':''}" onclick="setPortionSize('${s}')">${s.charAt(0).toUpperCase()+s.slice(1)}<span>${f.sizes[s]} g</span></button>`
+          ).join('')}
+        </div>` : ''}
+      ${portionState.mode === 'units' ? `
+        <div class="field" style="margin-bottom:0;"><label>Número de unidades (1 unidad ≈ ${f.unitG} g)</label>
+          <input type="number" inputmode="decimal" step="0.5" min="0" value="${portionState.units}" oninput="onPortionInput('units', this.value)">
+        </div>` : ''}
+      ${portionState.mode === 'grams' ? `
+        <div class="field" style="margin-bottom:0;"><label>Gramos</label>
+          <input type="number" inputmode="numeric" step="1" min="0" value="${portionState.grams}" oninput="onPortionInput('grams', this.value)">
+        </div>` : ''}
+    </div>
+
+    <div class="hero-card" style="margin-top:18px;">
+      <div style="text-align:center;">
+        <div style="font-size:32px; font-weight:800;" id="portion-cal">${m.cal}</div>
+        <div style="font-size:12px; color:var(--muted);">calorías · <span id="portion-grams">${m.grams} g</span></div>
+      </div>
+    </div>
+    <div class="macro-chip-row">
+      <div class="macro-chip">${ICON.protein}<span id="portion-protein">${m.protein}g</span></div>
+      <div class="macro-chip">${ICON.carbs}<span id="portion-carb">${m.carb}g</span></div>
+      <div class="macro-chip">${ICON.water}<span id="portion-fat">${m.fat}g</span></div>
+    </div>
+
+    <button class="btn accent" style="margin-top:18px;" onclick="confirmPortion()">Añadir a mi día</button>
+    <button class="btn ghost small" style="margin-top:10px;" onclick="openFoodSearch()">← Volver</button>
+  `);
+}
+
+async function confirmPortion(){
+  const f = QUICK_FOODS[portionState.index];
+  const m = portionMacros();
+  if(!m.grams){ showToast('Indica una cantidad', true); return; }
   closeActionOverlay();
   const newId = await addFoodEntry({
-    name: `${f.name} (${f.unit})`, cal: f.cal, protein: f.protein, carb: f.carb, fat: f.fat,
+    name: `${f.name} (${m.grams} g)`, cal: m.cal, protein: m.protein, carb: m.carb, fat: m.fat,
     source: 'quick', servings: 1
   });
   openFoodDetail(newId);
@@ -3241,10 +3497,36 @@ async function openSavedMeals(){
         <div class="log-cal">${ICON.fire} <b>${s.cal}</b> calorías</div>
       </div>
     </div>`).join('') : `<div class="empty">Aún no has guardado ninguna comida — abre una comida ya registrada y toca ${ICON.star} para guardarla.</div>`;
-  openActionOverlay(`<h1 style="margin:0 0 6px 0;">${ICON.star} Comida guardada</h1><p class="sub" style="margin:0 0 14px 0;">Toca una para añadirla a hoy.</p>${rows}`);
+  openActionOverlay(`<h1 style="margin:0 0 6px 0;">${ICON.star} Comida guardada</h1><p class="sub" style="margin:0 0 14px 0;">Toca una para verla.</p>${rows}`);
 }
 
 async function useSavedMeal(id){
+  const saved = (await safeGet('savedMeals')) || [];
+  const s = saved.find(x => x.id === id);
+  if(!s) return;
+  const ingChips = (normalizeIngredients(s.ingredients) || []).filter(i => !(i.grams === 0))
+    .map(i => `<span class="ing-chip">${i.name}${i.grams ? ` · ${i.grams} g` : ''}</span>`).join('');
+  openActionOverlay(`
+    ${s.photo ? `<div class="detail-photo"><img src="${s.photo}"></div>` : ''}
+    <h1 style="margin:10px 0 4px 0;">${s.name}</h1>
+    <div class="hero-card" style="margin-top:12px;">
+      <div style="text-align:center;">
+        <div style="font-size:32px; font-weight:800;">${s.cal}</div>
+        <div style="font-size:12px; color:var(--muted);">calorías</div>
+      </div>
+    </div>
+    <div class="macro-chip-row">
+      <div class="macro-chip">${ICON.protein}<span>${round1(s.protein)}g</span></div>
+      <div class="macro-chip">${ICON.carbs}<span>${round1(s.carb)}g</span></div>
+      <div class="macro-chip">${ICON.water}<span>${round1(s.fat)}g</span></div>
+    </div>
+    ${ingChips ? `<div class="section-title">Ingredientes</div><div class="ing-wrap">${ingChips}</div>` : ''}
+    <button class="btn accent" style="margin-top:18px;" onclick="confirmUseSavedMeal('${s.id}')">Añadir a mi día</button>
+    <button class="btn ghost small" style="margin-top:10px;" onclick="openSavedMeals()">← Volver</button>
+  `);
+}
+
+async function confirmUseSavedMeal(id){
   const saved = (await safeGet('savedMeals')) || [];
   const s = saved.find(x => x.id === id);
   if(!s) return;
@@ -3345,16 +3627,16 @@ function selectExerciseType(type){
     openActionOverlay(`
       <h1 style="margin:0 0 14px 0;">${bigEmoji('⚙️')} Otro ejercicio</h1>
       <div class="field"><label>Nombre</label><input id="ex-custom-name" placeholder="Natación, pádel, yoga..."></div>
-      <div class="field"><label>Calorías quemadas</label><input id="ex-custom-cal" type="number" placeholder="200"></div>
+      <div class="field"><label>Calorías quemadas</label><input id="ex-custom-cal" type="number" inputmode="decimal" placeholder="200"></div>
       <button class="btn accent" onclick="submitCustomExercise()">Registrar</button>
     `);
     return;
   }
   openActionOverlay(`
     <h1 style="margin:0 0 14px 0;">${cfg.icon} ${cfg.label}</h1>
-    <div class="field"><label>Minutos</label><input id="ex-minutes" type="number" placeholder="30"></div>
-    ${cfg.hasDistance ? `<div class="field"><label>Kilómetros (opcional)</label><input id="ex-km" type="number" step="0.1" placeholder="5"></div>` : ''}
-    <div class="field"><label>Calorías quemadas (opcional — si no la sabes, la calculamos)</label><input id="ex-cal-input" type="number" placeholder="Auto"></div>
+    <div class="field"><label>Minutos</label><input id="ex-minutes" type="number" inputmode="decimal" placeholder="30"></div>
+    ${cfg.hasDistance ? `<div class="field"><label>Kilómetros (opcional)</label><input id="ex-km" type="number" inputmode="decimal" step="0.1" placeholder="5"></div>` : ''}
+    <div class="field"><label>Calorías quemadas (opcional — si no la sabes, la calculamos)</label><input id="ex-cal-input" type="number" inputmode="decimal" placeholder="Auto"></div>
     <button class="btn accent" onclick="submitTypedExercise('${type}')">Registrar</button>
   `);
 }
@@ -3406,7 +3688,7 @@ function buildProgressHTML(){
       </div>
       <div class="field" style="margin-top:16px;"><label>Registrar peso ahora (${weightUnit()})</label>
         <div style="display:flex; gap:10px; align-items:center;">
-          <input id="w-today" type="number" step="0.1" placeholder="${kgToDisplay(latest)}" style="flex:1;">
+          <input id="w-today" type="number" inputmode="decimal" step="0.1" placeholder="${kgToDisplay(latest)}" style="flex:1;">
           <button class="btn accent small" onclick="logWeight()">Guardar</button>
         </div>
       </div>
@@ -3832,19 +4114,19 @@ async function openFoodDetailForDate(id, date){
     </div>
     <p class="sub" style="margin:2px 0 0 0;">${formatDateLabel(date)}</p>
 
-    <div class="hero-card" style="margin-top:14px;">
+    <div class="hero-card" style="margin-top:14px; cursor:pointer;" onclick="editFoodField('${f.id}','cal')">
       <div class="hero-top">
         <div>
-          <div class="hero-number">${f.cal}</div>
+          <div class="hero-number">${f.cal} <span style="font-size:14px; opacity:.4;">✎</span></div>
           <div class="hero-label">${ICON.fire} Calorías</div>
         </div>
       </div>
     </div>
 
     <div class="macro-grid" style="margin-top:12px;">
-      <div class="macro-chip" style="background:var(--protein-soft);"><span>${ICON.protein}</span><b>${fmt1(f.protein)} g</b><small>Proteína</small></div>
-      <div class="macro-chip" style="background:var(--carbs-soft);"><span>${ICON.carbs}</span><b>${fmt1(f.carb)} g</b><small>Carbohidratos</small></div>
-      <div class="macro-chip" style="background:var(--fat-soft);"><span>${ICON.water}</span><b>${fmt1(f.fat)} g</b><small>Grasas</small></div>
+      <div class="macro-chip" style="background:var(--protein-soft); cursor:pointer;" onclick="editFoodField('${f.id}','protein')"><span>${ICON.protein}</span><b>${fmt1(f.protein)} g</b><small>Proteína ✎</small></div>
+      <div class="macro-chip" style="background:var(--carbs-soft); cursor:pointer;" onclick="editFoodField('${f.id}','carb')"><span>${ICON.carbs}</span><b>${fmt1(f.carb)} g</b><small>Carbohidratos ✎</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft); cursor:pointer;" onclick="editFoodField('${f.id}','fat')"><span>${ICON.water}</span><b>${fmt1(f.fat)} g</b><small>Grasas ✎</small></div>
     </div>
 
     ${hs ? `
@@ -4041,8 +4323,8 @@ function renderProfile(){
         </div>
         <div class="field"><label>Nombre</label><input id="new-reminder-name" placeholder="Vitamina D"></div>
         <div class="field" id="reminder-target-field" style="display:none;">
-          <label>Vasos objetivo al día</label><input id="new-reminder-target" type="number" placeholder="8">
-          <label style="margin-top:10px;">ML por vaso</label><input id="new-reminder-ml" type="number" placeholder="300" value="300">
+          <label>Vasos objetivo al día</label><input id="new-reminder-target" type="number" inputmode="decimal" placeholder="8">
+          <label style="margin-top:10px;">ML por vaso</label><input id="new-reminder-ml" type="number" inputmode="decimal" placeholder="300" value="300">
         </div>
         <button class="btn accent small" onclick="addReminder()">Añadir</button>
       </div>
@@ -4157,12 +4439,12 @@ function openRedoPlanFlow(){
     <p class="sub" style="margin:0 0 18px 0;">Vuelve a poner tus datos y te recalculamos calorías, macros y cuánto deberías quemar — sin tocar tu historial de comidas ni tu peso registrado.</p>
 
     <div class="row2">
-      <div class="field"><label>Edad</label><input id="rp-age" type="number" value="${p.age || ''}"></div>
-      <div class="field"><label>Altura (cm)</label><input id="rp-height" type="number" value="${p.heightCm || ''}"></div>
+      <div class="field"><label>Edad</label><input id="rp-age" type="number" inputmode="decimal" value="${p.age || ''}"></div>
+      <div class="field"><label>Altura (cm)</label><input id="rp-height" type="number" inputmode="decimal" value="${p.heightCm || ''}"></div>
     </div>
     <div class="row2">
-      <div class="field"><label>Peso actual (${weightUnit()})</label><input id="rp-current" type="number" step="0.1" value="${kgToDisplay(p.currentWeight)}"></div>
-      <div class="field"><label>Peso objetivo (${weightUnit()})</label><input id="rp-goal" type="number" step="0.1" value="${kgToDisplay(p.goalWeight)}"></div>
+      <div class="field"><label>Peso actual (${weightUnit()})</label><input id="rp-current" type="number" inputmode="decimal" step="0.1" value="${kgToDisplay(p.currentWeight)}"></div>
+      <div class="field"><label>Peso objetivo (${weightUnit()})</label><input id="rp-goal" type="number" inputmode="decimal" step="0.1" value="${kgToDisplay(p.goalWeight)}"></div>
     </div>
     <div class="field"><label>Actividad</label>
       <select id="rp-activity">
@@ -4231,14 +4513,14 @@ function openEditMacros(){
     </div>
     <div id="pr-custom-fields" style="${p.customMode?'':'display:none;'} background:var(--accent-soft); border-radius:12px; padding:14px; margin-top:8px;">
       <div class="field"><label>Calorías objetivo al día</label>
-        <input id="pr-custom-cal" type="number" value="${p.customCalories || t.autoCalorieTarget}" oninput="recalcMacrosPreview()">
+        <input id="pr-custom-cal" type="number" inputmode="decimal" value="${p.customCalories || t.autoCalorieTarget}" oninput="recalcMacrosPreview()">
       </div>
       <div class="row2">
-        <div class="field"><label>${ICON.protein} Proteína (g)</label><input id="pr-custom-protein" type="number" value="${p.customProtein != null ? p.customProtein : t.autoProteinG}"></div>
-        <div class="field"><label>${ICON.water} Grasas (g)</label><input id="pr-custom-fat" type="number" value="${p.customFat != null ? p.customFat : t.autoFatG}"></div>
+        <div class="field"><label>${ICON.protein} Proteína (g)</label><input id="pr-custom-protein" type="number" inputmode="decimal" value="${p.customProtein != null ? p.customProtein : t.autoProteinG}"></div>
+        <div class="field"><label>${ICON.water} Grasas (g)</label><input id="pr-custom-fat" type="number" inputmode="decimal" value="${p.customFat != null ? p.customFat : t.autoFatG}"></div>
       </div>
-      <div class="field"><label>${ICON.carbs} Carbohidratos (g)</label><input id="pr-custom-carb" type="number" value="${p.customCarb != null ? p.customCarb : t.autoCarbG}"></div>
-      <div class="field"><label>Objetivo kcal quemadas/día (ejercicio)</label><input id="pr-custom-burn" type="number" value="${p.customBurnGoal != null ? p.customBurnGoal : t.autoBurnGoal}"></div>
+      <div class="field"><label>${ICON.carbs} Carbohidratos (g)</label><input id="pr-custom-carb" type="number" inputmode="decimal" value="${p.customCarb != null ? p.customCarb : t.autoCarbG}"></div>
+      <div class="field"><label>Objetivo kcal quemadas/día (ejercicio)</label><input id="pr-custom-burn" type="number" inputmode="decimal" value="${p.customBurnGoal != null ? p.customBurnGoal : t.autoBurnGoal}"></div>
       <button type="button" class="btn ghost small" onclick="recalcMacrosPreview()">↻ Recalcular macros según estas calorías</button>
       <p style="font-size:11px; color:var(--muted); margin:10px 0 0 0;">Puedes tocar los gramos y dejarlos como quieras — el botón solo te da un punto de partida sugerido.</p>
     </div>
