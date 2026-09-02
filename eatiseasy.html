@@ -51,7 +51,7 @@ body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemF
 .topbar .brand .dot{color:var(--accent);}
 .topbar .date{font-family:inherit; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px;}
 .header-streak{font-size:11px; font-weight:700; color:var(--accent); margin-top:3px;}
-.screen{padding:2px 20px 24px 20px;}
+.screen{padding:2px 20px 24px 20px; position:relative;}
 
 .ring-wrap{display:flex; justify-content:center; padding:22px 0 8px 0;}
 
@@ -142,6 +142,10 @@ body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemF
 .plan-save-badge{background:var(--rind); color:#fff; font-size:9px; font-weight:800; padding:2px 6px; border-radius:8px;}
 .ob-sex-btn{flex:1; padding:16px 0; border-radius:16px; border:1.5px solid var(--line-strong); background:var(--surface); font-family:inherit; font-weight:700; font-size:14px; color:var(--muted); cursor:pointer; transition:all .15s ease;}
 .ob-sex-btn.active{border-color:var(--accent); background:var(--accent-soft); color:var(--accent-dark);}
+
+.ob-chip-grid{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;}
+.ob-chip{font-family:inherit; font-size:12.5px; font-weight:600; padding:9px 14px; border-radius:20px; border:1.5px solid var(--line-strong); background:var(--surface); color:var(--muted); cursor:pointer;}
+.ob-chip.active{border-color:var(--accent); background:var(--accent-soft); color:var(--accent-dark); font-weight:700;}
 .row2{display:flex; gap:16px;}
 .row2 .field{flex:1;}
 
@@ -161,15 +165,14 @@ details .inner{padding-top:10px;}
 
 .photo-btn{display:block; width:100%; padding:22px; text-align:center; border-radius:14px; background:var(--surface); color:var(--accent); font-family:inherit; font-weight:700; font-size:13.5px; cursor:pointer; border:1.5px dashed var(--line-strong);}
 
-.analyzing-wrap{padding:22px; background:var(--surface); border-radius:14px; border:1.5px solid var(--line-strong);}
-.analyzing-label{font-size:13.5px; font-weight:700; text-align:center; margin-bottom:14px; color:var(--paper);}
-.analyzing-track{height:8px; background:var(--line-strong); border-radius:5px; overflow:hidden;}
-.analyzing-fill{height:100%; background:var(--accent); border-radius:5px; width:0%; animation:analyzingProgress 3.5s cubic-bezier(.2,.7,.3,1) forwards;}
-@keyframes analyzingProgress{
-  0%{width:0%;}
-  55%{width:70%;}
-  100%{width:92%;}
-}
+.today-content{transition:filter .25s ease;}
+.today-content.is-blurred{filter:blur(10px); pointer-events:none; user-select:none;}
+.analyzing-overlay{position:fixed; inset:0; z-index:20; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:20px;}
+.analyzing-ring{width:120px; height:120px; position:relative;}
+.analyzing-ring-bg{stroke:var(--line-strong);}
+#analyzing-ring-fill{stroke:var(--accent); transition:stroke-dashoffset .1s linear;}
+.analyzing-pct{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-family:inherit; font-size:24px; font-weight:800; color:var(--paper); pointer-events:none;}
+.analyzing-msg{font-size:13.5px; font-weight:700; color:var(--paper); text-align:center; background:var(--surface); padding:10px 18px; border-radius:20px; box-shadow:0 6px 20px rgba(0,0,0,.12);}
 .visually-hidden-file{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;}
 
 .dim-overlay{position:fixed; inset:0; background:rgba(0,0,0,.45); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); z-index:150; display:flex; align-items:flex-end; justify-content:center; padding:0 20px calc(110px + env(safe-area-inset-bottom)) 20px;}
@@ -322,6 +325,10 @@ details .inner{padding-top:10px;}
 .macro-chip small{font-family:inherit; font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px;}
 
 .supp-btn{font-family:inherit; font-size:11px; font-weight:600; padding:7px 14px; border-radius:20px; border:1.5px solid var(--line-strong); background:transparent; color:var(--muted); cursor:pointer; white-space:nowrap; text-transform:uppercase; letter-spacing:.5px; transition:all .15s ease;}
+.water-stepper{display:flex; align-items:center; gap:6px;}
+.water-step-btn{width:28px; height:28px; border-radius:50%; border:1.5px solid var(--line-strong); background:var(--surface); color:var(--paper); font-size:16px; font-weight:700; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;}
+.water-step-btn:disabled{opacity:.35; cursor:default;}
+.water-step-btn:active:not(:disabled){transform:scale(.9); background:var(--accent-soft);}
 .supp-btn.taken{background:var(--accent); color:#FFFFFF; border-color:var(--accent);}
 
 .reminder-row{padding:12px 0; border-bottom:1px solid var(--line);}
@@ -555,7 +562,7 @@ async function checkCloudAfterSignIn(){
   if(!SYNC_ENDPOINT || !googleIdToken) return;
   const cloud = await pullFromCloud();
   const localHasData = state.log.foods.length > 0 || (state.logDates && state.logDates.length > 0);
-  if(cloud && cloud.data && (cloud.data.logs && Object.keys(cloud.data.logs).length)){
+  if(cloud && cloud.data && cloud.data.profile){
     if(localHasData){
       openActionOverlay(`
         <h1 style="margin:0 0 10px 0;">☁️ Hay datos guardados en la nube</h1>
@@ -589,7 +596,7 @@ function keepLocalChoice(){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.58';
+const APP_VERSION = '0.63';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -889,6 +896,11 @@ async function ensureLicenseCode(){
 
 let state = { profile:null, tab:'today', log:{foods:[],exercises:[]}, weights:[], logDates:[], supplements:[], takenToday:{}, daySummaries:[], analyzing:false, pendingFood:null };
 
+function formatMl(ml){
+  if(ml >= 1000) return (ml/1000).toFixed(1).replace(/\.0$/,'') + 'L';
+  return ml + 'ml';
+}
+
 function todayStr(){
   const d = new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -1037,7 +1049,7 @@ async function init(){
 // ======================================================================
 let obDraft = {};
 let obStep = 1;
-const OB_TOTAL_STEPS = 3;
+const OB_TOTAL_STEPS = 4;
 
 // Client ID de OAuth de Google para "Continuar con Google" — esto NO es
 // secreto, los client IDs están hechos para ir en código público.
@@ -1112,11 +1124,38 @@ function obSaveCurrentStepInputs(){
     obDraft.heightCm = getWheelValue('ob-height', obDraft.heightCm) || obDraft.heightCm;
     obDraft.currentWeight = getWheelValue('ob-current', obDraft.currentWeight) || obDraft.currentWeight;
     obDraft.goalWeight = getWheelValue('ob-goal', obDraft.goalWeight) || obDraft.goalWeight;
-  } else if(obStep === 3){
+  } else if(obStep === 4){
     obDraft.activityLevel = val('ob-activity') || obDraft.activityLevel;
     obDraft.goalType = val('ob-goaltype') || obDraft.goalType;
     obDraft.paceKgWeek = parseFloat(val('ob-pace')) || obDraft.paceKgWeek;
   }
+  // obStep === 3 (preguntas de estilo de vida) se guarda solo, al toque,
+  // mediante toggleObChip — no hace falta leer nada aquí al cambiar de paso.
+}
+
+function toggleObChip(field, value, multi){
+  if(multi){
+    const list = obDraft[field] || [];
+    obDraft[field] = list.includes(value) ? list.filter(v => v !== value) : [...list, value];
+  } else {
+    obDraft[field] = obDraft[field] === value ? null : value;
+  }
+  renderOnboardStep();
+}
+
+// Sugiere un nivel de actividad de partida según el trabajo y el
+// deporte que ha contado el usuario — luego lo puede cambiar a mano
+// en el desplegable si no encaja.
+function suggestActivityLevel(jobType, sport){
+  let score = 1; // 0=sedentary 1=light 2=moderate 3=active 4=veryActive
+  if(jobType === 'Trabajo físico / manual') score += 1;
+  if(jobType === 'Trabajo de pie') score += 0.5;
+  if(jobType === 'Trabajo de oficina (sentado)') score -= 0.5;
+  if(sport === 'Pesas / gimnasio' || sport === 'Running o cardio') score += 1;
+  if(sport === 'Deportes de equipo') score += 1.5;
+  if(sport === 'Yoga o pilates') score += 0.5;
+  score = Math.max(0, Math.min(4, Math.round(score)));
+  return ['sedentary','light','moderate','active','veryActive'][score];
 }
 
 function selectObSex(value){
@@ -1174,7 +1213,54 @@ function renderOnboardStep(){
         <div class="field"><label>Peso objetivo (kg)</label>${buildWheelHTML('ob-goal', 35, 200, 0.5, 'kg')}</div>
       </div>`;
   } else if(obStep === 3){
-    const act = d.activityLevel || 'light';
+    const obstacles = d.obstacles || [];
+    const goalsWanted = d.goalsWanted || [];
+    stepHtml = `
+      <h1>Conozcámonos un poco</h1>
+      <p class="sub">Esto nos ayuda a ajustar tu plan y a saber cómo animarte mejor.</p>
+
+      <div class="field"><label>¿Qué te impide alcanzar tus metas? (elige las que apliquen)</label>
+        <div class="ob-chip-grid">
+          ${['Falta de tiempo','No sé qué comer','Se me olvida registrar','Antojos y picoteo','Falta de motivación'].map(o =>
+            `<button type="button" class="ob-chip ${obstacles.includes(o)?'active':''}" onclick="toggleObChip('obstacles','${o}',true)">${o}</button>`
+          ).join('')}
+        </div>
+      </div>
+
+      <div class="field"><label>¿Qué te gustaría lograr?</label>
+        <div class="ob-chip-grid">
+          ${['Más energía','Verme mejor','Mejorar mi salud','Rendir más en el deporte','Más confianza'].map(o =>
+            `<button type="button" class="ob-chip ${goalsWanted.includes(o)?'active':''}" onclick="toggleObChip('goalsWanted','${o}',true)">${o}</button>`
+          ).join('')}
+        </div>
+      </div>
+
+      <div class="field"><label>¿Sigues alguna dieta o forma de comer en concreto?</label>
+        <div class="ob-chip-grid">
+          ${['Ninguna en particular','Vegetariana','Vegana','Baja en carbohidratos','Alta en proteína','Ayuno intermitente'].map(o =>
+            `<button type="button" class="ob-chip ${d.specificDiet===o?'active':''}" onclick="toggleObChip('specificDiet','${o}',false)">${o}</button>`
+          ).join('')}
+        </div>
+      </div>
+
+      <div class="field"><label>¿Qué deporte practicas?</label>
+        <div class="ob-chip-grid">
+          ${['Ninguno','Pesas / gimnasio','Running o cardio','Deportes de equipo','Yoga o pilates','Otro'].map(o =>
+            `<button type="button" class="ob-chip ${d.sport===o?'active':''}" onclick="toggleObChip('sport','${o}',false)">${o}</button>`
+          ).join('')}
+        </div>
+      </div>
+
+      <div class="field"><label>¿En qué trabajas?</label>
+        <div class="ob-chip-grid">
+          ${['Trabajo de oficina (sentado)','Trabajo de pie','Trabajo físico / manual','Estudiante','Sin empleo actualmente'].map(o =>
+            `<button type="button" class="ob-chip ${d.jobType===o?'active':''}" onclick="toggleObChip('jobType','${o}',false)">${o}</button>`
+          ).join('')}
+        </div>
+      </div>
+    `;
+  } else if(obStep === 4){
+    const act = d.activityLevel || suggestActivityLevel(d.jobType, d.sport);
     const gt = d.goalType || 'auto';
     const pace = d.paceKgWeek || 0.5;
     stepHtml = `
@@ -1387,6 +1473,8 @@ async function finishOnboarding(){
     currentWeight: obDraft.currentWeight, goalWeight: obDraft.goalWeight,
     activityLevel: obDraft.activityLevel || 'light', goalType: obDraft.goalType || 'auto',
     paceKgWeek: obDraft.paceKgWeek || 0.5, email: obDraft.email || null,
+    obstacles: obDraft.obstacles || [], goalsWanted: obDraft.goalsWanted || [],
+    specificDiet: obDraft.specificDiet || null, sport: obDraft.sport || null, jobType: obDraft.jobType || null,
     customMode: false, darkMode: true, createdAt: new Date().toISOString()
   };
   await safeSet('profile', state.profile);
@@ -1401,6 +1489,31 @@ async function finishOnboarding(){
   }
 
   showOnboardReveal();
+}
+
+// Mensaje final personalizado, realista según tu ritmo y tus respuestas
+// — no genérico, intenta enganchar con algo concreto de lo que dijiste.
+function buildMotivationalMessage(p, t){
+  const parts = [];
+  if(t.direction === 'deficit'){
+    parts.push(`A este ritmo, deberías empezar a notar progreso real en unas ${t.weeksToGoal} semanas — sin prisas, de forma sostenible.`);
+  } else if(t.direction === 'surplus'){
+    parts.push(`Ganar peso de forma sana lleva su tiempo — con este plan, en unas ${t.weeksToGoal} semanas deberías empezar a verlo.`);
+  } else {
+    parts.push('Mantener tu peso actual con estos números te va a ayudar a estabilizar tus hábitos.');
+  }
+  const obstacleTips = {
+    'Falta de tiempo': 'Como vas justo de tiempo, hacer una foto rápida a tu comida te va a ahorrar minutos cada día.',
+    'No sé qué comer': 'Como no siempre sabes qué comer, el buscador de alimentos te puede dar ideas rápidas cuando lo necesites.',
+    'Se me olvida registrar': 'Para que no se te olvide registrar, activa los recordatorios en tu perfil.',
+    'Antojos y picoteo': 'Los antojos son normales — registra también los picoteos, así el plan sigue siendo realista.',
+    'Falta de motivación': 'Llevar la cuenta de tus días seguidos puede ayudarte a mantener la motivación día a día.'
+  };
+  const obstacle = (p.obstacles || [])[0];
+  if(obstacle && obstacleTips[obstacle]) parts.push(obstacleTips[obstacle]);
+  const goal = (p.goalsWanted || [])[0];
+  if(goal) parts.push(`Vas camino de "${goal.toLowerCase()}" — un paso cada día.`);
+  return parts.join(' ');
 }
 
 function showOnboardReveal(){
@@ -1423,7 +1536,8 @@ function showOnboardReveal(){
         <div class="macro-card"><div class="macro-card-num">${Math.round(t.carbG)}g</div><div class="macro-card-label">Carbohidratos</div></div>
         <div class="macro-card"><div class="macro-card-num">${Math.round(t.fatG)}g</div><div class="macro-card-label">Grasas</div></div>
       </div>
-      <p class="sub" style="margin-top:16px;">Podrás ajustar todo esto cuando quieras desde Perfil.</p>
+      <p class="sub" style="margin-top:16px; text-align:left; background:var(--accent-soft); padding:14px 16px; border-radius:14px; color:var(--paper);">${buildMotivationalMessage(state.profile, t)}</p>
+      <p class="sub" style="margin-top:10px;">Podrás ajustar todo esto cuando quieras desde Perfil.</p>
       <button class="btn accent" onclick="showProPaywall(true)">Empezar</button>
     </div>
   `;
@@ -1725,6 +1839,64 @@ function renderWeekStrip(){
   return `<div class="week-strip">${cells}</div>`;
 }
 
+const ANALYZING_MESSAGES = ['Analizando macronutrientes…', 'Analizando ingredientes…', 'Registrando comida…'];
+let analyzingProgress = 0;
+let analyzingMsgIndex = 0;
+let analyzingTickTimer = null;
+let analyzingMsgTimer = null;
+
+function startAnalyzingAnimation(){
+  analyzingProgress = 0;
+  analyzingMsgIndex = 0;
+  clearInterval(analyzingTickTimer);
+  clearInterval(analyzingMsgTimer);
+  updateAnalyzingUI();
+  analyzingTickTimer = setInterval(() => {
+    if(analyzingProgress < 92){
+      analyzingProgress += Math.max(0.6, (92 - analyzingProgress) * 0.06);
+      updateAnalyzingUI();
+    }
+  }, 90);
+  analyzingMsgTimer = setInterval(() => {
+    analyzingMsgIndex = (analyzingMsgIndex + 1) % ANALYZING_MESSAGES.length;
+    updateAnalyzingUI();
+  }, 1100);
+}
+function stopAnalyzingAnimation(){
+  clearInterval(analyzingTickTimer);
+  clearInterval(analyzingMsgTimer);
+  analyzingTickTimer = null;
+  analyzingMsgTimer = null;
+  analyzingProgress = 100;
+}
+function updateAnalyzingUI(){
+  const pctEl = document.getElementById('analyzing-pct');
+  const msgEl = document.getElementById('analyzing-msg');
+  const ringEl = document.getElementById('analyzing-ring-fill');
+  if(pctEl) pctEl.textContent = Math.round(analyzingProgress) + '%';
+  if(msgEl) msgEl.textContent = ANALYZING_MESSAGES[analyzingMsgIndex];
+  if(ringEl){
+    const circumference = 2 * Math.PI * 54;
+    ringEl.style.strokeDashoffset = circumference * (1 - analyzingProgress/100);
+  }
+}
+
+function renderAnalyzingOverlay(){
+  const circumference = 2 * Math.PI * 54;
+  return `
+    <div class="analyzing-overlay">
+      <svg class="analyzing-ring" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="54" fill="none" stroke-width="8" class="analyzing-ring-bg"/>
+        <circle id="analyzing-ring-fill" cx="60" cy="60" r="54" fill="none" stroke-width="8"
+          stroke-linecap="round" transform="rotate(-90 60 60)"
+          style="stroke-dasharray:${circumference}; stroke-dashoffset:${circumference};"/>
+      </svg>
+      <div class="analyzing-pct" id="analyzing-pct">0%</div>
+      <div class="analyzing-msg" id="analyzing-msg">Analizando macronutrientes…</div>
+    </div>
+  `;
+}
+
 function renderToday(){
   const t = calcTargets(state.profile);
   const consumed = state.log.foods.reduce((s,f)=>s+f.cal,0);
@@ -1775,16 +1947,20 @@ function renderToday(){
     const count = state.takenToday[s.id] || 0;
     if(s.type === 'water'){
       const target = s.target || 8;
+      const mlPerGlass = s.mlPerGlass || 300;
       const done = count >= target;
       const pct = target > 0 ? Math.min(100, Math.round((count/target)*100)) : 0;
+      const mlDrunk = count * mlPerGlass;
+      const mlTarget = target * mlPerGlass;
       return `<div class="reminder-row">
         <div class="reminder-top">
-          <span class="rname">${ICON.water} ${s.name}</span>
+          <span class="rname">${ICON.water} <b>${s.name}</b> — ${formatMl(mlDrunk)}/${formatMl(mlTarget)}${done ? ' ✓' : ''}</span>
           <div style="display:flex; align-items:center; gap:10px;">
             <span class="reminder-count">${count}/${target} vasos</span>
-            ${done
-              ? `<button class="supp-btn taken" disabled>✓ Completado</button>`
-              : `<button class="supp-btn" onclick="incrementWater('${s.id}')">+1</button>`}
+            <div class="water-stepper">
+              <button class="water-step-btn" onclick="decrementWater('${s.id}')" ${count<=0?'disabled':''} aria-label="Quitar uno">−</button>
+              <button class="water-step-btn" onclick="incrementWater('${s.id}')" aria-label="Añadir uno">+</button>
+            </div>
           </div>
         </div>
         <div class="water-track"><div class="water-fill ${done ? 'is-done' : ''}" style="width:${pct}%;"></div></div>
@@ -1792,12 +1968,14 @@ function renderToday(){
     }
     const taken = count > 0;
     return `<div class="row">
-      <span class="rname">${ICON.pill} ${s.name}</span>
+      <span class="rname">${ICON.pill} <b>${s.name}</b></span>
       <button class="supp-btn ${taken ? 'taken' : ''}" onclick="toggleSupplement('${s.id}')">${taken ? '✓ Tomado' : 'Marcar'}</button>
     </div>`;
   }).join('');
 
   document.getElementById('screen-today').innerHTML = `
+    ${state.analyzing ? renderAnalyzingOverlay() : ''}
+    <div class="today-content ${state.analyzing ? 'is-blurred' : ''}">
     ${renderWeekStrip()}
 
     <div class="hero-card">
@@ -1833,7 +2011,31 @@ function renderToday(){
 
     <div class="section-title">${tr('recently_logged')}</div>
     ${logRows}
+    </div>
   `;
+}
+
+function openHealthScoreInfo(hs){
+  let tier, desc;
+  if(hs >= 8){
+    tier = 'Muy saludable';
+    desc = 'Buena señal: parece tener ingredientes poco procesados, con un equilibrio razonable entre proteína, grasas y carbohidratos, sin excesos evidentes de azúcar o grasas poco saludables.';
+  } else if(hs >= 6){
+    tier = 'Bastante equilibrada';
+    desc = 'En general está bien, aunque puede tener algo de más de un nutriente concreto (grasa, azúcar o sal) o ingredientes algo procesados sin llegar a ser un problema.';
+  } else if(hs >= 4){
+    tier = 'Mejorable';
+    desc = 'Puede tener bastante grasa, azúcar o sal, ingredientes muy procesados, o poca variedad nutricional — no pasa nada por comerla, pero no la conviertas en la base de tu día a día.';
+  } else {
+    tier = 'Poco saludable';
+    desc = 'Suele indicar alta densidad calórica con poco valor nutricional — mucha grasa, azúcar o ultraprocesado. Está bien de vez en cuando, mejor no a diario.';
+  }
+  openActionOverlay(`
+    <h1 style="margin:0 0 4px 0;">${bigEmoji('❤️')} Nota de salud: ${hs}/10</h1>
+    <p class="sub" style="margin:0 0 14px 0; font-weight:700;">${tier}</p>
+    <p style="font-size:14px; line-height:1.6; margin:0 0 16px 0;">${desc}</p>
+    <p class="sub" style="font-size:11.5px; margin:0;">Esta puntuación la calcula la IA a partir de la foto, fijándose en el nivel de procesado, el equilibrio entre macronutrientes y posibles excesos de azúcar, sal o grasas. Es una orientación general, no un diagnóstico médico ni nutricional profesional.</p>
+  `);
 }
 
 function openFoodDetail(id){
@@ -1873,9 +2075,9 @@ function openFoodDetail(id){
     </div>
 
     ${hs ? `
-    <div class="hero-card" style="margin-top:12px;">
+    <div class="hero-card" style="margin-top:12px; cursor:pointer;" onclick="openHealthScoreInfo(${hs})">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-        <span style="font-size:13px; font-weight:700;">${bigEmoji('❤️')} Nota de salud</span>
+        <span style="font-size:13px; font-weight:700;">${bigEmoji('❤️')} Nota de salud <span style="opacity:.5; font-weight:400;">ⓘ</span></span>
         <span style="font-size:13px; font-weight:700; color:${hsColor};">${hs}/10</span>
       </div>
       <div class="water-track"><div class="water-fill" style="width:${hsPct}%; background:${hsColor};"></div></div>
@@ -1930,9 +2132,9 @@ function openPendingFoodDetail(){
     </div>
 
     ${hs ? `
-    <div class="hero-card" style="margin-top:12px;">
+    <div class="hero-card" style="margin-top:12px; cursor:pointer;" onclick="openHealthScoreInfo(${hs})">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-        <span style="font-size:13px; font-weight:700;">${bigEmoji('❤️')} Nota de salud</span>
+        <span style="font-size:13px; font-weight:700;">${bigEmoji('❤️')} Nota de salud <span style="opacity:.5; font-weight:400;">ⓘ</span></span>
         <span style="font-size:13px; font-weight:700; color:${hsColor};">${hs}/10</span>
       </div>
       <div class="water-track"><div class="water-fill" style="width:${hsPct}%; background:${hsColor};"></div></div>
@@ -2056,6 +2258,7 @@ async function addReminder(){
   const reminder = { id: Date.now().toString(), name, type };
   if(type === 'water'){
     reminder.target = parseInt(document.getElementById('new-reminder-target').value) || 8;
+    reminder.mlPerGlass = parseInt(document.getElementById('new-reminder-ml').value) || 300;
   }
   state.supplements.push(reminder);
   await safeSet('supplements', state.supplements);
@@ -2068,24 +2271,35 @@ async function removeSupplement(id){
   await safeSet('supplements', state.supplements);
   renderAll();
 }
+function restoreScroll(y){
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => window.scrollTo(0, y));
+  });
+}
 async function toggleSupplement(id){
   const scrollY = window.scrollY;
   const current = state.takenToday[id] || 0;
   state.takenToday[id] = current > 0 ? 0 : 1;
   await safeSet('suppTaken:' + todayStr(), state.takenToday);
   renderAll();
-  requestAnimationFrame(() => window.scrollTo(0, scrollY));
+  restoreScroll(scrollY);
 }
 async function incrementWater(id){
   const scrollY = window.scrollY;
-  const reminder = state.supplements.find(s => s.id === id);
-  const target = (reminder && reminder.target) || 8;
   const current = state.takenToday[id] || 0;
-  if(current >= target) return; // ya completado, no sumar más
   state.takenToday[id] = current + 1;
   await safeSet('suppTaken:' + todayStr(), state.takenToday);
   renderAll();
-  requestAnimationFrame(() => window.scrollTo(0, scrollY));
+  restoreScroll(scrollY);
+}
+async function decrementWater(id){
+  const scrollY = window.scrollY;
+  const current = state.takenToday[id] || 0;
+  if(current <= 0) return;
+  state.takenToday[id] = current - 1;
+  await safeSet('suppTaken:' + todayStr(), state.takenToday);
+  renderAll();
+  restoreScroll(scrollY);
 }
 
 async function loadDaySummaries(){
@@ -2431,13 +2645,6 @@ function openManualFoodForm(){
 
 function renderAdd(){
   document.getElementById('screen-add').innerHTML = `
-    ${state.analyzing ? `
-    <div class="analyzing-wrap">
-      <div class="analyzing-label">Analizando comida…</div>
-      <div class="analyzing-track"><div class="analyzing-fill"></div></div>
-    </div>
-    ` : ''}
-
     <details id="manual-food-details" open>
       <summary>${bigEmoji('📝')} Añadir comida manualmente</summary>
       <div class="inner">
@@ -2867,7 +3074,8 @@ async function processFoodImage(file){
     return;
   }
   state.analyzing = true;
-  renderAdd();
+  setTab('today');
+  startAnalyzingAnimation();
   let succeeded = false;
   try{
     const { base64, mediaType, thumbnail } = await withTimeout(
@@ -2882,8 +3090,9 @@ async function processFoodImage(file){
     console.error('analyze photo failed:', e);
     showToast('No se pudo analizar la foto: ' + e.message, true);
   }finally{
+    stopAnalyzingAnimation();
     state.analyzing = false;
-    renderAdd();
+    renderAll();
   }
   if(succeeded) openPendingFoodDetail();
 }
@@ -3533,9 +3742,9 @@ async function openFoodDetailForDate(id, date){
     </div>
 
     ${hs ? `
-    <div class="hero-card" style="margin-top:12px;">
+    <div class="hero-card" style="margin-top:12px; cursor:pointer;" onclick="openHealthScoreInfo(${hs})">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-        <span style="font-size:13px; font-weight:700;">${bigEmoji('❤️')} Nota de salud</span>
+        <span style="font-size:13px; font-weight:700;">${bigEmoji('❤️')} Nota de salud <span style="opacity:.5; font-weight:400;">ⓘ</span></span>
         <span style="font-size:13px; font-weight:700; color:${hsColor};">${hs}/10</span>
       </div>
       <div class="water-track"><div class="water-fill" style="width:${hsPct}%; background:${hsColor};"></div></div>
@@ -3663,6 +3872,7 @@ function renderProfile(){
         </label>
         <input id="avatar-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onAvatarSelected(event)">
         <div class="avatar-name" onclick="openEditName()" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px;">${p.name} <span style="font-size:11px; opacity:.5;">✎</span></div>
+        ${p.email ? `<div style="font-size:11.5px; color:var(--muted); margin-top:2px;">${p.email}</div>` : ''}
         <div class="plan-badge ${isPro() ? 'is-pro' : ''}">${isPro() ? tr('plan_pro') : tr('plan_free')}</div>
       </div>
     </div>
@@ -3743,7 +3953,10 @@ function renderProfile(){
           </select>
         </div>
         <div class="field"><label>Nombre</label><input id="new-reminder-name" placeholder="Vitamina D"></div>
-        <div class="field" id="reminder-target-field" style="display:none;"><label>Vasos objetivo al día</label><input id="new-reminder-target" type="number" placeholder="8"></div>
+        <div class="field" id="reminder-target-field" style="display:none;">
+          <label>Vasos objetivo al día</label><input id="new-reminder-target" type="number" placeholder="8">
+          <label style="margin-top:10px;">ML por vaso</label><input id="new-reminder-ml" type="number" placeholder="300" value="300">
+        </div>
         <button class="btn accent small" onclick="addReminder()">Añadir</button>
       </div>
     </details>
@@ -3754,15 +3967,25 @@ function renderProfile(){
       <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">Vincula tu Google para usar tu nombre y foto de perfil automáticamente.</p>
       <div id="google-signin-btn-profile"></div>
 
-      ${isPro() ? `
+      ${p.email ? `
       <div style="margin-top:18px; border-top:1px dashed var(--line); padding-top:16px; display:flex; flex-direction:column; gap:10px;">
+        <button class="btn ghost" onclick="manualSaveToCloud()">☁️ Guardar en la nube ahora</button>
+      </div>
+      ` : ''}
+
+      ${isPro() ? `
+      <div style="margin-top:${p.email ? '10px' : '18px'}; ${p.email ? '' : 'border-top:1px dashed var(--line); padding-top:16px;'} display:flex; flex-direction:column; gap:10px;">
         <button class="btn accent" onclick="openTransferGuide()">🔄 Transferir cuenta Pro a otro dispositivo</button>
         <button class="btn ghost" onclick="openManageSubscription()">⚙️ Gestionar suscripción</button>
       </div>
       ` : ''}
     </div>
 
-    <details>
+    ${p.email ? `
+    <button class="btn ghost" style="margin-top:14px;" onclick="signOutGoogle()">🚪 Cerrar sesión</button>
+    ` : ''}
+
+    <details style="margin-top:${p.email ? '10px' : '14px'};">
       <summary style="color:var(--warn);">Borrar cuenta</summary>
       <div class="inner">
         <button class="btn ghost" onclick="resetAccount()">Confirmar borrado y empezar de nuevo</button>
@@ -3969,6 +4192,37 @@ async function saveEditMacros(){
 }
 
 
+async function manualSaveToCloud(){
+  if(!state.profile.email){
+    showToast('Primero vincula tu Google', true);
+    return;
+  }
+  if(!SYNC_ENDPOINT || !googleIdToken){
+    showToast('La sincronización con la nube no está disponible ahora mismo', true);
+    return;
+  }
+  showToast('Guardando en la nube…');
+  await pushToCloud();
+  showToast('¡Guardado en la nube! ☁️');
+}
+
+async function signOutGoogle(){
+  openActionOverlay(`
+    <h1 style="margin:0 0 10px 0;">🚪 Cerrar sesión</h1>
+    <p class="sub" style="margin:0 0 20px 0;">Se desvincula tu Google de este dispositivo. Tus datos locales NO se borran — solo dejarás de sincronizarlos con la nube hasta que vuelvas a iniciar sesión.</p>
+    <button class="btn accent" onclick="confirmSignOutGoogle()">Cerrar sesión</button>
+    <button class="btn ghost small" style="margin-top:10px;" onclick="closeActionOverlay()">Cancelar</button>
+  `);
+}
+async function confirmSignOutGoogle(){
+  state.profile.email = null;
+  googleIdToken = null;
+  await safeSet('profile', state.profile);
+  closeActionOverlay();
+  renderAll();
+  showToast('Sesión cerrada');
+}
+
 async function resetAccount(){
   await safeDelete('profile');
   await safeDelete('weights');
@@ -3984,6 +4238,11 @@ function renderStaticMenus(){
     <button class="fab-option" onclick="closeAddMenu(); openFoodSearch();">
       <span class="fab-option-icon">${bigEmoji('🔍')}</span> Buscar alimento
     </button>
+    ${!isPro() ? `
+    <button class="fab-option" onclick="closeAddMenu(); openManualFoodForm();">
+      <span class="fab-option-icon">${bigEmoji('📝')}</span> Registrar manualmente
+    </button>
+    ` : ''}
     <button class="fab-option" onclick="closeAddMenu(); openSavedMeals();">
       <span class="fab-option-icon">${ICON.star}</span> ${tr('saved_meal')}
     </button>
