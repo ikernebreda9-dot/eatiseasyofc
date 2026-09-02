@@ -600,7 +600,7 @@ function keepLocalChoice(){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.65';
+const APP_VERSION = '0.66';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -4262,17 +4262,33 @@ async function manualSaveToCloud(){
 async function signOutGoogle(){
   openActionOverlay(`
     <h1 style="margin:0 0 10px 0;">🚪 Cerrar sesión</h1>
-    <p class="sub" style="margin:0 0 20px 0;">Se desvincula tu Google de este dispositivo. Tus datos locales NO se borran — solo dejarás de sincronizarlos con la nube hasta que vuelvas a iniciar sesión.</p>
+    <p class="sub" style="margin:0 0 20px 0;">Antes de salir guardaremos tus datos en la nube con <b>${state.profile.email}</b>, y volverás a la pantalla de inicio. Cuando vuelvas a entrar con esta cuenta, podrás recuperarlo todo.</p>
     <button class="btn accent" onclick="confirmSignOutGoogle()">Cerrar sesión</button>
     <button class="btn ghost small" style="margin-top:10px;" onclick="closeActionOverlay()">Cancelar</button>
   `);
 }
 async function confirmSignOutGoogle(){
-  state.profile.email = null;
-  googleIdToken = null;
-  await safeSet('profile', state.profile);
   closeActionOverlay();
-  renderAll();
+  // Antes de nada, subimos lo que haya a la nube, para que al volver a
+  // iniciar sesión con esta misma cuenta esté todo tal cual lo dejaste.
+  if(SYNC_ENDPOINT && googleIdToken){
+    showToast('Guardando en la nube antes de salir…');
+    try{ await pushToCloud(); }catch(e){ console.error('push on signout failed', e); }
+  }
+  googleIdToken = null;
+  const dates = (await safeGet('logDates')) || [];
+  for(const d of dates){
+    await safeDelete('log:' + d);
+    await safeDelete('suppTaken:' + d);
+  }
+  await safeDelete('log:' + todayStr());
+  await safeDelete('suppTaken:' + todayStr());
+  await safeDelete('supplements');
+  await safeDelete('savedMeals');
+  await safeDelete('profile');
+  await safeDelete('weights');
+  await safeDelete('logDates');
+  await reloadApp();
   showToast('Sesión cerrada');
 }
 
