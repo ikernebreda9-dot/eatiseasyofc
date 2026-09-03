@@ -638,7 +638,7 @@ function keepLocalChoice(){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.70';
+const APP_VERSION = '0.71';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -1766,7 +1766,7 @@ function renderAll(){
   updateStreakDisplay();
   // Solo redibuja la pantalla que se está viendo ahora mismo — las demás
   // se generan cuando el usuario navega a ellas (mucho más rápido).
-  if(state.tab === 'today') renderToday();
+  if(state.tab === 'today'){ renderToday(); restoreCarouselPage(); }
   else if(state.tab === 'add') renderAdd();
   else if(state.tab === 'datos') renderDatos();
   else if(state.tab === 'profile') renderProfile();
@@ -2023,6 +2023,7 @@ function updateCarouselDots(){
   const car = document.getElementById('today-carousel');
   if(!car) return;
   const page = Math.round(car.scrollLeft / car.clientWidth);
+  carouselPage = page;
   for(let i=0; i<2; i++){
     const dot = document.getElementById('cdot-' + i);
     if(dot) dot.classList.toggle('active', i === page);
@@ -2268,7 +2269,7 @@ function renderToday(){
       }).join('')
     : `<div class="empty">Nada registrado aún hoy</div>`;
 
-  const suppRows = state.supplements.map(s=>{
+  const renderReminderCard = (s) => {
     const count = state.takenToday[s.id] || 0;
     if(s.type === 'water'){
       const target = s.target || 8;
@@ -2308,7 +2309,14 @@ function renderToday(){
       </div>
       <button class="supp-btn ${taken ? 'taken' : ''}" onclick="toggleSupplement('${s.id}')">${taken ? '✓' : 'Marcar'}</button>
     </div>`;
-  }).join('');
+  };
+
+  // En el carrusel solo cabe UN recordatorio de agua (el primero) — el
+  // resto va en su propia sección más abajo, para que no se descuadre.
+  const firstWater = state.supplements.find(s => s.type === 'water');
+  const otherReminders = state.supplements.filter(s => s !== firstWater);
+  const carouselReminder = firstWater ? renderReminderCard(firstWater) : '';
+  const otherReminderRows = otherReminders.map(renderReminderCard).join('');
 
   document.getElementById('screen-today').innerHTML = `
     ${state.analyzing ? renderAnalyzingOverlay() : ''}
@@ -2347,11 +2355,11 @@ function renderToday(){
       </div>
       <div class="carousel-page">
         ${renderActivityCards(t, burned)}
-        ${isPro() ? (state.supplements.length
-          ? `<div class="panel" style="margin-top:10px;">${suppRows}</div>`
+        ${isPro() ? (carouselReminder
+          ? `<div class="panel" style="margin-top:10px;">${carouselReminder}</div>`
           : `<div class="panel" style="margin-top:10px; text-align:center; padding:22px 18px;">
               <div style="font-size:24px; margin-bottom:6px;">${ICON.bell}</div>
-              <p class="sub" style="margin:0 0 12px 0;">Aún no tienes recordatorios de agua ni suplementos.</p>
+              <p class="sub" style="margin:0 0 12px 0;">Añade un recordatorio de agua para verlo aquí.</p>
               <button class="btn accent small" onclick="openRemindersMenu()">Añadir recordatorio</button>
             </div>`) : ''}
       </div>
@@ -2360,6 +2368,8 @@ function renderToday(){
       <span class="carousel-dot active" id="cdot-0"></span>
       <span class="carousel-dot" id="cdot-1"></span>
     </div>
+
+    ${(isPro() && otherReminderRows) ? `<div class="section-title">${ICON.bell} ${tr('reminders_today')}</div><div class="panel">${otherReminderRows}</div>` : ''}
 
     <div class="section-title">${tr('recently_logged')}</div>
     ${logRows}
@@ -2717,6 +2727,18 @@ async function cycleWaterDisplayMode(id){
   await safeSet('supplements', state.supplements);
   renderAll();
   restoreScroll(scrollY);
+}
+
+let carouselPage = 0;
+
+function restoreCarouselPage(){
+  const car = document.getElementById('today-carousel');
+  if(!car || !carouselPage) return;
+  car.scrollLeft = carouselPage * car.clientWidth;
+  for(let i=0; i<2; i++){
+    const dot = document.getElementById('cdot-' + i);
+    if(dot) dot.classList.toggle('active', i === carouselPage);
+  }
 }
 
 function restoreScroll(y){
