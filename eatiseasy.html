@@ -84,15 +84,23 @@ body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemF
 
 .macro-row{display:flex; gap:10px; margin-top:12px;}
 
-.today-carousel{display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin-top:12px; gap:0;}
+/* overflow-x:auto obliga al navegador a recortar también en vertical,
+   lo que cortaba la sombra inferior de las tarjetas. Con este relleno
+   de abajo, la sombra tiene sitio para dibujarse entera. */
+/* El carrusel se extiende hasta los bordes de la pantalla (margen
+   negativo) y recupera el margen por dentro (padding). Ese padding es
+   donde se dibujan las sombras sin que se recorten. Clave: el hueco
+   entre páginas (gap) es IGUAL al padding lateral, así la página
+   siguiente queda justo fuera del área visible y no se asoma. */
+.today-carousel{display:flex; overflow-x:auto; scroll-snap-type:x mandatory; scroll-padding-left:20px; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin:12px -20px 0 -20px; gap:20px; padding:0 20px 14px 20px;}
 .today-carousel::-webkit-scrollbar{display:none;}
 /* Todas las páginas del carrusel usan la misma separación entre bloques
    (10px), para que al deslizar todo quede visualmente alineado. */
-.carousel-page{flex:0 0 100%; scroll-snap-align:start; min-width:100%; display:flex; flex-direction:column; gap:16px;}
+.carousel-page{flex:0 0 100%; scroll-snap-align:start; min-width:100%; display:flex; flex-direction:column; gap:10px;}
 .carousel-page > *{margin-top:0 !important;}
 .carousel-page .macro-row, .carousel-page .activity-row{margin-top:0;}
 .carousel-page .section-title{margin:0 0 2px 0;}
-.carousel-dots{display:flex; justify-content:center; gap:6px; margin-top:10px;}
+.carousel-dots{display:flex; justify-content:center; gap:6px; margin-top:0;}
 .carousel-dot{width:6px; height:6px; border-radius:50%; background:var(--line-strong); transition:background .2s ease, width .2s ease;}
 .carousel-dot.active{background:var(--accent); width:16px; border-radius:3px;}
 
@@ -125,8 +133,11 @@ body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemF
 .ring{width:210px; height:210px; filter:drop-shadow(0 4px 16px rgba(var(--accent-rgb),.28));}
 .ring-track{fill:none; stroke:var(--protein); opacity:1; stroke-width:9; stroke-opacity:.28;}
 .ring-fill{fill:none; stroke-width:9; stroke-linecap:round; transition:stroke-dashoffset .6s cubic-bezier(.4,0,.2,1);}
+/* El anillo pequeño de "Hoy" lo queremos más grueso. Va aquí y no en
+   el atributo del SVG porque el CSS tiene prioridad sobre él. */
+.ring-mini .ring-track, .ring-mini .ring-fill{stroke-width:15;}
 .ring-num{font-family:inherit; font-size:42px; font-weight:600; text-anchor:middle;}
-.ring-num-mini{font-family:inherit; font-size:44px; font-weight:600; text-anchor:middle;}
+.ring-num-mini{font-family:inherit; font-size:38px; font-weight:700; text-anchor:middle;}
 .ring-label{font-family:inherit; font-size:10px; text-anchor:middle; fill:var(--muted); letter-spacing:1.5px; text-transform:uppercase;}
 
 .mini-history-strip{display:flex; gap:16px; overflow-x:auto; padding:4px 2px 12px 2px; -webkit-overflow-scrolling:touch;}
@@ -657,7 +668,7 @@ function keepLocalChoice(){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.83';
+const APP_VERSION = '1.0';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -1896,11 +1907,11 @@ function ringSvg(net, target, mini){
   if(mini){
     return `
       <svg class="ring ring-mini" viewBox="0 0 200 200">
-        <circle class="ring-track" cx="100" cy="100" r="${R}" stroke-width="16"></circle>
-        <circle id="${ringId}" class="ring-fill" cx="100" cy="100" r="${R}" stroke="${color}" stroke-width="16"
+        <circle class="ring-track" cx="100" cy="100" r="${R}" stroke-width="28"></circle>
+        <circle id="${ringId}" class="ring-fill" cx="100" cy="100" r="${R}" stroke="${color}" stroke-width="28"
           stroke-dasharray="${C}" stroke-dashoffset="${offset}" transform="rotate(-90 100 100)"></circle>
         <text x="100" y="98" class="ring-num-mini" fill="${color}">${Math.round(net)}</text>
-        <text x="100" y="126" class="ring-label" style="font-size:19px;">consumidas</text>
+        <text x="100" y="124" class="ring-label" style="font-size:15px;">consumidas</text>
       </svg>`;
   }
   const label = over ? tr('kcal_excess') : tr('kcal_left');
@@ -1956,8 +1967,16 @@ function weekdayLetterEs(dayIndex){
 //  · Sin registros   -> círculo discontinuo
 //  · Se pasó         -> anillo completo en rojo
 //  · Registró algo   -> lo cumplido en verde, el resto en gris
-// Número de páginas del carrusel de la pantalla "Hoy".
+// Número de páginas del carrusel de la pantalla "Hoy", y el hueco
+// entre ellas (debe coincidir con el gap del CSS .today-carousel).
 const CAROUSEL_PAGES = 3;
+const CAROUSEL_GAP = 20;   // debe coincidir con el gap y el padding lateral del CSS
+// Ancho real que ocupa cada página, contando el hueco de separación.
+function carouselStep(car){
+  // clientWidth incluye el padding lateral (20px a cada lado), así que
+  // el ancho real de cada página es clientWidth - 40, más el hueco.
+  return (car.clientWidth - (CAROUSEL_GAP * 2)) + CAROUSEL_GAP;
+}
 
 function dayRingSvg(dayNum, consumed, target, opts){
   const R = 15.5, C = 2 * Math.PI * R;
@@ -2150,8 +2169,8 @@ function renderActivityCards(t, burned){
         <div class="act-label">Pasos de hoy</div>
         <div class="act-ring-wrap">
           <svg viewBox="0 0 200 200" class="act-ring">
-            <circle cx="100" cy="100" r="${R}" fill="none" stroke="var(--line-strong)" stroke-width="14"></circle>
-            <circle id="ring-steps" cx="100" cy="100" r="${R}" fill="none" stroke="var(--accent)" stroke-width="14"
+            <circle cx="100" cy="100" r="${R}" fill="none" stroke="var(--line-strong)" stroke-width="20"></circle>
+            <circle id="ring-steps" cx="100" cy="100" r="${R}" fill="none" stroke="var(--accent)" stroke-width="20"
               stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${stepOffset}" transform="rotate(-90 100 100)"></circle>
             <foreignObject x="62" y="62" width="76" height="76"><div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;">👟</div></foreignObject>
           </svg>
@@ -2169,7 +2188,7 @@ function updateCarouselDots(){
   if(window.__carouselRestoring) return;  // ignoramos el scroll que provocamos nosotros
   const car = document.getElementById('today-carousel');
   if(!car || !car.clientWidth) return;
-  const page = Math.round(car.scrollLeft / car.clientWidth);
+  const page = Math.round(car.scrollLeft / carouselStep(car));
   carouselPage = page;
   for(let i=0; i<CAROUSEL_PAGES; i++){
     const dot = document.getElementById('cdot-' + i);
@@ -3035,7 +3054,7 @@ function restoreCarouselPage(){
   window.__carouselRestoring = true;
   const prevBehavior = car.style.scrollBehavior;
   car.style.scrollBehavior = 'auto';
-  car.scrollLeft = carouselPage * car.clientWidth;
+  car.scrollLeft = carouselPage * carouselStep(car);
   car.style.scrollBehavior = prevBehavior;
   for(let i=0; i<CAROUSEL_PAGES; i++){
     const dot = document.getElementById('cdot-' + i);
@@ -3048,7 +3067,7 @@ function captureViewState(){
   const car = document.getElementById('today-carousel');
   return {
     y: window.scrollY,
-    page: car && car.clientWidth ? Math.round(car.scrollLeft / car.clientWidth) : 0
+    page: car && car.clientWidth ? Math.round(car.scrollLeft / carouselStep(car)) : 0
   };
 }
 function restoreScroll(v){
@@ -3061,7 +3080,7 @@ function restoreScroll(v){
         // Restauramos la página sin animación, para que no se vea el salto.
         const prevBehavior = car.style.scrollBehavior;
         car.style.scrollBehavior = 'auto';
-        car.scrollLeft = state_.page * car.clientWidth;
+        car.scrollLeft = state_.page * carouselStep(car);
         car.style.scrollBehavior = prevBehavior;
         // Ponemos los puntitos directamente en su sitio, sin depender del scroll.
         carouselPage = state_.page;
