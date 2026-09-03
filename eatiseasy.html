@@ -638,7 +638,7 @@ function keepLocalChoice(){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '0.71';
+const APP_VERSION = '0.72';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -856,6 +856,41 @@ async function checkProStatus(email){
   }catch(e){
     console.error('checkProStatus failed', e);
     return false;
+  }
+}
+
+// Revalida la suscripción al abrir la app: si Stripe dice que ya no
+// está activa (canceló o falló el cobro), le quitamos el Pro.
+// IMPORTANTE: solo revocamos si el servidor responde EXPLÍCITAMENTE que
+// no está activa. Si falla la red o el servidor, dejamos el Pro intacto
+// — sería inaceptable quitarle Pro a alguien que sí paga solo porque se
+// le fue la conexión un momento.
+async function revalidateProStatus(){
+  const p = state.profile;
+  if(!p || !p.isPro) return;
+  // Los códigos promocionales (familia/amigos) no son suscripciones de
+  // Stripe, así que nunca se revocan por esta vía.
+  if(p.proSource === 'promo') return;
+  if(!PRO_VERIFY_ENDPOINT || !p.email) return;
+
+  try{
+    const resp = await withTimeout(
+      fetch(`${PRO_VERIFY_ENDPOINT}?email=${encodeURIComponent(p.email.trim().toLowerCase())}`),
+      8000, 'timeout'
+    );
+    if(!resp.ok) return;              // error del servidor: no tocamos nada
+    const data = await resp.json();
+    if(typeof data.isPro !== 'boolean') return;  // respuesta rara: no tocamos nada
+
+    if(data.isPro === false){
+      state.profile.isPro = false;
+      await safeSet('profile', state.profile);
+      renderAll();
+      showToast('Tu suscripción Pro ya no está activa', true);
+    }
+  }catch(e){
+    // Sin conexión o el servidor no responde: mantenemos el Pro tal cual.
+    console.error('revalidateProStatus failed (se mantiene Pro):', e);
   }
 }
 
@@ -1711,6 +1746,7 @@ async function redeemPromoCode(){
 
   if(code === PRO_PROMO_CODE.toUpperCase()){
     state.profile.isPro = true;
+    state.profile.proSource = 'promo';
     await safeSet('profile', state.profile);
     await ensureLicenseCode();
     showToast('¡eatiseasy Pro activado! 🎉');
@@ -2203,8 +2239,26 @@ function openReminderNotifySettings(id){
           ${(s.notifyMins||0) === o.mins ? '<span style="color:var(--accent); font-weight:700;">✓</span>' : ''}
         </div>`).join('')}
     </div>
+
+    <div class="section-title">Tiempo personalizado</div>
+    <div class="panel">
+      <div class="field" style="margin-bottom:10px;"><label>Avisarme cada … minutos</label>
+        <input id="custom-notify-mins" type="number" inputmode="numeric" min="5" max="720" step="5" placeholder="Ej. 45" value="${(s.notifyMins && !opts.some(o=>o.mins===s.notifyMins)) ? s.notifyMins : ''}">
+      </div>
+      <button class="btn ghost small" onclick="setCustomReminderNotify('${s.id}')">Usar este intervalo</button>
+    </div>
     <p class="sub" style="margin-top:14px; font-size:11.5px;">Los avisos llegan mientras la app esté abierta o recién usada. Con la app cerrada del todo durante mucho rato, el móvil puede pararlos — es una limitación de las apps web, no un fallo.</p>
   `);
+}
+
+async function setCustomReminderNotify(id){
+  const input = document.getElementById('custom-notify-mins');
+  const mins = parseInt(input.value);
+  if(isNaN(mins) || mins < 5 || mins > 720){
+    showToast('Escribe un intervalo entre 5 y 720 minutos', true);
+    return;
+  }
+  await setReminderNotify(id, mins);
 }
 
 async function setReminderNotify(id, mins){
@@ -2221,6 +2275,111 @@ async function setReminderNotify(id, mins){
   closeActionOverlay();
   renderAll();
   showToast(mins > 0 ? `Te avisaremos cada ${mins < 60 ? mins + ' min' : (mins/60) + ' h'}` : 'Avisos desactivados');
+}
+
+// ---------- Avisos de comidas según la hora ----------
+let mealNotifyTimer = null;
+const MEAL_SLOTS = [
+  { key:'desayuno', label:'desayuno', from:8,  to:11 },
+  { key:'comida',   label:'la comida', from:13, to:16 },
+  { key:'merienda', label:'la merienda', from:17, to:19 },
+  { key:'cena',     label:'la cena',  from:20, to:23 },
+];
+
+function currentMealSlot(){
+  const h = new Date().getHours();
+  return MEAL_SLOTS.find(m => h >= m.from && h < m.to) || null;
+}
+
+function startMealNotifications(){
+  clearInterval(mealNotifyTimer);
+  mealNotifyTimer = null;
+  if(!notificationsSupported() || Notification.permission !== 'granted') return;
+  if(!state.profile || !state.profile.mealNotifications) return;
+
+  mealNotifyTimer = setInterval(() => {
+    const slot = currentMealSlot();
+    if(!slot) return;
+    const sentKey = 'mealNotified:' + todayStr() + ':' + slot.key;
+    if(sessionStorage.getItem(sentKey)) return;
+
+    // Si ya has registrado algo en esa franja horaria, no molestamos.
+    const alreadyLogged = state.log.foods.some(f => {
+      const h = new Date(f.time).getHours();
+      return h >= slot.from && h < slot.to;
+    });
+    if(alreadyLogged) return;
+
+    try{
+      new Notification('eatiseasy', {
+        body: `🍽️ ¿Ya has registrado ${slot.label}? Entra y apúntalo en un momento.`,
+        icon: 'app-icon.png',
+        tag: 'meal-' + slot.key
+      });
+      sessionStorage.setItem(sentKey, '1');
+    }catch(e){ console.error('meal notification failed', e); }
+  }, 5 * 60 * 1000); // comprueba cada 5 minutos
+}
+
+async function toggleMealNotifications(){
+  const turningOn = !state.profile.mealNotifications;
+  if(turningOn){
+    const ok = await requestNotificationPermission();
+    if(!ok) { openNotificationSettings(); return; }
+  }
+  state.profile.mealNotifications = turningOn;
+  await safeSet('profile', state.profile);
+  startMealNotifications();
+  openNotificationSettings();
+  showToast(turningOn ? 'Avisos de comidas activados' : 'Avisos de comidas desactivados');
+}
+
+function openNotificationSettings(){
+  const p = state.profile;
+  const iosNeedsInstall = /iPhone|iPad|iPod/.test(navigator.userAgent) && !isStandalonePWA();
+  const permission = notificationsSupported() ? Notification.permission : 'unsupported';
+  const waterWithNotify = state.supplements.filter(s => s.type === 'water' && s.notifyMins);
+  openActionOverlay(`
+    <h1 style="margin:0 0 4px 0;">🔔 Notificaciones</h1>
+    <p class="sub" style="margin:0 0 16px 0;">Elige qué avisos quieres recibir en tu móvil.</p>
+
+    ${permission === 'unsupported' ? `
+      <div class="panel"><p class="sub" style="margin:0;">Este navegador no admite notificaciones.</p></div>
+    ` : `
+      ${iosNeedsInstall ? `
+      <div class="panel" style="background:var(--accent-soft); margin-bottom:14px;">
+        <p style="font-size:12.5px; margin:0; line-height:1.5;">⚠️ En iPhone los avisos <b>solo funcionan si instalas eatiseasy en tu pantalla de inicio</b> y la abres desde ahí. Puedes hacerlo desde Perfil → Instalar app.</p>
+      </div>` : ''}
+      ${permission === 'denied' ? `
+      <div class="panel" style="background:var(--accent-soft); margin-bottom:14px;">
+        <p style="font-size:12.5px; margin:0; line-height:1.5;">Has bloqueado los avisos de eatiseasy. Para volver a activarlos tienes que permitirlos en los ajustes de tu navegador o móvil.</p>
+      </div>` : ''}
+
+      <div class="panel">
+        <div class="row" style="border-bottom:none;">
+          <span class="rname">🍽️ Recordarme registrar comidas</span>
+          <label class="switch">
+            <input type="checkbox" ${p.mealNotifications ? 'checked' : ''} onchange="toggleMealNotifications()">
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+        <p class="sub" style="margin:8px 0 0 0; font-size:11.5px;">Te avisamos en horario de desayuno, comida, merienda y cena — solo si aún no has registrado nada en esa franja.</p>
+      </div>
+
+      <div class="section-title">Avisos de agua</div>
+      <div class="panel plist">
+        ${state.supplements.filter(s => s.type === 'water').length
+          ? state.supplements.filter(s => s.type === 'water').map(s => `
+            <div class="row" style="cursor:pointer;" onclick="openReminderNotifySettings('${s.id}')">
+              <span class="rname">${ICON.water} ${s.name}</span>
+              <span style="color:var(--muted); font-size:12px;">${s.notifyMins ? (s.notifyMins < 60 ? s.notifyMins+' min' : (s.notifyMins/60)+' h') : 'Desactivado'} ›</span>
+            </div>`).join('')
+          : `<div class="empty">Crea un recordatorio de agua para poder activar sus avisos</div>`}
+      </div>
+
+      <p class="sub" style="margin-top:16px; font-size:11.5px;">Los avisos llegan mientras la app esté abierta o recién usada. Con la app cerrada del todo mucho rato, el móvil puede pararlos — es una limitación de las apps web, no un fallo.</p>
+    `}
+  `);
 }
 
 function renderToday(){
@@ -2718,7 +2877,7 @@ async function removeSupplement(id){
   renderAll();
 }
 async function cycleWaterDisplayMode(id){
-  const scrollY = window.scrollY;
+  const scrollY = captureViewState();
   const reminder = state.supplements.find(s => s.id === id);
   if(!reminder) return;
   const modes = ['glasses', 'volume', 'remaining'];
@@ -2741,13 +2900,28 @@ function restoreCarouselPage(){
   }
 }
 
-function restoreScroll(y){
+function captureViewState(){
+  const car = document.getElementById('today-carousel');
+  return {
+    y: window.scrollY,
+    page: car && car.clientWidth ? Math.round(car.scrollLeft / car.clientWidth) : 0
+  };
+}
+function restoreScroll(v){
+  const state_ = (typeof v === 'object' && v !== null) ? v : { y: v, page: 0 };
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => window.scrollTo(0, y));
+    requestAnimationFrame(() => {
+      const car = document.getElementById('today-carousel');
+      if(car && state_.page > 0){
+        car.scrollLeft = state_.page * car.clientWidth;
+        updateCarouselDots();
+      }
+      window.scrollTo(0, state_.y);
+    });
   });
 }
 async function toggleSupplement(id){
-  const scrollY = window.scrollY;
+  const scrollY = captureViewState();
   const current = state.takenToday[id] || 0;
   state.takenToday[id] = current > 0 ? 0 : 1;
   await safeSet('suppTaken:' + todayStr(), state.takenToday);
@@ -2755,7 +2929,7 @@ async function toggleSupplement(id){
   restoreScroll(scrollY);
 }
 async function incrementWater(id){
-  const scrollY = window.scrollY;
+  const scrollY = captureViewState();
   const current = state.takenToday[id] || 0;
   state.takenToday[id] = current + 1;
   await safeSet('suppTaken:' + todayStr(), state.takenToday);
@@ -2763,7 +2937,7 @@ async function incrementWater(id){
   restoreScroll(scrollY);
 }
 async function decrementWater(id){
-  const scrollY = window.scrollY;
+  const scrollY = captureViewState();
   const current = state.takenToday[id] || 0;
   if(current <= 0) return;
   state.takenToday[id] = current - 1;
@@ -4608,10 +4782,14 @@ function renderProfile(){
       <div class="row"><span class="rname">Tiempo estimado</span><span class="rval">${t.weeksToGoal} sem</span></div>
     </div>
 
-    <div class="section-title">${tr('section_theme')}</div>
+    <div class="section-title">Ajustes de la app</div>
     <div class="panel plist">
       <div class="row" style="cursor:pointer;" onclick="openThemeMenu()">
-        <span class="rname">${bigEmoji('🎨')} Personalización</span>
+        <span class="rname">${bigEmoji('🎨')} Tema y personalización</span>
+        <span style="color:var(--muted); font-size:18px;">›</span>
+      </div>
+      <div class="row" style="cursor:pointer;" onclick="openNotificationSettings()">
+        <span class="rname">${ICON.bell} Notificaciones</span>
         <span style="color:var(--muted); font-size:18px;">›</span>
       </div>
     </div>
@@ -4867,11 +5045,15 @@ async function saveEditMacros(){
 
 async function manualLoadFromCloud(){
   if(!state.profile.email){
-    showToast('Primero vincula tu Google', true);
+    showToast('Inicia sesión con Google para guardar en la nube', true);
     return;
   }
-  if(!SYNC_ENDPOINT || !googleIdToken){
-    showToast('La sincronización con la nube no está disponible ahora mismo', true);
+  if(!googleIdToken){
+    showToast('Inicia sesión con Google para guardar en la nube', true);
+    return;
+  }
+  if(!SYNC_ENDPOINT){
+    showToast('La sincronización con la nube aún no está configurada', true);
     return;
   }
   openActionOverlay(`
@@ -4896,11 +5078,15 @@ async function confirmLoadFromCloud(){
 
 async function manualSaveToCloud(){
   if(!state.profile.email){
-    showToast('Primero vincula tu Google', true);
+    showToast('Inicia sesión con Google para guardar en la nube', true);
     return;
   }
-  if(!SYNC_ENDPOINT || !googleIdToken){
-    showToast('La sincronización con la nube no está disponible ahora mismo', true);
+  if(!googleIdToken){
+    showToast('Inicia sesión con Google para guardar en la nube', true);
+    return;
+  }
+  if(!SYNC_ENDPOINT){
+    showToast('La sincronización con la nube aún no está configurada', true);
     return;
   }
   showToast('Guardando en la nube…');
@@ -4971,7 +5157,11 @@ function renderStaticMenus(){
 }
 
 renderStaticMenus();
-init().then(() => { try{ startWaterNotifications(); }catch(e){ console.error(e); } });
+init().then(() => {
+  try{ startWaterNotifications(); }catch(e){ console.error(e); }
+  try{ startMealNotifications(); }catch(e){ console.error(e); }
+  try{ revalidateProStatus(); }catch(e){ console.error(e); }
+});
 </script>
 </body>
 </html>
