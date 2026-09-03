@@ -58,12 +58,15 @@ body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemF
 .week-strip{display:flex; padding:16px 0 4px 0; gap:4px; overflow-x:auto; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
 .past-day-banner{display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--accent-soft); border:1px solid var(--accent); border-radius:14px; padding:10px 12px; margin-top:10px; font-size:12.5px; color:var(--paper);}
 .week-strip::-webkit-scrollbar{display:none;}
-.week-cell{display:flex; flex-direction:column; align-items:center; gap:5px; padding:9px 4px; border-radius:16px; flex:0 0 58px; cursor:pointer; scroll-snap-align:end; transition:background .18s ease, box-shadow .18s ease;}
+/* 7 celdas exactas por pantalla (hoy + 3 a cada lado), calculado sobre
+   el ancho real disponible en vez de un tamaño fijo — así nunca se
+   corta ninguna, sea cual sea el móvil. */
+.week-cell{display:flex; flex-direction:column; align-items:center; gap:5px; padding:6px 2px; border-radius:14px; flex:0 0 calc((100% - 24px) / 7); cursor:pointer; scroll-snap-align:center; transition:background .18s ease, box-shadow .18s ease;}
 .week-cell.is-disabled{cursor:default;}
 .week-cell.is-viewing{background:var(--surface); box-shadow:0 2px 10px rgba(0,0,0,.09);}
 .week-letter{font-size:11.5px; color:var(--muted); font-weight:600;}
 .week-letter.is-today-label{color:var(--paper); font-weight:800;}
-.day-ring{width:40px; height:40px; display:block;}
+.day-ring{width:34px; height:34px; display:block;}
 .day-ring-num{font-family:inherit; font-size:13px; font-weight:700; fill:var(--paper);}
 .day-ring-num.is-muted{fill:var(--muted); opacity:.55;}
 
@@ -2055,21 +2058,19 @@ function renderWeekStrip(){
       </div>`;
     d.setDate(d.getDate()+1);
   }
-  // Solo centramos en "hoy" la primera vez que se dibuja la tira. Si lo
-  // hiciéramos en cada redibujado, la tira daría un salto cada vez que
-  // el usuario toca cualquier botón (era un bug real).
-  if(!window.__weekStripPositioned){
-    setTimeout(() => {
-      const strip = document.querySelector('.week-strip');
-      const todayCell = document.getElementById('week-cell-today');
-      if(strip && todayCell){
-        // Dejamos "hoy" centrado, con días visibles a ambos lados.
-        // Movemos solo el scroll interno de la tira, sin tocar el de la página.
-        strip.scrollLeft = todayCell.offsetLeft - (strip.clientWidth / 2) + (todayCell.offsetWidth / 2);
-        window.__weekStripPositioned = true;
-      }
-    }, 0);
-  }
+  // La tira se recrea entera cada vez que se redibuja "Hoy" (nuevo
+  // elemento = empieza en scrollLeft 0), así que hay que recolocarla
+  // SIEMPRE, no solo la primera vez — si no, se queda pegada a la
+  // izquierda al cambiar de pestaña o tocar cualquier botón.
+  setTimeout(() => {
+    const strip = document.querySelector('.week-strip');
+    const todayCell = document.getElementById('week-cell-today');
+    if(strip && todayCell){
+      // Dejamos "hoy" centrado, con 3 días visibles a cada lado.
+      // Movemos solo el scroll interno de la tira, sin tocar el de la página.
+      strip.scrollLeft = todayCell.offsetLeft - (strip.clientWidth / 2) + (todayCell.offsetWidth / 2);
+    }
+  }, 0);
   return `<div class="week-strip">${cells}</div>`;
 }
 
