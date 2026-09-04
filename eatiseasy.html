@@ -1178,6 +1178,14 @@ async function init(){
   state.takenToday = Array.isArray(takenRaw) ? Object.fromEntries(takenRaw.map(id => [id, 1])) : takenRaw;
   await showSplash();
   renderAll();
+  // Si te quedó un análisis de foto sin guardar (cerraste la app antes
+  // de tocar "Guardar"), te lo recuperamos aquí en vez de perderlo.
+  const draft = await safeGet('pendingFoodDraft');
+  if(draft){
+    state.pendingFood = draft;
+    showToast('Recuperamos una comida que no llegaste a guardar');
+    openPendingFoodDetail();
+  }
 }
 
 // ======================================================================
@@ -2780,6 +2788,10 @@ function closeFoodDetail(){
 function openPendingFoodDetail(){
   const pf = state.pendingFood;
   if(!pf) return;
+  // Guardamos el resultado como borrador nada más tenerlo — así, si
+  // cierras la app antes de tocar "Guardar", no se pierde: la próxima
+  // vez que abras la app te lo recuperamos.
+  safeSet('pendingFoodDraft', pf);
   const hs = pf.healthScore;
   const hsPct = hs ? Math.round((hs/10)*100) : 0;
   const hsColor = !hs ? 'var(--line-strong)' : hs >= 7 ? 'var(--protein)' : hs >= 4 ? 'var(--burn)' : 'var(--warn)';
@@ -2838,11 +2850,13 @@ function confirmPendingFoodFromDetail(){
     source: 'photo', photo: pf.photo, healthScore: pf.healthScore, ingredients: pf.ingredients, servings: 1
   });
   state.pendingFood = null;
+  safeDelete('pendingFoodDraft');
   closeFoodDetail();
 }
 
 function cancelPendingFoodFromDetail(){
   state.pendingFood = null;
+  safeDelete('pendingFoodDraft');
   closeFoodDetail();
   renderAdd();
 }
