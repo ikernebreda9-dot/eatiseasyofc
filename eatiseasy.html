@@ -693,6 +693,31 @@ async function applyAllLocalData(payload){
 const SYNC_ENDPOINT = 'https://eatiseasyacounts.ikernebreda9.workers.dev';
 
 let googleIdToken = null;
+
+// Guarda el token de Google para que la sesión "se quede iniciada" al
+// cerrar y volver a abrir la app — antes vivía solo en memoria, así que
+// se perdía cada vez y por eso pedía iniciar sesión de nuevo.
+async function persistGoogleToken(token){
+  googleIdToken = token;
+  await safeSet('googleIdToken', token);
+}
+// Al abrir la app, recupera el token guardado — si aún no ha caducado
+// (los de Google duran ~1 hora), la sesión sigue activa sin más.
+async function restoreGoogleToken(){
+  const saved = await safeGet('googleIdToken');
+  if(!saved) return;
+  try{
+    const payload = decodeJwt(saved);
+    if(payload.exp && payload.exp * 1000 > Date.now()){
+      googleIdToken = saved;
+    } else {
+      // Caducado: lo quitamos, pero NO tocamos el nombre/foto/email del
+      // perfil — la identidad se queda, solo hace falta un toque para
+      // "reconectar" la sincronización en vivo.
+      await safeDelete('googleIdToken');
+    }
+  }catch(e){ await safeDelete('googleIdToken'); }
+}
 let syncTimer = null;
 
 function scheduleSync(){
@@ -771,7 +796,7 @@ function keepLocalChoice(){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '1.02';
+const APP_VERSION = '1.03';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -1233,6 +1258,7 @@ async function init(){
     renderOnboardStep();
     return;
   }
+  await restoreGoogleToken();
   const urlParams = new URLSearchParams(location.search);
   const sessionId = urlParams.get('session_id');
   if(sessionId && !state.profile.isPro){
@@ -1590,7 +1616,7 @@ function decodeJwt(token){
 
 async function handleGoogleCredential(response){
   try{
-    googleIdToken = response.credential;
+    await persistGoogleToken(response.credential);
     const payload = decodeJwt(response.credential);
     obDraft.name = payload.name || obDraft.name;
     obDraft.googleAvatarUrl = payload.picture || null;
@@ -1645,14 +1671,20 @@ function renderGoogleButtonProfile(){
 
 async function handleGoogleCredentialProfile(response){
   try{
-    googleIdToken = response.credential;
+    await persistGoogleToken(response.credential);
     const payload = decodeJwt(response.credential);
-    state.profile.name = payload.name || state.profile.name;
-    state.profile.email = payload.email || state.profile.email;
-    if(payload.picture){
-      try{ state.profile.avatar = await fetchImageAsDataUrl(payload.picture, 200, 0.8); }
-      catch(e){ /* si falla la foto, seguimos solo con el nombre */ }
+    const isFirstLink = !state.profile.email;
+    if(isFirstLink){
+      // Solo la primera vez que se vincula Google rellenamos nombre y
+      // foto — si ya tenías cuenta hecha (con tu propio nombre/foto),
+      // volver a iniciar sesión no debe pisártelos.
+      state.profile.name = payload.name || state.profile.name;
+      if(payload.picture){
+        try{ state.profile.avatar = await fetchImageAsDataUrl(payload.picture, 200, 0.8); }
+        catch(e){ /* si falla la foto, seguimos solo con el nombre */ }
+      }
     }
+    state.profile.email = payload.email || state.profile.email;
     await safeSet('profile', state.profile);
     await ensureLicenseCode();
     let justActivatedPro = false;
@@ -2653,7 +2685,7 @@ function renderToday(){
         }
         return `
           <div class="log-card2" onclick="openFoodDetail('${item.id}')">
-            <div class="log-photo">${item.photo ? `<img data-photo-ref="${item.photo}">` : '🍽️'}</div>
+            ${item.photo ? `<div class="log-photo"><img data-photo-ref="${item.photo}"></div>` : ''}
             <div class="log-body">
               <div class="log-top"><div class="log-title">${item.name}</div><div class="log-time">${timeLabel}</div><span class="del" onclick="event.stopPropagation(); removeFood('${item.id}')">✕</span></div>
               <div class="log-cal">${ICON.fire} <b>${item.cal}</b> calorías</div>
@@ -2832,7 +2864,7 @@ function openFoodDetail(id){
   const hsColor = !hs ? 'var(--line-strong)' : hs >= 7 ? 'var(--protein)' : hs >= 4 ? 'var(--burn)' : 'var(--warn)';
 
   document.getElementById('food-detail-body').innerHTML = `
-    ${f.photo ? `<img data-photo-ref="${f.photo}" class="detail-photo">` : `<div class="detail-photo detail-photo-fallback">🍽️</div>`}
+    ${f.photo ? `<img data-photo-ref="${f.photo}" class="detail-photo">` : ''}
 
     <div class="detail-title-row">
       <h1>${f.name}</h1>
@@ -2899,7 +2931,7 @@ function openPendingFoodDetail(){
   const hsColor = !hs ? 'var(--line-strong)' : hs >= 7 ? 'var(--protein)' : hs >= 4 ? 'var(--burn)' : 'var(--warn)';
 
   document.getElementById('food-detail-body').innerHTML = `
-    ${pf.photo ? `<img data-photo-ref="${pf.photo}" class="detail-photo">` : `<div class="detail-photo detail-photo-fallback">🍽️</div>`}
+    ${pf.photo ? `<img data-photo-ref="${pf.photo}" class="detail-photo">` : ''}
 
     <div class="field" style="margin-top:14px;">
       <label>Nombre del plato</label>
@@ -3973,14 +4005,22 @@ async function analyzeFoodText(query){
   const clean = text.replace(/```json|```/g, '').trim();
   const parsed = JSON.parse(clean);
   const grams = Math.round(parsed.grams) || 100;
+  const cal = Math.round(parsed.calories) || 0;
+  const protein = round1(parsed.protein_g) || 0;
+  const carb = round1(parsed.carbs_g) || 0;
+  const fat = round1(parsed.fat_g) || 0;
+  // Igual que en la base de datos: valores por 100g, así puede pasar
+  // por el mismo selector de cantidad (tamaño/unidades/gramos).
   return {
-    name: `${parsed.name || query} (${grams} g)`,
-    cal: Math.round(parsed.calories) || 0,
-    protein: round1(parsed.protein_g) || 0,
-    carb: round1(parsed.carbs_g) || 0,
-    fat: round1(parsed.fat_g) || 0,
-    healthScore: parsed.health_score != null ? Math.max(1, Math.min(10, Math.round(parsed.health_score))) : null,
-    source: 'search', servings: 1
+    name: parsed.name || query,
+    per100: {
+      cal: Math.round(cal / grams * 100),
+      protein: round1(protein / grams * 100),
+      carb: round1(carb / grams * 100),
+      fat: round1(fat / grams * 100)
+    },
+    unitG: grams,
+    healthScore: parsed.health_score != null ? Math.max(1, Math.min(10, Math.round(parsed.health_score))) : null
   };
 }
 
@@ -4198,7 +4238,15 @@ function filterQuickFoods(){
 }
 
 // ---------- Selector de cantidad de un alimento ----------
-let portionState = { index:null, mode:'size', grams:0, units:1, size:'mediano' };
+// portionState.index puede ser un número (un alimento de la base de
+// datos) o la cadena 'search' (un resultado buscado con IA, guardado
+// en searchResultFood) — así los dos comparten el mismo selector.
+let portionState = { index:null, mode:'size', grams:0, units:1, size:'mediano', unitSize:'mediano' };
+let searchResultFood = null;
+
+function getPortionFood(){
+  return portionState.index === 'search' ? searchResultFood : QUICK_FOODS[portionState.index];
+}
 
 function openPortionPicker(index){
   const f = QUICK_FOODS[index];
@@ -4208,15 +4256,32 @@ function openPortionPicker(index){
     mode: f.sizes ? 'size' : 'units',
     grams: f.sizes ? f.sizes.mediano : f.unitG,
     units: 1,
-    size: 'mediano'
+    size: 'mediano',
+    unitSize: 'mediano'
+  };
+  renderPortionPicker();
+}
+
+function openPortionPickerForSearch(result){
+  searchResultFood = result;
+  portionState = {
+    index: 'search',
+    mode: 'units',
+    grams: result.unitG,
+    units: 1,
+    size: 'mediano',
+    unitSize: 'mediano'
   };
   renderPortionPicker();
 }
 
 function computePortionGrams(){
-  const f = QUICK_FOODS[portionState.index];
+  const f = getPortionFood();
   if(portionState.mode === 'grams') return portionState.grams || 0;
-  if(portionState.mode === 'units') return (portionState.units || 0) * f.unitG;
+  if(portionState.mode === 'units'){
+    const perUnitG = (f.sizes && f.sizes[portionState.unitSize]) || f.unitG;
+    return (portionState.units || 0) * perUnitG;
+  }
   return (f.sizes && f.sizes[portionState.size]) || f.unitG;
 }
 
@@ -4229,6 +4294,10 @@ function setPortionSize(size){
   portionState.size = size;
   renderPortionPicker();
 }
+function setPortionUnitSize(size){
+  portionState.unitSize = size;
+  renderPortionPicker();
+}
 function onPortionInput(field, value){
   const n = parseFloat(value);
   portionState[field] = isNaN(n) ? 0 : n;
@@ -4236,7 +4305,7 @@ function onPortionInput(field, value){
 }
 
 function portionMacros(){
-  const f = QUICK_FOODS[portionState.index];
+  const f = getPortionFood();
   const g = computePortionGrams();
   const per = f.per100;
   return {
@@ -4259,7 +4328,7 @@ function updatePortionNumbers(){
 }
 
 function renderPortionPicker(){
-  const f = QUICK_FOODS[portionState.index];
+  const f = getPortionFood();
   const m = portionMacros();
   const hasSizes = !!f.sizes;
   openActionOverlay(`
@@ -4280,9 +4349,17 @@ function renderPortionPicker(){
           ).join('')}
         </div>` : ''}
       ${portionState.mode === 'units' ? `
-        <div class="field" style="margin-bottom:0;"><label>Número de unidades (1 unidad ≈ ${f.unitG} g)</label>
+        <div class="field" style="margin-bottom:${hasSizes ? '10px' : '0'};">
+          <label>Número de unidades</label>
           <input type="number" inputmode="decimal" step="0.5" min="0" value="${portionState.units}" oninput="onPortionInput('units', this.value)">
-        </div>` : ''}
+        </div>
+        ${hasSizes ? `
+        <label style="display:block; font-family:inherit; font-size:10px; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:.8px;">Tamaño de cada unidad</label>
+        <div class="portion-size-row">
+          ${['pequeño','mediano','grande'].map(s =>
+            `<button class="portion-size-btn ${portionState.unitSize===s?'active':''}" onclick="setPortionUnitSize('${s}')">${s.charAt(0).toUpperCase()+s.slice(1)}<span>${f.sizes[s]} g</span></button>`
+          ).join('')}
+        </div>` : `<p class="sub" style="margin:0; font-size:11.5px;">1 unidad ≈ ${f.unitG} g</p>`}` : ''}
       ${portionState.mode === 'grams' ? `
         <div class="field" style="margin-bottom:0;"><label>Gramos</label>
           <input type="number" inputmode="numeric" step="1" min="0" value="${portionState.grams}" oninput="onPortionInput('grams', this.value)">
@@ -4307,13 +4384,13 @@ function renderPortionPicker(){
 }
 
 async function confirmPortion(){
-  const f = QUICK_FOODS[portionState.index];
+  const f = getPortionFood();
   const m = portionMacros();
   if(!m.grams){ showToast('Indica una cantidad', true); return; }
   closeActionOverlay();
   const newId = await addFoodEntry({
     name: `${f.name} (${m.grams} g)`, cal: m.cal, protein: m.protein, carb: m.carb, fat: m.fat,
-    source: 'quick', servings: 1
+    source: portionState.index === 'search' ? 'search' : 'quick', servings: 1
   });
   if(newId.ok) openFoodDetail(newId.id);
 }
@@ -4326,25 +4403,19 @@ async function runFoodSearch(){
   resultEl.innerHTML = `<div class="empty">Buscando…</div>`;
   try{
     const result = await withTimeout(analyzeFoodText(query), 15000, 'La búsqueda ha tardado demasiado');
+    const cal100 = Math.round(result.per100.cal * result.unitG / 100);
     resultEl.innerHTML = `
-      <div class="panel plist">
-        <div class="row"><span class="rname">${result.name}</span></div>
-        <div class="row"><span class="rname">${ICON.fire} Calorías</span><span>${result.cal} kcal</span></div>
-        <div class="row"><span class="rname">${ICON.protein} Proteína</span><span>${result.protein} g</span></div>
-        <div class="row"><span class="rname">${ICON.carbs} Carbohidratos</span><span>${result.carb} g</span></div>
-        <div class="row"><span class="rname">${ICON.water} Grasas</span><span>${result.fat} g</span></div>
+      <div class="qf-row is-recommended" onclick='openPortionPickerForSearch(${JSON.stringify(result).replace(/'/g,"&#39;")})'>
+        <div class="qf-body">
+          <div class="qf-name">${result.name}</div>
+          <div class="qf-sub">${cal100} cal · ${result.unitG} g (ración estimada)</div>
+        </div>
+        <div class="qf-add">›</div>
       </div>
-      <button class="btn accent" style="margin-top:12px;" onclick='confirmFoodSearchResult(${JSON.stringify(result).replace(/'/g,"&#39;")})'>Añadir a hoy</button>
     `;
   }catch(e){
     resultEl.innerHTML = `<div class="empty">No se pudo buscar: ${e.message}</div>`;
   }
-}
-
-async function confirmFoodSearchResult(result){
-  closeActionOverlay();
-  const newId = await addFoodEntry(result);
-  if(newId.ok) openFoodDetail(newId.id);
 }
 
 async function processFoodImage(file){
@@ -4409,7 +4480,7 @@ async function openSavedMeals(){
   const saved = (await safeGet('savedMeals')) || [];
   const rows = saved.length ? saved.map(s => `
     <div class="log-card2" onclick="useSavedMeal('${s.id}')">
-      <div class="log-photo">${s.photo ? `<img data-photo-ref="${s.photo}">` : '🍽️'}</div>
+      ${s.photo ? `<div class="log-photo"><img data-photo-ref="${s.photo}"></div>` : ''}
       <div class="log-body">
         <div class="log-top"><div class="log-title">${s.name}</div><span class="del" onclick="event.stopPropagation(); removeSavedMeal('${s.id}')">✕</span></div>
         <div class="log-cal">${ICON.fire} <b>${s.cal}</b> calorías</div>
@@ -4423,7 +4494,7 @@ async function useSavedMeal(id){
   const s = saved.find(x => x.id === id);
   if(!s) return;
   openActionOverlay(`
-    ${s.photo ? `<img data-photo-ref="${s.photo}" class="detail-photo">` : `<div class="detail-photo detail-photo-fallback">🍽️</div>`}
+    ${s.photo ? `<img data-photo-ref="${s.photo}" class="detail-photo">` : ''}
     <h1 style="margin:14px 0 4px 0;">${s.name}</h1>
 
     <div class="hero-card" style="margin-top:14px; cursor:pointer;" onclick="editSavedMealField('${s.id}','cal')">
@@ -5095,7 +5166,7 @@ async function openDayDetail(date){
 
   const foodRows = log.foods.length ? log.foods.map(f=>`
     <div class="row" style="cursor:pointer;" onclick="openFoodDetailForDate('${f.id}', '${date}')"><span class="rname">
-      ${f.photo ? `<img data-photo-ref="${f.photo}" class="row-thumb">` : `<span class="row-thumb row-thumb-fallback">🍽️</span>`}
+      ${f.photo ? `<img data-photo-ref="${f.photo}" class="row-thumb">` : ''}
       ${f.name}${healthBadge(f)}</span><span class="rval">${f.cal} kcal</span></div>`).join('')
     : `<div class="empty">Sin comidas ese día</div>`;
   const exRows = log.exercises.map(e=>`
@@ -5149,7 +5220,7 @@ async function openFoodDetailForDate(id, date){
   const hsColor = !hs ? 'var(--line-strong)' : hs >= 7 ? 'var(--protein)' : hs >= 4 ? 'var(--burn)' : 'var(--warn)';
 
   document.getElementById('food-detail-body').innerHTML = `
-    ${f.photo ? `<img data-photo-ref="${f.photo}" class="detail-photo">` : `<div class="detail-photo detail-photo-fallback">🍽️</div>`}
+    ${f.photo ? `<img data-photo-ref="${f.photo}" class="detail-photo">` : ''}
 
     <div class="detail-title-row">
       <h1>${f.name}</h1>
@@ -5655,6 +5726,7 @@ async function confirmSignOutGoogle(){
     try{ await pushToCloud(); }catch(e){ console.error('push on signout failed', e); }
   }
   googleIdToken = null;
+  await safeDelete('googleIdToken');
   const dates = (await safeGet('logDates')) || [];
   for(const d of dates){
     await safeDelete('log:' + d);
