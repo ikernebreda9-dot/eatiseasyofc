@@ -511,6 +511,83 @@ details .inner{padding-top:10px;}
 // runs standalone outside Claude (e.g. embedded in Google Sites) — that way
 // closing/reopening the page does NOT reset your data back to zero.
 const HAS_CLOUD = (typeof window.storage !== 'undefined');
+
+// ---------- Fotos en IndexedDB, no en localStorage ----------
+// localStorage tiene un límite total muy pequeño (5-10MB) que con fotos
+// SIEMPRE acaba llenándose tarde o temprano, por mucho que se compriman.
+// IndexedDB es otro almacén del propio navegador con muchísimo más
+// espacio (cientos de MB) — aquí es donde vive el contenido real de
+// cada foto. En el resto de la app, el campo "photo" ya no es la foto
+// en sí, es solo un identificador corto ("ph_...") que apunta a ella.
+let photoDBPromise = null;
+function openPhotoDB(){
+  if(photoDBPromise) return photoDBPromise;
+  photoDBPromise = new Promise((resolve, reject) => {
+    if(typeof indexedDB === 'undefined'){ reject(new Error('IndexedDB no disponible')); return; }
+    const req = indexedDB.open('eatiseasy-photos', 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore('photos'); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return photoDBPromise;
+}
+async function savePhotoToDB(dataUrl){
+  if(!dataUrl) return null;
+  const id = 'ph_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  try{
+    const db = await openPhotoDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('photos', 'readwrite');
+      tx.objectStore('photos').put(dataUrl, id);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    return id;
+  }catch(e){
+    console.error('savePhotoToDB falló, se sigue sin foto', e);
+    return null;
+  }
+}
+async function getPhotoFromDB(id){
+  if(!id) return null;
+  try{
+    const db = await openPhotoDB();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction('photos', 'readonly');
+      const req = tx.objectStore('photos').get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }catch(e){
+    console.error('getPhotoFromDB falló', e);
+    return null;
+  }
+}
+async function deletePhotoFromDB(id){
+  if(!id) return;
+  try{
+    const db = await openPhotoDB();
+    await new Promise((resolve) => {
+      const tx = db.transaction('photos', 'readwrite');
+      tx.objectStore('photos').delete(id);
+      tx.oncomplete = resolve;
+      tx.onerror = () => resolve(); // un fallo al borrar no debe bloquear nada
+    });
+  }catch(e){ /* nada más que hacer */ }
+}
+
+// Después de meter en el HTML imágenes como <img data-photo-ref="ph_...">
+// (sin src), esto las rellena buscando cada foto real en IndexedDB.
+async function hydratePhotoImages(){
+  const imgs = document.querySelectorAll('img[data-photo-ref]');
+  for(const img of imgs){
+    const ref = img.getAttribute('data-photo-ref');
+    if(!ref) continue;
+    const dataUrl = await getPhotoFromDB(ref);
+    if(dataUrl) img.src = dataUrl;
+    img.removeAttribute('data-photo-ref');
+  }
+}
 const LOCAL_PREFIX = 'eatiseasy:';
 let HAS_LOCAL_STORAGE = false;
 try{
@@ -555,7 +632,29 @@ async function safeDelete(key){
   }
 }
 async function saveLog(){
-  await safeSet(logKey(), state.log);
+  let ok = await safeSet(logKey(), state.log);
+
+  if(!ok){
+    // El motivo casi siempre es quedarse sin espacio en el navegador
+    // (localStorage tiene un límite pequeño, y las fotos ocupan bastante).
+    // En vez de perder la comida entera, reintentamos SIN las fotos —
+    // así al menos las calorías y macros de todo el día quedan a salvo.
+    console.error('saveLog: primer intento falló, reintentando sin fotos');
+    const logSinFotos = {
+      foods: state.log.foods.map(f => f.photo ? { ...f, photo: null } : f),
+      exercises: state.log.exercises
+    };
+    ok = await safeSet(logKey(), logSinFotos);
+    if(ok){
+      showToast('Sin espacio para guardar la foto — se guardó la comida sin ella', true);
+    } else {
+      // Ni siquiera sin fotos hay sitio: esto es grave de verdad, hay
+      // que decírselo al usuario tal cual, no fingir que ha ido bien.
+      showToast('⚠️ No se pudo guardar — el navegador está sin espacio. Borra fotos antiguas en Datos.', true);
+      return false;
+    }
+  }
+
   const dates = (await safeGet('logDates')) || [];
   const day = currentDate();
   if(!dates.includes(day)){
@@ -564,6 +663,7 @@ async function saveLog(){
     await safeSet('logDates', dates);
   }
   state.logDates = dates;
+  return true;
 }
 
 // ---------- backup code (export/import full account as text) ----------
@@ -671,7 +771,7 @@ function keepLocalChoice(){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '1.01';
+const APP_VERSION = '1.02';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -2553,7 +2653,7 @@ function renderToday(){
         }
         return `
           <div class="log-card2" onclick="openFoodDetail('${item.id}')">
-            <div class="log-photo">${item.photo ? `<img src="${item.photo}">` : '🍽️'}</div>
+            <div class="log-photo">${item.photo ? `<img data-photo-ref="${item.photo}">` : '🍽️'}</div>
             <div class="log-body">
               <div class="log-top"><div class="log-title">${item.name}</div><div class="log-time">${timeLabel}</div><span class="del" onclick="event.stopPropagation(); removeFood('${item.id}')">✕</span></div>
               <div class="log-cal">${ICON.fire} <b>${item.cal}</b> calorías</div>
@@ -2697,6 +2797,7 @@ function renderToday(){
     ${logRows}
     </div>
   `;
+  hydratePhotoImages();
 }
 
 function openHealthScoreInfo(hs){
@@ -2731,7 +2832,7 @@ function openFoodDetail(id){
   const hsColor = !hs ? 'var(--line-strong)' : hs >= 7 ? 'var(--protein)' : hs >= 4 ? 'var(--burn)' : 'var(--warn)';
 
   document.getElementById('food-detail-body').innerHTML = `
-    ${f.photo ? `<img src="${f.photo}" class="detail-photo">` : `<div class="detail-photo detail-photo-fallback">🍽️</div>`}
+    ${f.photo ? `<img data-photo-ref="${f.photo}" class="detail-photo">` : `<div class="detail-photo detail-photo-fallback">🍽️</div>`}
 
     <div class="detail-title-row">
       <h1>${f.name}</h1>
@@ -2780,6 +2881,7 @@ function openFoodDetail(id){
     </div>
   `;
   document.getElementById('food-detail').classList.remove('hide');
+  hydratePhotoImages();
 }
 function closeFoodDetail(){
   document.getElementById('food-detail').classList.add('hide');
@@ -2797,7 +2899,7 @@ function openPendingFoodDetail(){
   const hsColor = !hs ? 'var(--line-strong)' : hs >= 7 ? 'var(--protein)' : hs >= 4 ? 'var(--burn)' : 'var(--warn)';
 
   document.getElementById('food-detail-body').innerHTML = `
-    ${pf.photo ? `<img src="${pf.photo}" class="detail-photo">` : `<div class="detail-photo detail-photo-fallback">🍽️</div>`}
+    ${pf.photo ? `<img data-photo-ref="${pf.photo}" class="detail-photo">` : `<div class="detail-photo detail-photo-fallback">🍽️</div>`}
 
     <div class="field" style="margin-top:14px;">
       <label>Nombre del plato</label>
@@ -2839,19 +2941,24 @@ function openPendingFoodDetail(){
     <button class="btn ghost small" style="margin-top:10px;" onclick="cancelPendingFoodFromDetail()">Cancelar</button>
   `;
   document.getElementById('food-detail').classList.remove('hide');
+  hydratePhotoImages();
 }
 
-function confirmPendingFoodFromDetail(){
+async function confirmPendingFoodFromDetail(){
   const pf = state.pendingFood;
   if(!pf) return;
   const name = document.getElementById('pending-name-input').value.trim() || pf.name;
-  addFoodEntry({
+  const result = await addFoodEntry({
     name, cal: pf.cal, protein: pf.protein, carb: pf.carb, fat: pf.fat,
     source: 'photo', photo: pf.photo, healthScore: pf.healthScore, ingredients: pf.ingredients, servings: 1
   });
-  state.pendingFood = null;
-  safeDelete('pendingFoodDraft');
-  closeFoodDetail();
+  if(result.ok){
+    state.pendingFood = null;
+    await safeDelete('pendingFoodDraft');
+    closeFoodDetail();
+  }
+  // Si falló del todo (ni siquiera sin foto hubo sitio), dejamos el
+  // borrador tal cual — así no se pierde y puede reintentar luego.
 }
 
 function cancelPendingFoodFromDetail(){
@@ -2962,7 +3069,9 @@ async function submitFixResultsPending(){
   setTab('today');
   startAnalyzingAnimation();
   try{
-    const base64 = pf.photo.split(',')[1];
+    const dataUrl = await getPhotoFromDB(pf.photo);
+    if(!dataUrl) throw new Error('No se encontró la foto guardada');
+    const base64 = dataUrl.split(',')[1];
     const result = await analyzeFoodImage(base64, 'image/jpeg', note || 'el resultado anterior no era correcto, corrígelo');
     state.pendingFood = { ...result, photo: pf.photo };
   }catch(e){
@@ -2992,7 +3101,9 @@ async function submitFixResults(id){
   const note = document.getElementById('fix-note').value.trim();
   document.getElementById('fix-results-wrap').innerHTML = `<div class="empty">Analizando de nuevo…</div>`;
   try{
-    const base64 = f.photo.split(',')[1];
+    const dataUrl = await getPhotoFromDB(f.photo);
+    if(!dataUrl) throw new Error('No se encontró la foto guardada');
+    const base64 = dataUrl.split(',')[1];
     const result = await analyzeFoodImage(base64, 'image/jpeg', note || 'el resultado anterior no era correcto, corrígelo');
     const servings = f.servings || 1;
     f.name = result.name;
@@ -3306,6 +3417,7 @@ function closeAddMenu(){
 function openActionOverlay(html){
   document.getElementById('action-overlay-body').innerHTML = html;
   document.getElementById('action-overlay').classList.remove('hide');
+  hydratePhotoImages();
 }
 function closeActionOverlay(){
   stopBarcodeDetection();
@@ -3519,7 +3631,7 @@ async function lookupBarcodeProduct(barcode){
     const fat = round1(n['fat_100g'] || 0);
     closeActionOverlay();
     const newId = await addFoodEntry({ name, cal, protein, carb, fat, source:'barcode', servings:1 });
-    openFoodDetail(newId);
+    if(newId.ok) openFoodDetail(newId.id);
   }catch(e){
     if(statusEl) statusEl.textContent = 'No se encontró ese producto — añádelo a mano.';
     setTimeout(() => { if(cameraMode === 'barcode') startBarcodeDetection(); }, 2000);
@@ -3616,7 +3728,7 @@ function fileToCompressedBase64(file){
       URL.revokeObjectURL(objectUrl);
       try{
         const analysisUrl = resizeToDataUrl(img, 1024, 0.8);
-        const thumbnail = resizeToDataUrl(img, 900, 0.85);
+        const thumbnail = resizeToDataUrl(img, 640, 0.7);
         resolve({ base64: analysisUrl.split(',')[1], mediaType: 'image/jpeg', thumbnail });
       }catch(e){ reject(e); }
     };
@@ -3783,7 +3895,10 @@ async function saveIngredientEdits(foodId){
     } else {
       showToast('Estimando cantidades…');
       for(const ing of toEstimate){
-        try{ ing.grams = await estimateIngredientGramsFromPhoto(f.photo, ing.name); }
+        try{
+          const photoDataUrl = await getPhotoFromDB(f.photo);
+          ing.grams = await estimateIngredientGramsFromPhoto(photoDataUrl, ing.name);
+        }
         catch(e){ ing.grams = 0; }
       }
     }
@@ -4200,7 +4315,7 @@ async function confirmPortion(){
     name: `${f.name} (${m.grams} g)`, cal: m.cal, protein: m.protein, carb: m.carb, fat: m.fat,
     source: 'quick', servings: 1
   });
-  openFoodDetail(newId);
+  if(newId.ok) openFoodDetail(newId.id);
 }
 
 async function runFoodSearch(){
@@ -4229,7 +4344,7 @@ async function runFoodSearch(){
 async function confirmFoodSearchResult(result){
   closeActionOverlay();
   const newId = await addFoodEntry(result);
-  openFoodDetail(newId);
+  if(newId.ok) openFoodDetail(newId.id);
 }
 
 async function processFoodImage(file){
@@ -4248,7 +4363,8 @@ async function processFoodImage(file){
     const result = await withTimeout(
       analyzeFoodImage(base64, mediaType), 20000, 'El análisis ha tardado demasiado, inténtalo de nuevo'
     );
-    state.pendingFood = { ...result, photo: thumbnail };
+    const photoRef = await savePhotoToDB(thumbnail);
+    state.pendingFood = { ...result, photo: photoRef };
     succeeded = true;
   }catch(e){
     console.error('analyze photo failed:', e);
@@ -4264,10 +4380,10 @@ async function processFoodImage(file){
 async function addFoodEntry(f){
   const id = Date.now().toString();
   state.log.foods.push({ id, time: new Date().toISOString(), ...f });
-  await saveLog();
-  showToast('Comida añadida');
+  const ok = await saveLog();
+  if(ok) showToast('Comida añadida');
   setTab('today');
-  return id;
+  return { id, ok };
 }
 
 async function saveFoodAsTemplate(id){
@@ -4293,7 +4409,7 @@ async function openSavedMeals(){
   const saved = (await safeGet('savedMeals')) || [];
   const rows = saved.length ? saved.map(s => `
     <div class="log-card2" onclick="useSavedMeal('${s.id}')">
-      <div class="log-photo">${s.photo ? `<img src="${s.photo}">` : '🍽️'}</div>
+      <div class="log-photo">${s.photo ? `<img data-photo-ref="${s.photo}">` : '🍽️'}</div>
       <div class="log-body">
         <div class="log-top"><div class="log-title">${s.name}</div><span class="del" onclick="event.stopPropagation(); removeSavedMeal('${s.id}')">✕</span></div>
         <div class="log-cal">${ICON.fire} <b>${s.cal}</b> calorías</div>
@@ -4307,7 +4423,7 @@ async function useSavedMeal(id){
   const s = saved.find(x => x.id === id);
   if(!s) return;
   openActionOverlay(`
-    ${s.photo ? `<img src="${s.photo}" class="detail-photo">` : `<div class="detail-photo detail-photo-fallback">🍽️</div>`}
+    ${s.photo ? `<img data-photo-ref="${s.photo}" class="detail-photo">` : `<div class="detail-photo detail-photo-fallback">🍽️</div>`}
     <h1 style="margin:14px 0 4px 0;">${s.name}</h1>
 
     <div class="hero-card" style="margin-top:14px; cursor:pointer;" onclick="editSavedMealField('${s.id}','cal')">
@@ -4371,7 +4487,7 @@ async function confirmUseSavedMeal(id){
     name: s.name, cal: s.cal, protein: s.protein, carb: s.carb, fat: s.fat,
     photo: s.photo, healthScore: s.healthScore, ingredients: s.ingredients, source: 'saved', servings: 1
   });
-  openFoodDetail(newId);
+  if(newId.ok) openFoodDetail(newId.id);
 }
 
 async function removeSavedMeal(id){
@@ -4395,14 +4511,14 @@ async function removeSavedMeal(id){
   openSavedMeals();
 }
 
-function addManualFood(){
+async function addManualFood(){
   const name = document.getElementById('mf-name').value.trim();
   const cal = parseFloat(document.getElementById('mf-cal').value);
   if(!name || !cal){ showToast('Introduce nombre y calorías', true); return; }
   const protein = round1(document.getElementById('mf-protein').value);
   const carb = round1(document.getElementById('mf-carb').value);
   const fat = round1(document.getElementById('mf-fat').value);
-  addFoodEntry({ name, cal, protein, carb, fat, source: 'manual' });
+  await addFoodEntry({ name, cal, protein, carb, fat, source: 'manual' });
 }
 
 const EXERCISE_TYPES = {
@@ -4575,9 +4691,9 @@ async function submitTypedExercise(type){
   if(km) name += ` · ${km} km`;
   name += ` · ${minutes} min`;
   state.log.exercises.push({ id: Date.now().toString(), name, cal, minutes, km: km || null, intensity: exerciseIntensity, time: new Date().toISOString() });
-  await saveLog();
+  const ok = await saveLog();
   closeActionOverlay();
-  showToast('Ejercicio registrado');
+  if(ok) showToast('Ejercicio registrado');
   setTab('today');
 }
 
@@ -4586,9 +4702,9 @@ async function submitCustomExercise(){
   const cal = parseFloat(document.getElementById('ex-custom-cal').value);
   if(!name || !cal){ showToast('Introduce nombre y calorías', true); return; }
   state.log.exercises.push({ id: Date.now().toString(), name, cal, time: new Date().toISOString() });
-  await saveLog();
+  const ok = await saveLog();
   closeActionOverlay();
-  showToast('Ejercicio registrado');
+  if(ok) showToast('Ejercicio registrado');
   setTab('today');
 }
 
@@ -4979,7 +5095,7 @@ async function openDayDetail(date){
 
   const foodRows = log.foods.length ? log.foods.map(f=>`
     <div class="row" style="cursor:pointer;" onclick="openFoodDetailForDate('${f.id}', '${date}')"><span class="rname">
-      ${f.photo ? `<img src="${f.photo}" class="row-thumb">` : `<span class="row-thumb row-thumb-fallback">🍽️</span>`}
+      ${f.photo ? `<img data-photo-ref="${f.photo}" class="row-thumb">` : `<span class="row-thumb row-thumb-fallback">🍽️</span>`}
       ${f.name}${healthBadge(f)}</span><span class="rval">${f.cal} kcal</span></div>`).join('')
     : `<div class="empty">Sin comidas ese día</div>`;
   const exRows = log.exercises.map(e=>`
@@ -5019,6 +5135,7 @@ async function openDayDetail(date){
     </div>` : ''}
   `;
   document.getElementById('food-detail').classList.remove('hide');
+  hydratePhotoImages();
 }
 
 async function openFoodDetailForDate(id, date){
@@ -5032,7 +5149,7 @@ async function openFoodDetailForDate(id, date){
   const hsColor = !hs ? 'var(--line-strong)' : hs >= 7 ? 'var(--protein)' : hs >= 4 ? 'var(--burn)' : 'var(--warn)';
 
   document.getElementById('food-detail-body').innerHTML = `
-    ${f.photo ? `<img src="${f.photo}" class="detail-photo">` : `<div class="detail-photo detail-photo-fallback">🍽️</div>`}
+    ${f.photo ? `<img data-photo-ref="${f.photo}" class="detail-photo">` : `<div class="detail-photo detail-photo-fallback">🍽️</div>`}
 
     <div class="detail-title-row">
       <h1>${f.name}</h1>
@@ -5071,6 +5188,7 @@ async function openFoodDetailForDate(id, date){
     ${renderIngredientChips(f.ingredients)}` : ''}
   `;
   document.getElementById('food-detail').classList.remove('hide');
+  hydratePhotoImages();
 }
 
 async function saveFoodAsTemplateFromBuffer(){
@@ -5163,9 +5281,10 @@ async function logWeight(){
   const today = todayStr();
   state.weights.push({ date: today, weight: val, time: new Date().toISOString() });
   state.profile.currentWeight = val;
-  await safeSet('weights', state.weights);
-  await safeSet('profile', state.profile);
-  showToast('Peso guardado');
+  const ok1 = await safeSet('weights', state.weights);
+  const ok2 = await safeSet('profile', state.profile);
+  if(ok1 && ok2) showToast('Peso guardado');
+  else showToast('⚠️ No se pudo guardar el peso — el navegador está sin espacio', true);
   renderAll();
 }
 
