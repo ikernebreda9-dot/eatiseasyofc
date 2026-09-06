@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -826,6 +827,15 @@ async function persistGoogleToken(token){
   googleIdToken = token;
   await safeSet('googleIdToken', token);
 }
+// Comprueba AHORA MISMO (no solo al abrir la app) si la sesión de Google
+// sigue activa — se usa para pintar el estado verde/rojo en Perfil.
+function isGoogleSessionLive(){
+  if(!googleIdToken) return false;
+  try{
+    const payload = decodeJwt(googleIdToken);
+    return !!(payload.exp && payload.exp * 1000 > Date.now());
+  }catch(e){ return false; }
+}
 // Al abrir la app, recupera el token guardado — si aún no ha caducado
 // (los de Google duran ~1 hora), la sesión sigue activa sin más.
 async function restoreGoogleToken(){
@@ -851,36 +861,59 @@ function scheduleSync(){
   syncTimer = setTimeout(pushToCloud, 2000);
 }
 
+// Guarda por qué falló la última subida/bajada de la nube (red caída,
+// sesión caducada, servidor...) — así los botones manuales pueden dar
+// un mensaje honesto en vez de fingir que ha ido bien o inventarse
+// "no hay datos" cuando en realidad es que no hubo conexión.
+let lastCloudError = null;
+
 async function pushToCloud(waitForPhotos){
-  if(!SYNC_ENDPOINT || !googleIdToken) return;
+  if(!SYNC_ENDPOINT || !googleIdToken) return false;
   try{
     const data = await gatherAllLocalData();
-    await fetch(SYNC_ENDPOINT + '/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + googleIdToken },
-      body: JSON.stringify({ data })
-    });
+    const resp = await withTimeout(
+      fetch(SYNC_ENDPOINT + '/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + googleIdToken },
+        body: JSON.stringify({ data })
+      }),
+      10000, 'timeout'
+    );
+    if(!resp.ok){
+      lastCloudError = (resp.status === 401 || resp.status === 403) ? 'auth' : 'server';
+      return false;
+    }
+    lastCloudError = null;
     // Las fotos van aparte. En el guardado automático de fondo no
     // esperamos a que terminen (no bloquea nada); en un guardado manual
     // sí esperamos, para que el aviso de "guardado" sea del todo cierto.
     const photoUpload = uploadPendingPhotos(data).catch(e => console.error('uploadPendingPhotos falló', e));
     if(waitForPhotos) await photoUpload;
+    return true;
   }catch(e){
     console.error('pushToCloud failed', e);
+    lastCloudError = 'network';
+    return false;
   }
 }
 
 async function pullFromCloud(){
-  if(!SYNC_ENDPOINT || !googleIdToken) return null;
+  if(!SYNC_ENDPOINT || !googleIdToken){ lastCloudError = 'no-session'; return null; }
   try{
     const resp = await withTimeout(
       fetch(SYNC_ENDPOINT + '/load', { headers: { 'Authorization': 'Bearer ' + googleIdToken } }),
-      8000, 'La nube ha tardado demasiado en responder'
+      8000, 'timeout'
     );
+    if(!resp.ok){
+      lastCloudError = (resp.status === 401 || resp.status === 403) ? 'auth' : 'server';
+      return null;
+    }
     const json = await resp.json();
+    lastCloudError = null;
     return json.data || null;
   }catch(e){
     console.error('pullFromCloud failed', e);
+    lastCloudError = 'network';
     return null;
   }
 }
@@ -926,7 +959,7 @@ function keepLocalChoice(){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '1.11';
+const APP_VERSION = '1.12';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -4812,6 +4845,104 @@ async function processFoodImage(file){
   if(succeeded) openPendingFoodDetail();
 }
 
+// ── Modo supermercado 🛒 ─────────────────────────────────────────────
+// El usuario fotografía el ENVASE de un producto (sin abrir). La IA lee
+// la tabla nutricional impresa y devuelve los valores por 100 g.
+
+function openProductModeIntro(){
+  openActionOverlay(`
+    <div style="text-align:center; padding:8px 0;">
+      <div style="font-size:52px; margin-bottom:12px;">🛒</div>
+      <h1 style="margin:0 0 10px 0;">Modo supermercado</h1>
+      <p class="sub" style="margin:0 0 20px 0;">Fotografía la etiqueta nutricional de un producto cerrado — yogures, cereales, proteína en polvo, lo que sea — y la IA leerá los valores por 100 g directamente de la etiqueta. Después podrás guardar ese producto para añadirlo fácilmente en el futuro.</p>
+      <p class="sub" style="font-size:11.5px; margin:0 0 24px 0; opacity:.7;">Apunta bien a la tabla de información nutricional del envase para obtener el mejor resultado.</p>
+      <button class="btn accent" onclick="closeActionOverlay(); activateProductCaptureMode();">Entendido, abrir cámara</button>
+    </div>
+  `);
+}
+
+function activateProductCaptureMode(){
+  productCaptureMode = true;
+  openScanCamera();
+}
+
+async function processProductImage(file){
+  if(!file || !file.type || !file.type.startsWith('image/')){
+    showToast('Elige un archivo de imagen', true);
+    return;
+  }
+  closeActionOverlay();
+  showToast('Leyendo etiqueta nutricional…');
+  try{
+    const { base64, mediaType, thumbnail } = await withTimeout(
+      fileToCompressedBase64(file), 12000, 'La imagen tardó demasiado en procesarse'
+    );
+    const { url, headers, mode, provider, apiKey } = await getPhotoEndpoint();
+    const prompt = 'Eres un lector de etiquetas nutricionales. En esta imagen hay un envase de producto de supermercado. Lee la tabla de información nutricional impresa y extrae los valores de la columna "por 100 g" (o "per 100 g" si está en inglés). Si no aparece la columna por 100 g pero sí la de por ración, convierte al equivalente por 100 g usando la cantidad de ración indicada. Si no puedes leer algún valor con claridad, pon tu mejor estimación basada en el tipo de producto visible. Devuelve ÚNICAMENTE un objeto JSON válido, sin texto adicional, sin backticks, con este formato exacto: {"name":"nombre del producto","per100_cal":numero_entero,"per100_protein_g":numero_con_decimal,"per100_carbs_g":numero_con_decimal,"per100_fat_g":numero_con_decimal}';
+    const requestBody = provider === 'gemini'
+      ? { contents: [{ parts: [{ inline_data: { mime_type: mediaType, data: base64 } }, { text: prompt }] }], generationConfig: { temperature: 0.05 } }
+      : { model: 'claude-sonnet-4-6', max_tokens: 300, temperature: 0.05, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } }, { type: 'text', text: prompt }] }] };
+    const resp = (provider === 'gemini' && apiKey)
+      ? await callGeminiWithFallback(url, apiKey, requestBody)
+      : await fetch(url, { method: 'POST', headers, body: JSON.stringify(requestBody) });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if(data.error) throw new Error(data.error.message || 'Error de la API');
+    const text = provider === 'gemini'
+      ? ((data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || []).map(p=>p.text||'').join('').trim())
+      : ((data.content || []).map(b=>b.text || '').join('').trim());
+    if(!text) throw new Error('Respuesta vacía');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    const photoRef = await savePhotoToDB(thumbnail);
+    openProductResult({
+      name: parsed.name || 'Producto',
+      per100: {
+        cal: Math.round(parsed.per100_cal) || 0,
+        protein: round1(parsed.per100_protein_g) || 0,
+        carb: round1(parsed.per100_carbs_g) || 0,
+        fat: round1(parsed.per100_fat_g) || 0
+      },
+      photo: photoRef
+    });
+  }catch(e){
+    showToast('No se pudo leer la etiqueta: ' + e.message, true);
+  }
+}
+
+function openProductResult(product){
+  openActionOverlay(`
+    ${product.photo ? `<img data-photo-ref="${product.photo}" class="detail-photo">` : ''}
+    <h1 style="margin:14px 0 2px 0;">${product.name}</h1>
+    <p class="sub" style="margin:0 0 4px 0;">Valores por 100 g · leídos de la etiqueta por IA</p>
+    <div class="hero-card" style="margin-top:12px;">
+      <div style="text-align:center;">
+        <div style="font-size:32px; font-weight:800;">${product.per100.cal}</div>
+        <div style="font-size:12px; color:var(--muted);">calorías / 100 g</div>
+      </div>
+    </div>
+    <div class="macro-grid" style="margin-top:12px;">
+      <div class="macro-chip" style="background:var(--protein-soft);"><span>${ICON.protein}</span><b>${product.per100.protein} g</b><small>Proteína</small></div>
+      <div class="macro-chip" style="background:var(--carbs-soft);"><span>${ICON.carbs}</span><b>${product.per100.carb} g</b><small>Carbohidratos</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft);"><span>${ICON.water}</span><b>${product.per100.fat} g</b><small>Grasas</small></div>
+    </div>
+    <p class="sub" style="margin:14px 0 0 0; font-size:11px; opacity:.65;">⚠️ Estimación basada en la etiqueta visible — verifica siempre con el envase real.</p>
+    <button class="btn accent" style="margin-top:14px;" onclick='saveProductFromResult(${JSON.stringify(product).replace(/'/g,"&#39;")})'>💾 Guardar en Supermercado</button>
+    <button class="btn ghost small" style="margin-top:10px;" onclick='openPortionPickerForProduct(${JSON.stringify(product).replace(/'/g,"&#39;")})'>Añadir a hoy ahora</button>
+  `);
+  hydratePhotoImages();
+}
+
+async function saveProductFromResult(product){
+  const products = (await safeGet('savedProducts')) || [];
+  const existing = products.find(p => p.name.toLowerCase() === product.name.toLowerCase());
+  if(existing){ showToast('Este producto ya está guardado'); openSavedMeals('products'); return; }
+  products.push({ id: Date.now().toString(), name: product.name, per100: product.per100, photo: product.photo, savedAt: new Date().toISOString() });
+  await safeSet('savedProducts', products);
+  showToast('Producto guardado en 🛒 Supermercado');
+  openSavedMeals('products');
+}
+
 async function addFoodEntry(f){
   const id = Date.now().toString();
   state.log.foods.push({ id, time: new Date().toISOString(), ...f });
@@ -5782,7 +5913,10 @@ function renderProfile(){
         </label>
         <input id="avatar-input" type="file" accept="image/*" class="visually-hidden-file" onchange="onAvatarSelected(event)">
         <div class="avatar-name" onclick="openEditName()" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px;">${p.name} <span style="font-size:11px; opacity:.5;">✎</span></div>
-        ${p.email ? `<div style="font-size:11.5px; color:var(--muted); margin-top:2px;">${p.email}</div>` : ''}
+        ${p.email ? `<div style="font-size:11.5px; color:var(--muted); margin-top:2px;">${p.email}</div>
+        <div style="font-size:11.5px; font-weight:700; margin-top:2px; color:${isGoogleSessionLive() ? 'var(--protein)' : 'var(--warn)'};">
+          ${isGoogleSessionLive() ? '✓ Sesión iniciada con Gmail' : '⚠ Sesión caducada — reconecta en "Cuenta"'}
+        </div>` : ''}
         <div class="plan-badge ${isPro() ? 'is-pro' : ''}">${isPro() ? tr('plan_pro') : tr('plan_free')}</div>
       </div>
     </div>
@@ -5833,8 +5967,12 @@ function renderProfile(){
 
     <div class="section-title">${tr('section_account')}</div>
     <div class="panel">
-      <p style="font-size:12px; color:var(--muted); margin:0 0 12px 0;">Sube o carga tus datos desde la nube iniciando sesión con Google.</p>
-      <div id="google-signin-btn-profile"></div>
+      ${isGoogleSessionLive() ? `
+        <p style="font-size:12px; color:var(--protein); font-weight:700; margin:0 0 12px 0;">✓ Sesión de Google activa — se guarda y sincroniza sola.</p>
+      ` : `
+        <p style="font-size:12px; color:var(--warn); font-weight:700; margin:0 0 12px 0;">⚠ Tu sesión caducó — toca el botón para reconectar (no pierdes nada).</p>
+      `}
+      <div id="google-signin-btn-profile" style="${isGoogleSessionLive() ? 'display:none;' : ''}"></div>
 
       ${p.email ? `
       <div style="margin-top:18px; border-top:1px dashed var(--line); padding-top:16px; display:flex; flex-direction:column; gap:10px;">
