@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -46,12 +45,12 @@ body{margin:0; background:var(--void); font-family:-apple-system,BlinkMacSystemF
 .serif{font-family:inherit;}
 .mono{font-family:inherit;}
 
-.topbar{position:sticky; top:0; z-index:20; padding:22px 20px 16px 20px; display:flex; align-items:baseline; justify-content:space-between; background:rgba(var(--void-rgb),.72); backdrop-filter:blur(20px) saturate(180%); -webkit-backdrop-filter:blur(20px) saturate(180%); border-bottom:1px solid var(--line); margin-bottom:-12px;}
-.topbar .brand{font-family:inherit; font-size:19px; font-weight:600; letter-spacing:-.2px; color:var(--paper); display:flex; align-items:center; gap:8px;}
-.brand-icon{width:26px; height:26px; border-radius:50%; object-fit:cover;}
+.topbar{position:sticky; top:0; z-index:20; padding:18px 20px 13px 20px; display:flex; align-items:center; justify-content:space-between; background:rgba(var(--void-rgb),.72); backdrop-filter:blur(20px) saturate(180%); -webkit-backdrop-filter:blur(20px) saturate(180%); border-bottom:1px solid var(--line); margin-bottom:-12px;}
+.topbar .brand{font-family:inherit; font-size:17px; font-weight:600; letter-spacing:-.2px; color:var(--paper); display:flex; align-items:center; gap:7px;}
+.brand-icon{width:23px; height:23px; border-radius:50%; object-fit:cover;}
 .topbar .brand .dot{color:var(--accent);}
 .topbar .date{font-family:inherit; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px;}
-.header-streak{font-size:11px; font-weight:700; color:var(--accent); margin-top:3px;}
+.header-streak{font-size:10.5px; font-weight:700; color:var(--accent); margin-top:2px; cursor:pointer;}
 .screen{padding:2px 20px 24px 20px; position:relative;}
 
 .ring-wrap{display:flex; justify-content:center; padding:22px 0 8px 0;}
@@ -451,7 +450,7 @@ details .inner{padding-top:10px;}
     <div class="brand"><img src="eie-mini.png" alt="" class="brand-icon"><span>eatis<span class="dot">•</span>easy</span></div>
     <div style="text-align:right;">
       <div class="date" id="header-date"></div>
-      <div class="header-streak" id="header-streak"></div>
+      <div class="header-streak" id="header-streak" onclick="openStreakDetail()"></div>
     </div>
   </div>
 
@@ -910,7 +909,7 @@ async function pullFromCloud(){
     }
     const json = await resp.json();
     lastCloudError = null;
-    return json.data || null;
+    return json; // shape esperado por quien llama: { data: {...} }
   }catch(e){
     console.error('pullFromCloud failed', e);
     lastCloudError = 'network';
@@ -959,7 +958,7 @@ function keepLocalChoice(){
 
 // Sube esto en cada cambio que subas a producción (0.01 → 0.02 → 0.03...),
 // así se puede comprobar de un vistazo si una web tiene la última versión.
-const APP_VERSION = '1.12';
+const APP_VERSION = '1.15';
 
 // ======================================================================
 // IDIOMA — por defecto siempre castellano (state.profile.lang === 'es').
@@ -1488,6 +1487,78 @@ function showToast(msg, isErr){
   clearTimeout(window.__toastTimer);
   window.__toastTimer = setTimeout(()=>{ t.className = 'toast hide'; }, 3000);
 }
+
+// ---------- Gasto calórico real, calculado con tus propios datos ----------
+// La fórmula (Mifflin-St Jeor) es una media poblacional. Si ya hay
+// suficiente historial de comida Y de peso, se puede calcular tu gasto
+// real al revés: con lo que has comido de media y cómo ha cambiado tu
+// peso de verdad, sabemos cuánto has quemado en realidad — mucho más
+// preciso que cualquier fórmula genérica, porque es tu cuerpo, no una media.
+function computeRealTDEE(){
+  const weights = [...(state.weights||[])]
+    .map(w => ({ date: w.date || (w.time||'').slice(0,10), weight: w.weight }))
+    .filter(w => w.date)
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  if(weights.length < 2) return null;
+
+  const latest = weights[weights.length-1];
+  const cutoff = new Date(latest.date + 'T00:00:00'); cutoff.setDate(cutoff.getDate() - 21);
+  const cutoffStr = cutoff.getFullYear()+'-'+String(cutoff.getMonth()+1).padStart(2,'0')+'-'+String(cutoff.getDate()).padStart(2,'0');
+  const earliest = weights.find(w => w.date >= cutoffStr) || weights[0];
+  if(earliest.date === latest.date) return null;
+
+  const daysBetween = Math.round((new Date(latest.date+'T00:00:00') - new Date(earliest.date+'T00:00:00')) / 86400000);
+  if(daysBetween < 10) return null; // hace falta al menos ~10 días entre los dos pesajes
+
+  const summaryMap = Object.fromEntries((state.daySummaries||[]).map(d=>[d.date, d.consumed]));
+  summaryMap[todayStr()] = state.log.foods.reduce((s,f)=>s+f.cal,0);
+
+  let loggedDays = 0, totalEaten = 0;
+  const d = new Date(earliest.date+'T00:00:00');
+  const end = new Date(latest.date+'T00:00:00');
+  while(d <= end){
+    const ds = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    if(summaryMap[ds] != null && summaryMap[ds] > 0){ totalEaten += summaryMap[ds]; loggedDays++; }
+    d.setDate(d.getDate()+1);
+  }
+  if(loggedDays < 8) return null; // hacen falta suficientes días con comida registrada de por medio
+
+  const avgIntake = totalEaten / loggedDays;
+  const deltaWeight = latest.weight - earliest.weight;
+  const energyChangeKcal = deltaWeight * 7700; // ~7700 kcal por kg de grasa corporal
+  const estimatedTDEE = Math.round(avgIntake - (energyChangeKcal / daysBetween));
+
+  return { estimatedTDEE, daysBetween, loggedDays, deltaWeight: round1(deltaWeight), avgIntake: Math.round(avgIntake) };
+}
+
+// ---------- Media ponderada de peso (para no fiarse de un solo día) ----------
+function computeWeightAvg(days){
+  const sorted = [...(state.weights||[])]
+    .map(w => ({ date: w.date || (w.time||'').slice(0,10), weight: w.weight }))
+    .filter(w => w.date)
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  if(sorted.length < 2) return null;
+  const latestDate = sorted[sorted.length-1].date;
+  const cutoff = new Date(latestDate+'T00:00:00'); cutoff.setDate(cutoff.getDate() - (days-1));
+  const cutoffStr = cutoff.getFullYear()+'-'+String(cutoff.getMonth()+1).padStart(2,'0')+'-'+String(cutoff.getDate()).padStart(2,'0');
+  const recent = sorted.filter(w => w.date >= cutoffStr);
+  if(recent.length < 2) return null;
+  return recent.reduce((s,w)=>s+w.weight,0) / recent.length;
+}
+
+// ---------- Detectar el nivel de actividad real (a partir del ejercicio que sí registras) ----------
+function detectRealActivityLevel(){
+  const last14 = (state.daySummaries||[]).slice(0, 14); // ya vienen ordenados del más reciente
+  if(last14.length < 10) return null; // hace falta al menos ~10 días de historial reciente
+  const daysWithExercise = last14.filter(d => d.hadExercise).length;
+  const perWeek = (daysWithExercise / last14.length) * 7;
+  if(perWeek < 1) return 'sedentary';
+  if(perWeek < 3) return 'light';
+  if(perWeek < 5) return 'moderate';
+  if(perWeek < 6.5) return 'active';
+  return 'veryActive';
+}
+const ACTIVITY_LABELS = { sedentary:'Sedentario', light:'Ligero (1-3 días/sem)', moderate:'Moderado (3-5 días/sem)', active:'Activo (6-7 días/sem)', veryActive:'Muy activo' };
 
 function calcTargets(p){
   if(!p) return null;
@@ -2342,6 +2413,17 @@ function updateStreakDisplay(){
   el.innerHTML = s > 0 ? `${ICON.fire} ${s} día${s === 1 ? '' : 's'}` : '';
 }
 
+function openStreakDetail(){
+  const s = computeStreak();
+  openActionOverlay(`
+    <div style="text-align:center; margin-bottom:14px;">
+      <div style="font-size:38px; font-weight:800;">${ICON.fire} ${s}</div>
+      <div class="sub">día${s === 1 ? '' : 's'} seguidos registrando</div>
+    </div>
+    <div class="panel">${buildConsistencyHeatmap()}</div>
+  `);
+}
+
 function renderAll(){
   if(!state.profile) return;
   updateProTabVisibility();
@@ -2481,10 +2563,19 @@ function dayRingSvg(dayNum, consumed, target, opts){
       </svg>`;
   }
   if(!hasData){
+    if(isToday){
+      // "Hoy" tiene que destacar de verdad, no mezclarse con el fondo —
+      // en modo oscuro el borde normal (line-strong) es casi invisible.
+      return `
+        <svg class="day-ring" viewBox="0 0 40 40">
+          <circle cx="20" cy="20" r="${R}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+          <text x="20" y="20" class="day-ring-num" fill="var(--accent)" text-anchor="middle" dominant-baseline="central">${dayNum}</text>
+        </svg>`;
+    }
     return `
       <svg class="day-ring" viewBox="0 0 40 40">
         <circle cx="20" cy="20" r="${R}" fill="none" stroke="var(--line-strong)" stroke-width="2" stroke-dasharray="3 3.5"/>
-        <text x="20" y="20" class="day-ring-num ${isToday ? '' : 'is-muted'}" text-anchor="middle" dominant-baseline="central">${dayNum}</text>
+        <text x="20" y="20" class="day-ring-num is-muted" text-anchor="middle" dominant-baseline="central">${dayNum}</text>
       </svg>`;
   }
 
@@ -3001,6 +3092,25 @@ function openNotificationSettings(){
   `);
 }
 
+// Un número frío solo ("te quedan 900 kcal") no dice mucho por sí solo —
+// no es lo mismo a las 10 de la mañana que a las 10 de la noche. Esto le
+// da algo de contexto según la hora que sea.
+function remainingCaloriesContext(remain, target){
+  if(!target || target <= 0) return '';
+  const hour = new Date().getHours();
+  const pct = remain / target;
+  if(hour < 11) return '';
+  if(hour >= 20){
+    if(pct > 0.35) return 'Para lo que queda de día, tienes bastante margen todavía.';
+    if(pct < 0.08 && pct > 0) return 'Ya casi lo tienes — queda poco margen para más.';
+    return '';
+  }
+  if(hour >= 15 && pct < 0.15 && pct > 0){
+    return 'Te queda poco para lo que resta de tarde — repártelo con cuidado.';
+  }
+  return '';
+}
+
 function renderToday(){
   const t = calcTargets(state.profile);
   const consumed = state.log.foods.reduce((s,f)=>s+f.cal,0);
@@ -3115,6 +3225,7 @@ function renderToday(){
             <div>
               <div class="hero-number">${Math.round(consumed)}<span class="hero-target">/${t.calorieTarget}</span></div>
               <div class="hero-label">${ICON.fire} Calorías · ${remain} restantes</div>
+              ${remainingCaloriesContext(remain, t.calorieTarget) ? `<div style="font-size:11px; color:var(--muted); margin-top:2px;">${remainingCaloriesContext(remain, t.calorieTarget)}</div>` : ''}
             </div>
             <div class="hero-ring">${ringSvg(consumed, t.calorieTarget, true)}</div>
           </div>
@@ -3634,7 +3745,8 @@ async function loadDaySummaries(){
   for(const d of dates){
     const log = await safeGet('log:' + d);
     const consumed = ((log && log.foods) || []).reduce((s,f) => s + f.cal, 0);
-    summaries.push({ date: d, consumed });
+    const hadExercise = ((log && log.exercises) || []).length > 0;
+    summaries.push({ date: d, consumed, hadExercise });
   }
   return summaries;
 }
@@ -4878,10 +4990,10 @@ async function processProductImage(file){
       fileToCompressedBase64(file), 12000, 'La imagen tardó demasiado en procesarse'
     );
     const { url, headers, mode, provider, apiKey } = await getPhotoEndpoint();
-    const prompt = 'Eres un lector de etiquetas nutricionales. En esta imagen hay un envase de producto de supermercado. Lee la tabla de información nutricional impresa y extrae los valores de la columna "por 100 g" (o "per 100 g" si está en inglés). Si no aparece la columna por 100 g pero sí la de por ración, convierte al equivalente por 100 g usando la cantidad de ración indicada. Si no puedes leer algún valor con claridad, pon tu mejor estimación basada en el tipo de producto visible. Devuelve ÚNICAMENTE un objeto JSON válido, sin texto adicional, sin backticks, con este formato exacto: {"name":"nombre del producto","per100_cal":numero_entero,"per100_protein_g":numero_con_decimal,"per100_carbs_g":numero_con_decimal,"per100_fat_g":numero_con_decimal}';
+    const prompt = 'Eres un lector de etiquetas nutricionales. En esta imagen hay un envase de producto de supermercado. Lee la tabla de información nutricional impresa tal cual aparece. La mayoría de etiquetas en España tienen SIEMPRE una columna "por 100 g" (o "per 100 g") — extráela siempre que exista. Además, muchas etiquetas tienen TAMBIÉN una segunda columna "por ración" o "per porción" con un tamaño de ración concreto (ej. "por 30 g", "por unidad de 125 g") — si esa segunda columna existe en la imagen, extráela también tal cual, con su tamaño de ración; si NO existe esa segunda columna, no la inventes. Si algún valor no aparece en la etiqueta (fibra y sal a veces faltan), pon null en ese campo, no lo inventes. Si no puedes leer algún valor con claridad, da tu mejor estimación basada en el tipo de producto. Devuelve ÚNICAMENTE un objeto JSON válido, sin texto adicional, sin backticks, con este formato exacto: {"name":"nombre del producto","per100":{"cal":numero_entero,"protein_g":numero,"carbs_g":numero,"sugars_g":numero_o_null,"fat_g":numero,"saturated_fat_g":numero_o_null,"fiber_g":numero_o_null,"salt_g":numero_o_null},"per_serving":{"serving_label":"texto tal cual aparece en el envase, ej. Por ración (30 g)","serving_g":numero_de_gramos_de_la_racion,"cal":numero_entero,"protein_g":numero,"carbs_g":numero,"sugars_g":numero_o_null,"fat_g":numero,"saturated_fat_g":numero_o_null,"fiber_g":numero_o_null,"salt_g":numero_o_null} o null si el envase no muestra columna por ración}';
     const requestBody = provider === 'gemini'
       ? { contents: [{ parts: [{ inline_data: { mime_type: mediaType, data: base64 } }, { text: prompt }] }], generationConfig: { temperature: 0.05 } }
-      : { model: 'claude-sonnet-4-6', max_tokens: 300, temperature: 0.05, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } }, { type: 'text', text: prompt }] }] };
+      : { model: 'claude-sonnet-4-6', max_tokens: 500, temperature: 0.05, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } }, { type: 'text', text: prompt }] }] };
     const resp = (provider === 'gemini' && apiKey)
       ? await callGeminiWithFallback(url, apiKey, requestBody)
       : await fetch(url, { method: 'POST', headers, body: JSON.stringify(requestBody) });
@@ -4895,37 +5007,82 @@ async function processProductImage(file){
     const clean = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
     const photoRef = await savePhotoToDB(thumbnail);
-    openProductResult({
-      name: parsed.name || 'Producto',
-      per100: {
-        cal: Math.round(parsed.per100_cal) || 0,
-        protein: round1(parsed.per100_protein_g) || 0,
-        carb: round1(parsed.per100_carbs_g) || 0,
-        fat: round1(parsed.per100_fat_g) || 0
-      },
-      photo: photoRef
-    });
+
+    const normalizeBlock = (b) => !b ? null : {
+      cal: Math.round(b.cal) || 0,
+      protein: round1(b.protein_g) || 0,
+      carb: round1(b.carbs_g) || 0,
+      sugars: b.sugars_g != null ? round1(b.sugars_g) : null,
+      fat: round1(b.fat_g) || 0,
+      satFat: b.saturated_fat_g != null ? round1(b.saturated_fat_g) : null,
+      fiber: b.fiber_g != null ? round1(b.fiber_g) : null,
+      salt: b.salt_g != null ? round1(b.salt_g) : null
+    };
+    const per100 = normalizeBlock(parsed.per100) || { cal:0, protein:0, carb:0, fat:0, sugars:null, satFat:null, fiber:null, salt:null };
+    const perServingRaw = normalizeBlock(parsed.per_serving);
+    const perServing = perServingRaw ? {
+      ...perServingRaw,
+      label: (parsed.per_serving && parsed.per_serving.serving_label) || 'Por ración',
+      grams: (parsed.per_serving && Math.round(parsed.per_serving.serving_g)) || null
+    } : null;
+
+    openProductResult({ name: parsed.name || 'Producto', per100, perServing, photo: photoRef });
   }catch(e){
     showToast('No se pudo leer la etiqueta: ' + e.message, true);
   }
 }
 
+// El usuario puede alternar entre ver "por 100 g" o "por ración" (si la
+// etiqueta la tenía) — solo cambia lo que se MUESTRA, ambos bloques de
+// datos siempre se guardan juntos.
+let productResultView = 'per100';
+
 function openProductResult(product){
+  productResultView = 'per100';
+  renderProductResult(product);
+}
+
+function setProductResultView(product, view){
+  productResultView = view;
+  renderProductResult(product);
+}
+
+function renderProductResult(product){
+  const showServing = productResultView === 'serving' && product.perServing;
+  const block = showServing ? product.perServing : product.per100;
+  const unitLabel = showServing ? (product.perServing.label || 'por ración') : 'por 100 g';
+
+  const extraRows = [
+    block.sugars != null ? `<div class="row"><span class="rname">De los cuales azúcares</span><span>${block.sugars} g</span></div>` : '',
+    block.satFat != null ? `<div class="row"><span class="rname">De las cuales saturadas</span><span>${block.satFat} g</span></div>` : '',
+    block.fiber != null ? `<div class="row"><span class="rname">Fibra</span><span>${block.fiber} g</span></div>` : '',
+    block.salt != null ? `<div class="row"><span class="rname">Sal</span><span>${block.salt} g</span></div>` : ''
+  ].filter(Boolean).join('');
+
   openActionOverlay(`
     ${product.photo ? `<img data-photo-ref="${product.photo}" class="detail-photo">` : ''}
     <h1 style="margin:14px 0 2px 0;">${product.name}</h1>
-    <p class="sub" style="margin:0 0 4px 0;">Valores por 100 g · leídos de la etiqueta por IA</p>
+    <p class="sub" style="margin:0 0 10px 0;">Valores ${unitLabel} · leídos de la etiqueta por IA</p>
+
+    ${product.perServing ? `
+    <div class="portion-mode-row">
+      <button class="portion-mode-btn ${productResultView==='per100'?'active':''}" onclick='setProductResultView(${JSON.stringify(product).replace(/'/g,"&#39;")}, "per100")'>Por 100 g</button>
+      <button class="portion-mode-btn ${productResultView==='serving'?'active':''}" onclick='setProductResultView(${JSON.stringify(product).replace(/'/g,"&#39;")}, "serving")'>${product.perServing.label || 'Por ración'}</button>
+    </div>` : ''}
+
     <div class="hero-card" style="margin-top:12px;">
       <div style="text-align:center;">
-        <div style="font-size:32px; font-weight:800;">${product.per100.cal}</div>
-        <div style="font-size:12px; color:var(--muted);">calorías / 100 g</div>
+        <div style="font-size:32px; font-weight:800;">${block.cal}</div>
+        <div style="font-size:12px; color:var(--muted);">calorías ${unitLabel}</div>
       </div>
     </div>
     <div class="macro-grid" style="margin-top:12px;">
-      <div class="macro-chip" style="background:var(--protein-soft);"><span>${ICON.protein}</span><b>${product.per100.protein} g</b><small>Proteína</small></div>
-      <div class="macro-chip" style="background:var(--carbs-soft);"><span>${ICON.carbs}</span><b>${product.per100.carb} g</b><small>Carbohidratos</small></div>
-      <div class="macro-chip" style="background:var(--fat-soft);"><span>${ICON.water}</span><b>${product.per100.fat} g</b><small>Grasas</small></div>
+      <div class="macro-chip" style="background:var(--protein-soft);"><span>${ICON.protein}</span><b>${block.protein} g</b><small>Proteína</small></div>
+      <div class="macro-chip" style="background:var(--carbs-soft);"><span>${ICON.carbs}</span><b>${block.carb} g</b><small>Carbohidratos</small></div>
+      <div class="macro-chip" style="background:var(--fat-soft);"><span>${ICON.water}</span><b>${block.fat} g</b><small>Grasas</small></div>
     </div>
+    ${extraRows ? `<div class="panel plist" style="margin-top:10px;">${extraRows}</div>` : ''}
+
     <p class="sub" style="margin:14px 0 0 0; font-size:11px; opacity:.65;">⚠️ Estimación basada en la etiqueta visible — verifica siempre con el envase real.</p>
     <button class="btn accent" style="margin-top:14px;" onclick='saveProductFromResult(${JSON.stringify(product).replace(/'/g,"&#39;")})'>💾 Guardar en Supermercado</button>
     <button class="btn ghost small" style="margin-top:10px;" onclick='openPortionPickerForProduct(${JSON.stringify(product).replace(/'/g,"&#39;")})'>Añadir a hoy ahora</button>
@@ -4937,7 +5094,7 @@ async function saveProductFromResult(product){
   const products = (await safeGet('savedProducts')) || [];
   const existing = products.find(p => p.name.toLowerCase() === product.name.toLowerCase());
   if(existing){ showToast('Este producto ya está guardado'); openSavedMeals('products'); return; }
-  products.push({ id: Date.now().toString(), name: product.name, per100: product.per100, photo: product.photo, savedAt: new Date().toISOString() });
+  products.push({ id: Date.now().toString(), name: product.name, per100: product.per100, perServing: product.perServing, photo: product.photo, savedAt: new Date().toISOString() });
   await safeSet('savedProducts', products);
   showToast('Producto guardado en 🛒 Supermercado');
   openSavedMeals('products');
@@ -5319,11 +5476,14 @@ function buildProgressHTML(){
   const sorted = [...state.weights].sort((a,b)=> (a.time||a.date).localeCompare(b.time||b.date));
   const latest = sorted.length ? sorted[sorted.length-1].weight : p.currentWeight;
   const toGoalKg = (latest - p.goalWeight);
+  const avg7 = computeWeightAvg(7);
 
   return `
     <div class="panel">
       <div class="weight-row">
-        <div><div class="big-number">${fmtWeight(latest)}</div><div style="font-size:12px;color:var(--muted);">${fmt1(Math.abs(kgToDisplay(Math.abs(toGoalKg))))} ${weightUnit()} ${toGoalKg>0?'por perder':'por ganar'} · meta ${fmtWeight(p.goalWeight)}</div></div>
+        <div><div class="big-number">${fmtWeight(latest)}</div><div style="font-size:12px;color:var(--muted);">${fmt1(Math.abs(kgToDisplay(Math.abs(toGoalKg))))} ${weightUnit()} ${toGoalKg>0?'por perder':'por ganar'} · meta ${fmtWeight(p.goalWeight)}</div>
+        ${avg7 != null ? `<div style="font-size:11px; color:var(--muted); margin-top:2px;">Media 7 días: ${fmtWeight(avg7)} <span style="opacity:.7;">— un solo día puede engañar (agua, sal...), esto es más fiable</span></div>` : ''}
+        </div>
       </div>
       <div class="field" style="margin-top:16px;"><label>Registrar peso ahora (${weightUnit()})</label>
         <div style="display:flex; gap:10px; align-items:center;">
@@ -5517,6 +5677,187 @@ function computeWeeklyAvg(){
   return Math.round(all.reduce((a,b)=>a+b, 0) / all.length);
 }
 
+// ---------- Mapa de constancia (calendario de días registrados) ----------
+function buildConsistencyHeatmap(){
+  const WEEKS = 12;
+  const loggedSet = new Set(state.logDates || []);
+  const todayHasLog = state.log.foods.length > 0 || state.log.exercises.length > 0;
+  if(todayHasLog) loggedSet.add(todayStr());
+
+  const today = new Date();
+  const todayDow = (today.getDay() + 6) % 7; // 0 = lunes
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - todayDow - (WEEKS-1)*7);
+
+  const weeks = [];
+  for(let w = 0; w < WEEKS; w++){
+    const week = [];
+    for(let dow = 0; dow < 7; dow++){
+      const dt = new Date(startDate);
+      dt.setDate(startDate.getDate() + w*7 + dow);
+      const ds = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+      week.push({ date: ds, logged: loggedSet.has(ds), isFuture: ds > todayStr(), isToday: ds === todayStr() });
+    }
+    weeks.push(week);
+  }
+  return consistencyHeatmapSvg(weeks);
+}
+
+function consistencyHeatmapSvg(weeks){
+  const cell = 14, gap = 3;
+  const w = weeks.length * (cell+gap) + gap;
+  const h = 7 * (cell+gap) + gap;
+  let cellsHtml = '';
+  weeks.forEach((week, wi) => {
+    week.forEach((day, di) => {
+      const x = gap + wi*(cell+gap);
+      const y = gap + di*(cell+gap);
+      if(day.isFuture){
+        cellsHtml += `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="3" fill="none"></rect>`;
+        return;
+      }
+      const fill = day.logged ? 'var(--accent)' : 'var(--line)';
+      const stroke = day.isToday ? ` stroke="var(--accent-dark)" stroke-width="1.5"` : '';
+      cellsHtml += `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="3" fill="${fill}"${stroke} style="cursor:pointer;" onclick="openDayDetail('${day.date}')"></rect>`;
+    });
+  });
+  return `
+    <svg viewBox="0 0 ${w} ${h}" style="width:100%; height:auto; display:block;">${cellsHtml}</svg>
+    <div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-top:8px; font-size:10.5px; color:var(--muted);">
+      <span>Sin registro</span>
+      <span style="width:11px; height:11px; border-radius:3px; background:var(--line); display:inline-block;"></span>
+      <span style="width:11px; height:11px; border-radius:3px; background:var(--accent); display:inline-block;"></span>
+      <span>Registrado</span>
+    </div>`;
+}
+
+// ---------- Tendencia de calorías (30 días) con media móvil de 7 días ----------
+function buildCalorieTrendChart(){
+  const t = calcTargets(state.profile);
+  const todayConsumed = state.log.foods.reduce((s,f)=>s+f.cal,0);
+  const summaryMap = Object.fromEntries((state.daySummaries || []).map(d => [d.date, d.consumed]));
+  summaryMap[todayStr()] = todayConsumed;
+
+  const N = 30;
+  const days = [];
+  const base = new Date();
+  for(let i = N-1; i >= 0; i--){
+    const dt = new Date(base); dt.setDate(base.getDate() - i);
+    const ds = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+    const has = Object.prototype.hasOwnProperty.call(summaryMap, ds);
+    days.push({ date: ds, consumed: has ? summaryMap[ds] : null });
+  }
+
+  // Media móvil de 7 días, contando solo días con dato real (un día sin
+  // registrar no cuenta como "0 calorías", simplemente no sabemos qué
+  // comió — si lo contáramos como 0 la línea se hundiría sin sentido).
+  const withAvg = days.map((day, i) => {
+    const windowDays = days.slice(Math.max(0, i-6), i+1).filter(x => x.consumed != null && x.consumed > 0);
+    const avg = windowDays.length ? windowDays.reduce((s,x)=>s+x.consumed,0) / windowDays.length : null;
+    return { ...day, avg };
+  });
+
+  if(!withAvg.some(d => d.consumed != null)){
+    return `<div class="empty">Aún no hay suficiente historial para ver una tendencia.</div>`;
+  }
+  return calorieTrendSvg(withAvg, t.calorieTarget);
+}
+
+function calorieTrendSvg(days, target){
+  const w = 340, h = 150, padL = 6, padR = 6, padT = 14, padB = 18;
+  const n = days.length;
+  const maxVal = Math.max(target, ...days.map(d => d.consumed || 0), ...days.map(d => d.avg || 0), 1) * 1.15;
+  const x = i => padL + (w - padL - padR) * (n <= 1 ? 0 : i / (n-1));
+  const y = v => h - padB - (h - padT - padB) * Math.min(1, v / maxVal);
+
+  const targetY = y(target);
+
+  // Puntos diarios sueltos (solo donde hay dato real)
+  const dots = days.map((d,i) => d.consumed != null
+    ? `<circle cx="${x(i)}" cy="${y(d.consumed)}" r="2.2" fill="var(--line-strong)"></circle>` : '').join('');
+
+  // Línea de media móvil — como puede haber huecos, construimos varios
+  // tramos en vez de una sola polilínea continua.
+  let pathParts = [];
+  let current = null;
+  days.forEach((d,i) => {
+    if(d.avg == null){ if(current){ pathParts.push(current); current = null; } return; }
+    const point = `${x(i).toFixed(1)},${y(d.avg).toFixed(1)}`;
+    current = current ? current + ' L' + point : 'M' + point;
+  });
+  if(current) pathParts.push(current);
+  const avgPath = pathParts.map(p => `<path d="${p}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>`).join('');
+
+  // Etiquetas del eje X: solo principio, mitad y hoy, para no saturar
+  const labelIdxs = [0, Math.floor((n-1)/2), n-1];
+  const labels = labelIdxs.map(i => {
+    const dt = new Date(days[i].date + 'T00:00:00');
+    const lbl = dt.toLocaleDateString('es-ES', { day:'numeric', month:'short' });
+    return `<text x="${x(i)}" y="${h-4}" font-size="9" fill="var(--muted)" text-anchor="${i===0?'start':i===n-1?'end':'middle'}">${lbl}</text>`;
+  }).join('');
+
+  return `
+    <svg class="spark" viewBox="0 0 ${w} ${h}">
+      <line x1="${padL}" y1="${targetY}" x2="${w-padR}" y2="${targetY}" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="3 3"></line>
+      ${dots}
+      ${avgPath}
+      ${labels}
+    </svg>
+    <div style="display:flex; gap:14px; justify-content:center; margin-top:6px; font-size:10.5px; color:var(--muted);">
+      <span><span style="display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--line-strong); margin-right:4px;"></span>Día a día</span>
+      <span><span style="display:inline-block; width:14px; height:2.5px; background:var(--accent); margin-right:4px; vertical-align:middle;"></span>Media 7 días</span>
+      <span><span style="display:inline-block; width:14px; height:0; border-top:1.5px dashed var(--muted); margin-right:4px; vertical-align:middle;"></span>Objetivo</span>
+    </div>`;
+}
+
+function buildInsightsHTML(){
+  const parts = [];
+
+  const real = computeRealTDEE();
+  if(real){
+    const t = calcTargets(state.profile);
+    const diff = real.estimatedTDEE - t.tdee;
+    const diffTxt = diff === 0 ? 'coincide con la fórmula' : (diff > 0 ? `${diff} kcal más que la fórmula` : `${Math.abs(diff)} kcal menos que la fórmula`);
+    parts.push(`
+      <div class="section-title">🧮 Tu gasto calórico real</div>
+      <div class="panel">
+        <p class="sub" style="margin:0 0 10px 0;">Con lo que has comido y cómo ha cambiado tu peso en los últimos ${real.daysBetween} días (${real.loggedDays} días registrados), tu gasto real parece ser distinto al calculado con la fórmula estándar.</p>
+        <div class="macro-row">
+          <div class="macro-card">
+            <div class="macro-card-num">${real.estimatedTDEE}</div>
+            <div class="macro-card-label">Tu gasto real (kcal/día)</div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-card-num">${t.tdee}</div>
+            <div class="macro-card-label">Fórmula estándar</div>
+          </div>
+        </div>
+        <p class="sub" style="margin:10px 0 0 0; font-size:11px;">${diffTxt} — esto es una estimación basada en tus datos, no una medición exacta; cuanto más tiempo lleves registrando, más fiable será.</p>
+      </div>
+    `);
+  }
+
+  const detected = detectRealActivityLevel();
+  if(detected && detected !== state.profile.activityLevel){
+    parts.push(`
+      <div class="section-title">🏃 Nivel de actividad</div>
+      <div class="panel">
+        <p class="sub" style="margin:0 0 12px 0;">Según el ejercicio que has registrado últimamente, pareces moverte más como <b>"${ACTIVITY_LABELS[detected]}"</b>, no como <b>"${ACTIVITY_LABELS[state.profile.activityLevel] || state.profile.activityLevel}"</b> (lo que tienes puesto ahora). Esto afecta a tu objetivo diario.</p>
+        <button class="btn accent small" onclick="applyDetectedActivityLevel('${detected}')">Actualizar a "${ACTIVITY_LABELS[detected]}"</button>
+      </div>
+    `);
+  }
+
+  return parts.join('');
+}
+
+async function applyDetectedActivityLevel(level){
+  state.profile.activityLevel = level;
+  await safeSet('profile', state.profile);
+  showToast('Nivel de actividad actualizado 👍');
+  renderAll();
+}
+
 function renderDatos(){
   const el = document.getElementById('screen-datos');
   if(!el) return;
@@ -5541,6 +5882,14 @@ function renderDatos(){
         <button class="btn ghost small" style="padding:5px 12px; font-size:11px;" onclick="openWeekPicker()">📅 Otras semanas</button>
       </div>
       <div class="panel">${buildCalorieBarChart()}</div>
+
+      <div class="section-title">${bigEmoji('🟩')} Mapa de constancia</div>
+      <div class="panel">${buildConsistencyHeatmap()}</div>
+
+      <div class="section-title">📈 Tendencia de calorías (30 días)</div>
+      <div class="panel">${buildCalorieTrendChart()}</div>
+
+      ${buildInsightsHTML()}
 
       <div class="section-title">${bigEmoji('⚖️')} Progreso de peso</div>
       ${buildProgressHTML()}
@@ -5885,12 +6234,53 @@ async function logWeight(){
   if(!enteredVal){ showToast('Introduce un peso válido', true); return; }
   const val = displayToKg(enteredVal);
   const today = todayStr();
+
+  const beforeTargets = calcTargets(state.profile);
+
   state.weights.push({ date: today, weight: val, time: new Date().toISOString() });
   state.profile.currentWeight = val;
   const ok1 = await safeSet('weights', state.weights);
   const ok2 = await safeSet('profile', state.profile);
+
+  const afterTargets = calcTargets(state.profile);
+
   if(ok1 && ok2) showToast('Peso guardado');
   else showToast('⚠️ No se pudo guardar el peso — el navegador está sin espacio', true);
+  renderAll();
+
+  // Con el peso nuevo, el objetivo recomendado (aunque estés en modo
+  // personalizado) puede haber cambiado bastante — mejor decírtelo que
+  // dejar que el número cambie solo sin que te enteres, o que se quede
+  // desactualizado sin que lo sepas.
+  if(ok1 && ok2 && beforeTargets && afterTargets){
+    const diff = Math.abs(afterTargets.autoCalorieTarget - beforeTargets.autoCalorieTarget);
+    if(diff >= 40){
+      if(afterTargets.isCustom){
+        setTimeout(() => offerWeightBasedAdjustment(afterTargets), 700);
+      } else {
+        setTimeout(() => showToast(`Tu objetivo diario se ha actualizado solo a ${afterTargets.calorieTarget} kcal con tu peso nuevo`), 700);
+      }
+    }
+  }
+}
+
+function offerWeightBasedAdjustment(targets){
+  openActionOverlay(`
+    <div style="text-align:center; padding:6px 0;">
+      <div style="font-size:36px; margin-bottom:8px;">⚖️</div>
+      <h1 style="margin:0 0 10px 0;">Nuevo peso registrado</h1>
+      <p class="sub" style="margin:0 0 20px 0;">Con tu peso actualizado, tu objetivo diario recomendado es ahora <b>${targets.autoCalorieTarget} kcal</b> (ahora mismo usas ${targets.calorieTarget} kcal, ajustado a mano). ¿Quieres que lo actualicemos para que siga tu peso real?</p>
+      <button class="btn accent" onclick="applyWeightBasedAdjustment()">Sí, actualizar mi objetivo</button>
+      <button class="btn ghost small" style="margin-top:10px;" onclick="closeActionOverlay()">No, prefiero dejarlo como está</button>
+    </div>
+  `);
+}
+
+async function applyWeightBasedAdjustment(){
+  state.profile.customMode = false;
+  await safeSet('profile', state.profile);
+  closeActionOverlay();
+  showToast('Objetivo actualizado a tu peso nuevo 👍');
   renderAll();
 }
 
@@ -6202,11 +6592,11 @@ async function saveEditMacros(){
 
 async function manualLoadFromCloud(){
   if(!state.profile.email){
-    showToast('Inicia sesión con Google para guardar en la nube', true);
+    showToast('Inicia sesión con Google para cargar de la nube', true);
     return;
   }
-  if(!googleIdToken){
-    showToast('Inicia sesión con Google para guardar en la nube', true);
+  if(!isGoogleSessionLive()){
+    showToast('Tu sesión de Google caducó — reconecta en "Cuenta" primero', true);
     return;
   }
   if(!SYNC_ENDPOINT){
@@ -6225,7 +6615,10 @@ async function confirmLoadFromCloud(){
   showToast('Cargando de la nube…');
   const cloud = await pullFromCloud();
   if(!cloud || !cloud.data || !cloud.data.profile){
-    showToast('No hay datos guardados en la nube con esta cuenta', true);
+    if(lastCloudError === 'network') showToast('Sin conexión — comprueba tu wifi o datos móviles e inténtalo de nuevo', true);
+    else if(lastCloudError === 'auth' || lastCloudError === 'no-session') showToast('Tu sesión de Google caducó — reconecta en "Cuenta" e inténtalo de nuevo', true);
+    else if(lastCloudError === 'server') showToast('La nube no respondió correctamente — inténtalo en un momento', true);
+    else showToast('No hay datos guardados en la nube con esta cuenta', true);
     return;
   }
   await applyAllLocalData(cloud.data);
@@ -6238,8 +6631,8 @@ async function manualSaveToCloud(){
     showToast('Inicia sesión con Google para guardar en la nube', true);
     return;
   }
-  if(!googleIdToken){
-    showToast('Inicia sesión con Google para guardar en la nube', true);
+  if(!isGoogleSessionLive()){
+    showToast('Tu sesión de Google caducó — reconecta en "Cuenta" primero', true);
     return;
   }
   if(!SYNC_ENDPOINT){
@@ -6247,8 +6640,11 @@ async function manualSaveToCloud(){
     return;
   }
   showToast('Guardando en la nube…');
-  await pushToCloud(true);
-  showToast('¡Guardado en la nube! ☁️');
+  const ok = await pushToCloud(true);
+  if(ok) showToast('¡Guardado en la nube! ☁️');
+  else if(lastCloudError === 'network') showToast('Sin conexión — comprueba tu wifi o datos móviles e inténtalo de nuevo', true);
+  else if(lastCloudError === 'auth') showToast('Tu sesión de Google caducó — reconecta en "Cuenta" e inténtalo de nuevo', true);
+  else showToast('No se pudo guardar en la nube — inténtalo en un momento', true);
 }
 
 async function signOutGoogle(){
